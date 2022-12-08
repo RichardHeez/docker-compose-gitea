@@ -39,8 +39,8 @@ jobs:
             mkdir -p /caches
             docker save -o /caches/app.tar app
             docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
-            docker tag app:latest ayoinc/containercode:app
-            docker push ayoinc/containercode:app
+            docker tag app:latest richardheez/richdev-123:app
+            docker push richardheez/richdev-123:app
 
       - save_cache:
           key: v1-{{ .Branch }}-{{ epoch }}
