@@ -104,11 +104,38 @@
             <label>Preacher’s language<select id="speechLang"></select></label>
             <label>Microphone<button class="btn" id="micBtn2">Start listening</button></label>
           </div>
+          <div class="grid2">
+            <label>Speech engine<select id="speechEngine">
+              <option value="auto">Automatic</option>
+              <option value="browser">Browser (Google, Chrome/Edge)</option>
+              <option value="khaya">Khaya by GhanaNLP (Akan, Ga, Ewe…)</option>
+            </select></label>
+            <label>Level<div class="meter"><span id="micLevel"></span></div></label>
+          </div>
+          <p id="engineNote" class="muted small"></p>
           <label class="check"><input type="checkbox" id="autoLive"> Auto go-live on detected references</label>
           <label class="check"><input type="checkbox" id="aiDetect" checked> Use AI to catch quotes &amp; paraphrases</label>
           <div id="transcript" class="transcript"><span class="muted">Transcript appears here…</span></div>
           <div class="row between"><h4>Detected</h4><button class="btn ghost sm" id="clearDetections">Clear</button></div>
           <ul id="detections" class="detections"></ul>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Custom words · <span id="cwLang"></span></h3><button class="btn ghost sm" id="cwToggle">Edit</button></div>
+          <p class="muted small">Teach Lumen how your preachers say things in this language. Saved for everyone on this server.</p>
+          <div id="cwBody" hidden>
+            <label>Book names <span class="muted">— one per line, e.g. <code>Yohane = John</code> or <code>Nnwom = 19</code></span><textarea id="cwBooks" rows="4"></textarea></label>
+            <label>Numbers <span class="muted">— e.g. <code>dunsia = 16</code></span><textarea id="cwNumbers" rows="3"></textarea></label>
+            <div class="grid2">
+              <label>“Chapter” words<input id="cwChapter" placeholder="ti, tiri"></label>
+              <label>“Verse” words<input id="cwVerse" placeholder="nkyekyɛm"></label>
+              <label>“To” words (ranges)<input id="cwRange" placeholder="kosi"></label>
+              <label>“Next verse” phrases<input id="cwNext" placeholder="nkyekyɛm a edi so"></label>
+            </div>
+            <div class="row"><button class="btn" id="cwSave">Save words</button><span id="cwStatus" class="muted small"></span></div>
+            <label>Try it<input id="cwTry" placeholder="Type what the preacher would say…"></label>
+            <div id="cwResult" class="muted small"></div>
+          </div>
         </div>
 
         <div class="card">

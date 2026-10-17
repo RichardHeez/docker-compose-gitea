@@ -194,3 +194,6 @@ textarea { resize: vertical; }
 [hidden] { display: none !important; }
 .pill.auto { font-size: 12px; letter-spacing: .08em; color: var(--muted); }
 .pill.auto.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+.meter { height: 34px; border: 1px solid var(--line); border-radius: 10px; background: #0e1120; overflow: hidden; position: relative; }
+.meter span { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #30a46c, #ffd27a); transition: width .08s; }
+.meter span.speaking { background: linear-gradient(90deg, #8b7bff, #e5484d); }

@@ -2,6 +2,8 @@
 import { BOOKS, bookById, formatRef, parseFollowUp, parseReferences, refKey } from './books.js';
 import { FONTS, api, langCode, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
 import * as control from './control.js';
+import { PhraseRecognizer } from './khaya.js';
+import { langKey, setCustomWords } from './langs.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -35,6 +37,7 @@ function connect() {
     if (!prev || JSON.stringify(prev.channels) !== JSON.stringify(S.channels)) renderChannels();
     if (!prev || JSON.stringify(prev.service) !== JSON.stringify(S.service)) renderService();
     if (!prev || JSON.stringify(prev.live) !== JSON.stringify(S.live)) onLiveChanged(prev?.live);
+    if (!prev || JSON.stringify(prev.customWords) !== JSON.stringify(S.customWords)) { setCustomWords(S.customWords); loadCustomWordsForm(); }
     if (!prev || prev.splitChars !== S.splitChars) { $('#splitChars').value = S.splitChars; $('#splitLabel').textContent = S.splitChars || 'off —'; }
     renderOverlayButtons();
   });
@@ -445,12 +448,32 @@ async function speakItem(item) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false, transcript = '', recent = new Map(), aiTimer = null, aiBusy = false, lastAiLen = 0;
 
-const SPEECH_LANGS = ['en-US', 'en-GB', 'en-NG', 'en-IN', 'es-ES', 'es-MX', 'pt-BR', 'pt-PT', 'fr-FR', 'de-DE', 'it-IT', 'nl-NL', 'ru-RU', 'uk-UA', 'pl-PL', 'ro-RO', 'hu-HU', 'cs-CZ', 'el-GR', 'tr-TR', 'ar-SA', 'he-IL', 'fa-IR', 'hi-IN', 'bn-IN', 'ta-IN', 'te-IN', 'ml-IN', 'ur-PK', 'zh-CN', 'zh-TW', 'ja-JP', 'ko-KR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'fil-PH', 'sw-KE', 'am-ET', 'yo-NG', 'ig-NG', 'ha-NG', 'zu-ZA', 'af-ZA', 'sv-SE', 'nb-NO', 'da-DK', 'fi-FI'];
-const langLabel = (l) => { try { return `${new Intl.DisplayNames([l], { type: 'language' }).of(l)} · ${l}`; } catch { return l; } };
+const SPEECH_LANGS = ['en-US', 'en-GB', 'en-NG', 'en-GH', 'en-IN', 'ak-GH', 'fat-GH', 'gaa-GH', 'ee-GH', 'dag-GH', 'es-ES', 'es-MX', 'pt-BR', 'pt-PT', 'fr-FR', 'de-DE', 'it-IT', 'nl-NL', 'ru-RU', 'uk-UA', 'pl-PL', 'ro-RO', 'hu-HU', 'cs-CZ', 'el-GR', 'tr-TR', 'ar-SA', 'he-IL', 'fa-IR', 'hi-IN', 'bn-IN', 'ta-IN', 'te-IN', 'ml-IN', 'ur-PK', 'zh-CN', 'zh-TW', 'ja-JP', 'ko-KR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'fil-PH', 'sw-KE', 'am-ET', 'yo-NG', 'ig-NG', 'ha-NG', 'zu-ZA', 'af-ZA', 'sv-SE', 'nb-NO', 'da-DK', 'fi-FI'];
+const KHAYA_LANGS = ['ak', 'tw', 'fat', 'gaa', 'ee', 'dag'];
+const LANG_NAMES = { 'ak-GH': 'Akan · Twi (Asante, Akuapem)', 'fat-GH': 'Akan · Fante', 'gaa-GH': 'Ga', 'ee-GH': 'Ewe', 'dag-GH': 'Dagbani' };
+const langLabel = (l) => { if (LANG_NAMES[l]) return `${LANG_NAMES[l]} · ${l}`; try { return `${new Intl.DisplayNames([l], { type: 'language' }).of(l)} · ${l}`; } catch { return l; } };
 $('#speechLang').innerHTML = SPEECH_LANGS.map((l) => `<option value="${l}">${esc(langLabel(l))}</option>`).join('');
 $('#speechLang').value = store.get('speechLang', 'en-US');
 
+let phraseRec = null;
+const engine = () => {
+  const e = $('#speechEngine').value;
+  if (e !== 'auto') return e;
+  return KHAYA_LANGS.includes(speechLang().split('-')[0]) ? 'khaya' : 'browser';
+};
+function updateEngineNote() {
+  const e = engine(); const lang = speechLang().split('-')[0];
+  let note = e === 'khaya' ? 'Phrases are sent to Khaya (GhanaNLP) through this server; each one appears after the speaker pauses.' : 'Uses the browser’s own recognition (Chrome or Edge, needs internet).';
+  if (e === 'khaya' && !info.khaya) note = '⚠ Khaya is not set up on the server yet — start it with KHAYA_API_KEY (see README).';
+  if (e === 'browser' && KHAYA_LANGS.includes(lang)) note = '⚠ Browsers can’t hear this language well — choose Khaya.';
+  $('#engineNote').textContent = note;
+  $('#cwLang').textContent = langLabel(speechLang());
+  loadCustomWordsForm();
+}
+
 function setMic(on) {
+  if (on && engine() === 'khaya') return setPhraseMic(true);
+  if (!on && phraseRec) return setPhraseMic(false);
   if (on && !SR) return toast('Speech recognition needs Chrome or Edge', true);
   listening = on;
   $('#micBtn').classList.toggle('on', on);
@@ -477,6 +500,56 @@ function setMic(on) {
     try { rec.start(); } catch {}
     toast('Listening… say a reference like “John 3:16”');
   } else if (rec) { rec.onend = null; rec.stop(); rec = null; }
+}
+
+async function setPhraseMic(on) {
+  if (on) {
+    if (!info.khaya) return toast('Khaya is not set up — start the server with KHAYA_API_KEY', true);
+    phraseRec = new PhraseRecognizer({
+      lang: speechLang(),
+      onText: (t) => { onSpeech(t); renderTranscript(); },
+      onLevel: (lvl, speaking) => { const m = $('#micLevel'); m.style.width = `${Math.round(lvl * 100)}%`; m.classList.toggle('speaking', speaking); },
+      onError: (m) => toast(`Speech: ${m}`, true),
+    });
+    try { await phraseRec.start(); }
+    catch (e) { phraseRec = null; return toast(`Microphone: ${e.message}`, true); }
+    listening = true;
+    toast('Listening with Khaya… references appear after each pause');
+  } else { phraseRec?.stop(); phraseRec = null; listening = false; $('#micLevel').style.width = '0'; }
+  $('#micBtn').classList.toggle('on', listening);
+  $('#micBtn2').textContent = listening ? 'Stop listening' : 'Start listening';
+}
+
+// ---------------------------------------------------------------- custom words (per language, shared on the server)
+function loadCustomWordsForm() {
+  if (!S) return;
+  const c = (S.customWords || {})[langKey(speechLang())] || {};
+  $('#cwBooks').value = Object.entries(c.books || {}).map(([n, id]) => `${n} = ${bookById(id)?.name || id}`).join('\n');
+  $('#cwNumbers').value = Object.entries(c.numbers || {}).map(([w, n]) => `${w} = ${n}`).join('\n');
+  $('#cwChapter').value = (c.chapter || []).join(', ');
+  $('#cwVerse').value = (c.verse || []).join(', ');
+  $('#cwRange').value = (c.range || []).join(', ');
+  $('#cwNext').value = (c.next || []).join(', ');
+}
+function readCustomWordsForm() {
+  const list = (id) => $(id).value.split(',').map((x) => x.trim()).filter(Boolean);
+  const pairs = (id) => $(id).value.split('\n').map((l) => l.split('=').map((x) => x.trim())).filter(([a, b]) => a && b);
+  const books = {}; const bad = [];
+  for (const [name, target] of pairs('#cwBooks')) {
+    const id = /^\d+$/.test(target) ? Number(target) : (BOOKS.find((b) => b.name.toLowerCase() === target.toLowerCase())?.id || parseReferences(`${target} 1`, undefined, 'en')[0]?.book);
+    if (id && bookById(id)) books[name] = id; else bad.push(target);
+  }
+  const numbers = {};
+  for (const [w, n] of pairs('#cwNumbers')) if (Number(n) > 0) numbers[w] = Number(n);
+  return { entry: { books, numbers, chapter: list('#cwChapter'), verse: list('#cwVerse'), range: list('#cwRange'), next: list('#cwNext') }, bad };
+}
+function tryCustomWords() {
+  const text = $('#cwTry').value.trim();
+  if (!text) return void ($('#cwResult').textContent = '');
+  const refs = parseReferences(text, speechNames, speechLang());
+  const f = refs.length ? null : parseFollowUp(text, speechLang());
+  $('#cwResult').textContent = refs.length ? `✓ ${refs.map((r) => formatRef(r)).join(' ; ')}`
+    : f ? `✓ follow-up: ${f.kind}${f.verseStart ? ` ${f.chapter ? 'chapter ' + f.chapter + ' ' : ''}verse ${f.verseStart}${f.verseEnd !== f.verseStart ? '–' + f.verseEnd : ''}` : ''}` : '✗ no reference recognised';
 }
 
 function renderTranscript(interim = '') {
@@ -647,7 +720,18 @@ function wire() {
   $('#btnClear').onclick = () => push({ clear: !S.clear });
   $('#btnLogo').onclick = () => push({ logo: !S.logo });
   $('#micBtn').onclick = $('#micBtn2').onclick = () => setMic(!listening);
-  $('#speechLang').onchange = (e) => { store.set('speechLang', e.target.value); store.set('speechLangSet', true); loadSpeechNames(); if (listening) { setMic(false); setMic(true); } };
+  $('#speechLang').onchange = (e) => { store.set('speechLang', e.target.value); store.set('speechLangSet', true); loadSpeechNames(); updateEngineNote(); if (listening) { setMic(false); setTimeout(() => setMic(true), 100); } };
+  $('#speechEngine').value = store.get('speechEngine', 'auto');
+  $('#speechEngine').onchange = (e) => { store.set('speechEngine', e.target.value); updateEngineNote(); if (listening) { setMic(false); setTimeout(() => setMic(true), 100); } };
+  $('#cwToggle').onclick = () => { $('#cwBody').hidden = !$('#cwBody').hidden; };
+  $('#cwTry').oninput = tryCustomWords;
+  $('#cwSave').onclick = async () => {
+    const { entry, bad } = readCustomWordsForm();
+    const all = { ...(S.customWords || {}), [langKey(speechLang())]: entry };
+    await push({ customWords: all });
+    $('#cwStatus').textContent = bad.length ? `Saved. Unknown books: ${bad.join(', ')}` : 'Saved ✓';
+    setTimeout(tryCustomWords, 300);
+  };
   $('#clearDetections').onclick = () => { $('#detections').innerHTML = ''; recent.clear(); transcript = ''; pendingTail = ''; contextRef = null; lastAiLen = 0; renderTranscript(); };
   $('#genBtn').onclick = generate;
 
@@ -797,6 +881,7 @@ function wire() {
   $('#aiStatus').textContent = info.ai ? 'AI on' : 'AI off';
   $('#aiStatus').classList.toggle('on', !!info.ai);
   $('#aiStatus').title = info.ai ? `Model: ${info.model}` : 'Set ANTHROPIC_API_KEY on the server to enable AI';
+  updateEngineNote();
   if (!info.ai) { $('#aiDetect').checked = false; $('#aiDetect').disabled = true; $('#genBtn').disabled = true; $('#genStatus').textContent = 'AI is off — start the server with ANTHROPIC_API_KEY set.'; }
   const urls = [location.origin, ...(info.lan || [])];
   $('#lanInfo').innerHTML = urls.map((u) => `<div>Console: ${esc(u)}/</div><div>Output N: ${esc(u)}/output.html?ch=N</div>`).join('<br>');

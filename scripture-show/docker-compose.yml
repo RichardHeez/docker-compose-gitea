@@ -9,5 +9,8 @@ services:
       # Optional: enables AI scripture detection and the presentation builder
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - CHANNELS=${CHANNELS:-8}
+      # Optional: Khaya (GhanaNLP) speech-to-text for Akan/Twi, Fante, Ga, Ewe preachers
+      - KHAYA_API_KEY=${KHAYA_API_KEY:-}
+      - CONTROL_PIN=${CONTROL_PIN:-}
     volumes:
       - ./data:/data

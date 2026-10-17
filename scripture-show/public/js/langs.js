@@ -76,6 +76,34 @@ const FR = B(`Genese,Exode,Levitique,Nombres,Deuteronome,Josue,Juges,Ruth,1 Samu
 const DE = B(`1 Mose|Genesis,2 Mose|Exodus,3 Mose|Levitikus,4 Mose|Numeri,5 Mose|Deuteronomium,Josua,Richter,Rut|Ruth,1 Samuel,2 Samuel,1 Konige,2 Konige,1 Chronik,2 Chronik,Esra,Nehemia,Ester|Esther,Hiob|Ijob,Psalmen|Psalm,Spruche|Sprichworter,Prediger|Kohelet,Hoheslied|Hohelied,Jesaja,Jeremia,Klagelieder,Hesekiel|Ezechiel,Daniel,Hosea,Joel,Amos,Obadja,Jona,Micha,Nahum,Habakuk,Zefanja|Zephanja,Haggai,Sacharja,Maleachi,Matthaus,Markus,Lukas,Johannes,Apostelgeschichte,Romer,1 Korinther,2 Korinther,Galater,Epheser,Philipper,Kolosser,1 Thessalonicher,2 Thessalonicher,1 Timotheus,2 Timotheus,Titus,Philemon,Hebraer,Jakobus,1 Petrus,2 Petrus,1 Johannes,2 Johannes,3 Johannes,Judas,Offenbarung`);
 const IT = B(`Genesi,Esodo,Levitico,Numeri,Deuteronomio,Giosue,Giudici,Rut,1 Samuele,2 Samuele,1 Re,2 Re,1 Cronache,2 Cronache,Esdra,Neemia,Ester,Giobbe,Salmi|Salmo,Proverbi,Ecclesiaste|Qoelet,Cantico dei Cantici|Cantico,Isaia,Geremia,Lamentazioni,Ezechiele,Daniele,Osea,Gioele,Amos,Abdia,Giona,Michea,Naum,Abacuc,Sofonia,Aggeo,Zaccaria,Malachia,Matteo,Marco,Luca,Giovanni,Atti|Atti degli Apostoli,Romani,1 Corinzi,2 Corinzi,Galati,Efesini,Filippesi,Colossesi,1 Tessalonicesi,2 Tessalonicesi,1 Timoteo,2 Timoteo,Tito,Filemone,Ebrei,Giacomo,1 Pietro,2 Pietro,1 Giovanni,2 Giovanni,3 Giovanni,Giuda,Apocalisse`);
 
+
+// Akan (Twi / Fante). Counting forms vary by dialect and speaker; both "abiɛsa" and "mmiɛnsa" styles are listed.
+const AK_UNITS = [[], ['baako', 'biako', 'koro'], ['abien', 'abien', 'mmienu', 'mmien', 'ebien'], ['abiesa', 'mmiensa', 'ebiesa'], ['anan', 'enan', 'nnan'],
+  ['anum', 'enum', 'nnum'], ['asia', 'nsia', 'esia'], ['ason', 'nson', 'esuon', 'nson'], ['awotwe', 'nwotwe', 'ewotwe'], ['akron', 'nkron', 'ekron']];
+const AK_TEENS = ['du', 'dubaako', 'dumienu', 'dumiensa', 'dunan', 'dunum', 'dunsia', 'dunson', 'dunwotwe', 'dunkron'];
+const AK_TENS = ['', '', 'aduonu', 'aduasa', 'aduanan', 'aduonum', 'aduosia', 'aduoson', 'aduowotwe', 'aduokron'];
+function akanTable() {
+  const map = new Map();
+  const put = (w, n) => { map.set(w, n); map.set(w.replace(/ɛ/g, 'e').replace(/ɔ/g, 'o'), n); };
+  const units = (n) => AK_UNITS[n];
+  for (let n = 1; n <= 176; n++) {
+    const forms = [];
+    const sub = (m) => {
+      if (m < 10) return units(m);
+      if (m < 20) return [AK_TEENS[m - 10], ...(m > 10 ? units(m - 10).map((u) => `du ${u}`) : [])];
+      const t = AK_TENS[Math.floor(m / 10)], r = m % 10;
+      return r ? units(r).flatMap((u) => [`${t} ${u}`, `${t} ne ${u}`, `${t}${u}`]) : [t];
+    };
+    if (n < 100) forms.push(...sub(n));
+    else if (n === 100) forms.push('oha', 'oha baako');
+    else for (const f of sub(n - 100)) forms.push(`oha ${f}`, `oha ne ${f}`);
+    forms.forEach((f) => put(f, n));
+  }
+  return map;
+}
+// Asante Twi Bible book names (please check with your congregation and adjust under "Custom words").
+const AK = B(`Genesis|1 Mose,Exodus|2 Mose,Leviticus|3 Mose,Numeri|4 Mose,Deuteronomium|5 Mose,Yosua,Atemmufo,Rut,1 Samuel,2 Samuel,1 Ahemfo,2 Ahemfo,1 Berɛsosɛm|1 Beresosem,2 Berɛsosɛm|2 Beresosem,Esra,Nehemia,Ester,Hiob,Nnwom|Dwom,Mmebusɛm|Mmebusem,Ɔsɛnkafo|Osenkafo,Nnwom mu Dwom|Nnwom Mu Dwom,Yesaia,Yeremia,Kwadwom,Hesekiel,Daniel,Hosea,Yoel,Amos,Obadia,Yona,Mika,Nahum,Habakuk,Sefania,Hagai,Sakaria,Malaki,Mateo,Marko,Luka,Yohane,Asomafo Nnwuma|Asomafo,Romafo,1 Korintofo,2 Korintofo,Galatifo,Efesofo,Filipifo,Kolosefo,1 Tesalonikafo,2 Tesalonikafo,1 Timoteo,2 Timoteo,Tito,Filemon,Hebrifo,Yakobo,1 Petro,2 Petro,1 Yohane,2 Yohane,3 Yohane,Yuda,Adiyisɛm|Adiyisem`);
+
 const books = (list) => Object.fromEntries(list.flatMap((names, i) => names.map((n) => [n, i + 1])));
 
 // ---------------------------------------------------------------- packs
@@ -117,12 +145,23 @@ export const PACKS = {
   uk: { chapter: ['розділ', 'розділі', 'глава'], verse: ['вірш', 'вірші', 'віршi'], range: ['по', 'до'], next: ['наступний вірш'], prev: ['попередній вірш'] },
   pl: { chapter: ['rozdzial', 'rozdziale'], verse: ['werset', 'wersety', 'wers'], range: ['do'], next: ['nastepny werset'], prev: ['poprzedni werset'] },
   ro: { chapter: ['capitolul', 'capitol'], verse: ['versetul', 'versetele', 'verset'], range: ['la', 'pana la'], next: ['versetul urmator'], prev: ['versetul anterior'] },
-  sw: { chapter: ['sura', 'mlango'], verse: ['mstari', 'mistari', 'aya'], range: ['hadi', 'mpaka'], next: ['mstari unaofuata'], prev: ['mstari uliotangulia'] },
-  yo: { chapter: ['ori'], verse: ['ese'], range: ['si'], next: ['ese to kan'], prev: [] },
-  ig: { chapter: ['isi'], verse: ['amaokwu'], range: ['ruo'], next: ['amaokwu na-esote', 'amaokwu nke ozo'], prev: [] },
-  ha: { chapter: ['sura', 'babi'], verse: ['aya', 'ayar'], range: ['zuwa'], next: ['aya ta gaba'], prev: [] },
-  af: { chapter: ['hoofstuk'], verse: ['vers', 'verse'], range: ['tot'], next: ['volgende vers'], prev: ['vorige vers'] },
-  tl: { chapter: ['kabanata'], verse: ['talata', 'bersikulo'], range: ['hanggang'], next: ['susunod na talata'], prev: [] },
+  // Akan (Twi, Fante). Preachers often mix in English, so English chapter/verse words are included.
+  ak: { english: true, chapter: ['ti', 'tiri', 'chapter', 'kyɛfa', 'kyefa'], verse: ['nkyekyɛm', 'nkyekyem', 'nkyekyɛmu', 'nkyekyemu', 'verse', 'verses', 'bɛsi', 'besi'], range: ['kosi', 'kɔsi', 'to'],
+    // "Korintofo nwoma a edi kan" = First Corinthians: the ordinal comes after the book name
+    ordAfter: [['nwoma a edi kan', 'krataa a edi kan', 'a edi kan', 'nea edi kan'],
+      ['nwoma a ɛtɔ so abien', 'krataa a ɛtɔ so abien', 'a ɛtɔ so abien', 'nwoma a edi so', 'a ɛtɔ so mmienu'],
+      ['nwoma a ɛtɔ so abiɛsa', 'krataa a ɛtɔ so abiɛsa', 'a ɛtɔ so abiɛsa', 'a ɛtɔ so mmiɛnsa']],
+    next: ['nkyekyɛm a edi so', 'nkyekyem a edi so', 'next verse'], prev: ['nkyekyɛm a edi kan', 'previous verse'],
+    numbers: akanTable(), books: books(AK) },
+  gaa: { english: true, chapter: ['chapter'], verse: ['verse'], range: ['to'], next: ['next verse'], prev: [] },
+  ee: { english: true, chapter: ['ta', 'chapter'], verse: ['kpukpui', 'verse'], range: ['va se', 'to'], next: ['next verse'], prev: [] },
+  dag: { english: true, chapter: ['chapter'], verse: ['verse'], range: ['to'], next: ['next verse'], prev: [] },
+  sw: { english: true, chapter: ['sura', 'mlango'], verse: ['mstari', 'mistari', 'aya'], range: ['hadi', 'mpaka'], next: ['mstari unaofuata'], prev: ['mstari uliotangulia'] },
+  yo: { english: true, chapter: ['ori'], verse: ['ese'], range: ['si'], next: ['ese to kan'], prev: [] },
+  ig: { english: true, chapter: ['isi'], verse: ['amaokwu'], range: ['ruo'], next: ['amaokwu na-esote', 'amaokwu nke ozo'], prev: [] },
+  ha: { english: true, chapter: ['sura', 'babi'], verse: ['aya', 'ayar'], range: ['zuwa'], next: ['aya ta gaba'], prev: [] },
+  af: { english: true, chapter: ['hoofstuk'], verse: ['vers', 'verse'], range: ['tot'], next: ['volgende vers'], prev: ['vorige vers'] },
+  tl: { english: true, chapter: ['kabanata'], verse: ['talata', 'bersikulo'], range: ['hanggang'], next: ['susunod na talata'], prev: [] },
   id: { chapter: ['pasal'], verse: ['ayat'], range: ['sampai', 'hingga'], next: ['ayat berikutnya'], prev: ['ayat sebelumnya'] },
   ms: { chapter: ['pasal', 'bab'], verse: ['ayat'], range: ['hingga', 'sampai'], next: ['ayat seterusnya'], prev: [] },
   vi: { chapter: ['chuong'], verse: ['cau'], range: ['den', 'toi'], next: ['cau tiep theo'], prev: [] },
@@ -136,9 +175,28 @@ export const PACKS = {
   ja: { postfix: true, chapter: ['章'], verse: ['節'], range: ['から', '〜', '~'], rangeEnd: ['まで'], next: ['次の節'], prev: ['前の節'], hanNumbers: true },
 };
 
+// Codes that share a pack: Twi (tw), Fante (fat) -> Akan.
+const ALIAS = { tw: 'ak', twi: 'ak', fat: 'ak', fan: 'ak' };
+
+// Words a church adds itself (Settings -> Custom words), per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], ... } }
+let custom = {};
+export let customVersion = 0;
+const packCache = new Map();
+export function setCustomWords(map) { custom = map || {}; customVersion++; packCache.clear(); }
+export const langKey = (lang) => { const c = String(lang || 'en').toLowerCase().split(/[-_]/)[0]; return ALIAS[c] || c; };
+
 export function packFor(lang) {
-  const code = String(lang || 'en').toLowerCase().split(/[-_]/)[0];
-  return { code, ...(PACKS[code] || { chapter: [], verse: [], range: [], next: [], prev: [] }) };
+  const code = langKey(lang);
+  if (packCache.has(code)) return packCache.get(code);
+  const base = PACKS[code] || { chapter: [], verse: [], range: [], next: [], prev: [] };
+  const c = custom[code] || {};
+  const list = (k) => [...new Set([...(base[k] || []), ...(c[k] || [])])];
+  const numbers = new Map(base.numbers || []);
+  for (const [w, n] of Object.entries(c.numbers || {})) numbers.set(String(w).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC'), Number(n));
+  const pack = { ...base, code, chapter: list('chapter'), verse: list('verse'), range: list('range'), next: list('next'), prev: list('prev'),
+    numbers: numbers.size ? numbers : null, books: { ...(base.books || {}), ...(c.books || {}) } };
+  packCache.set(code, pack);
+  return pack;
 }
 
 // 三十六 / 一百一十九 / 两 -> digits

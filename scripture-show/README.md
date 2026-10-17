@@ -12,6 +12,8 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Fast lookup** | Type `jn 3:16`, `1co13:4-7`, `Ps 23`, `Juan 3:16` — book names in the selected language work too. Word search across the translation. |
 | **AI live listening** | Turn on **AUTO** and click the mic: when the preacher says a scripture (“turn to first Corinthians thirteen four through seven”) it goes straight to the screens. Follow-ups work too — “verse 17”, “verses 18 to 20”, “chapter 4 verse 2”, “next verse”. With an Anthropic API key, Claude also catches verses the preacher *quotes or paraphrases* without citing them. Detections queue up, or go live automatically. |
 | **Preachers in any language** | Pick the preacher’s language and listening understands it: full support (book names, spelled-out numbers, “primera de Corintios”, “versículo siguiente”) for Spanish, Portuguese, French, German, Italian and English, and chapter/verse words for Dutch, Russian, Ukrainian, Polish, Romanian, Swahili, Yoruba, Igbo, Hausa, Afrikaans, Tagalog, Indonesian, Malay, Vietnamese, Hindi, Arabic, Persian, Hebrew, Korean, Chinese and Japanese. Book names for every language are also taken from the Bibles available in it. With AI on, Claude catches quoted verses in any language. |
+| **Akan (Twi, Fante), Ga, Ewe, Dagbani** | Browsers can’t hear these languages, so Lumen sends each spoken phrase to **Khaya** by GhanaNLP (speech-to-text built for Ghanaian languages) through the server. The Akan pack knows Twi book names (Yohane, Nnwom, Romafo, “Korintofo nwoma a edi kan” …), Twi numbers (baako … dunsia … aduonu abiɛsa … ɔha) and handles English mixed in. |
+| **Custom words** | AI · Voice → *Custom words*: add book names, numbers, “chapter”/“verse”/“to” words and “next verse” phrases for any language, test them instantly, and save them for everyone. |
 | **AI presentation builder** | Paste a sermon topic or notes → get a ready service of title slides + relevant scripture, shown in whatever translation each screen uses. |
 | **Voice** | Reads verses aloud with the system’s text-to-speech voices, auto-matched to the translation’s language. Optional auto-read on go-live. |
 | **8 output channels** | Each has its own layout (full screen, lower third, stage display, confidence monitor, green-screen key, transparent alpha for OBS), its own translation, a parallel second translation, theme, background image/video, text size and transition. |
@@ -40,6 +42,16 @@ ANTHROPIC_API_KEY=sk-ant-... docker compose up -d
 ```
 
 Settings (environment variables): `PORT` (4848), `CHANNELS` (8, min 6), `ANTHROPIC_API_KEY` (enables AI), `AI_MODEL` (`claude-opus-5-5`), `CONTROL_PIN` (require a PIN to control the show), `BIBLE_API` (upstream Bible source), `DATA_DIR` (cache, imports, media, saved show state).
+
+### Akan / Twi and other Ghanaian languages (Khaya)
+
+1. Get an API key from GhanaNLP’s Khaya developer portal (translation.ghananlp.org).
+2. Start Lumen with it: `KHAYA_API_KEY=your-key npm start` (or put it in `docker-compose.yml`).
+3. In AI · Voice choose the preacher’s language *Akan · Twi* (or Fante, Ga, Ewe, Dagbani). The engine switches to Khaya automatically.
+
+If GhanaNLP changes its API, adjust without code changes: `KHAYA_ASR_URL` (endpoint, default `https://translation-api.ghananlp.org/asr/v1/transcribe`), `KHAYA_KEY_HEADER` (default `Ocp-Apim-Subscription-Key`), `KHAYA_LANG_PARAM` (default `language`) and `KHAYA_LANGS` (JSON map of language codes, default Akan → `tw`).
+
+The Twi book names and chapter/verse words were written without a native speaker’s review — check them with your team and fix anything under *Custom words*.
 
 ### Desktop app (Windows / macOS / Linux)
 

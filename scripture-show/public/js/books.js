@@ -1,4 +1,4 @@
-import { asciiDigits, hanToDigits, packFor, spelledToDigits } from './langs.js';
+import { asciiDigits, customVersion, hanToDigits, packFor, spelledToDigits } from './langs.js';
 
 // Canonical 66-book list (standard 1-66 numbering, shared with the bolls.life API),
 // plus a reference parser for typed input and live speech transcripts.
@@ -121,7 +121,7 @@ export function wordsToNumbers(text) {
 
 // Lowercase, strip Latin accents (keeps other scripts intact), tidy dots: "Gén. 3.16" -> "gen 3:16".
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').normalize('NFC')
-  .replace(/ß/g, 'ss').replace(/[’'`´]/g, ' ').replace(/(\d)\.(\d)/g, '$1:$2').replace(/\./g, ' ').replace(/(\p{L})[-‐](?=\p{L})/gu, '$1 ')
+  .replace(/ß/g, 'ss').replace(/ɛ/g, 'e').replace(/ɔ/g, 'o').replace(/ŋ/g, 'ng').replace(/[’'`´]/g, ' ').replace(/(\d)\.(\d)/g, '$1:$2').replace(/\./g, ' ').replace(/(\p{L})[-‐](?=\p{L})/gu, '$1 ')
   .replace(/\s+/g, ' ').trim();
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const CJK = '\\p{sc=Han}\\p{sc=Hangul}\\p{sc=Hiragana}\\p{sc=Katakana}';
@@ -134,7 +134,7 @@ function aliasTable(extraNames, lang) {
   const pack = packFor(lang);
   let ek = 'none';
   if (extraNames) { if (!extraKeys.has(extraNames)) extraKeys.set(extraNames, Math.random().toString(36)); ek = extraKeys.get(extraNames); }
-  const key = `${pack.code}|${ek}`;
+  const key = `${pack.code}|${ek}|${customVersion}`;
   if (aliasCache.has(key)) return aliasCache.get(key);
   const map = new Map();
   const add = (name, id) => {
@@ -162,12 +162,16 @@ function aliasTable(extraNames, lang) {
 function base(text, pack) {
   let t = ' ' + asciiDigits(String(text)) + ' ';
   if (pack.hanNumbers) t = hanToDigits(t);
-  if (pack.code === 'en') {
+  if (pack.code === 'en' || pack.english) { // English, or a language where preachers often switch to English
     t = t.replace(/\b(first|1st)\b/gi, '1').replace(/\b(second|2nd)\b/gi, '2').replace(/\b(third|3rd)\b/gi, '3');
     t = t.replace(/\b(I{1,3})\s+(?=(samuel|kings|chronicles|corinthians|thessalonians|timothy|peter|john)\b)/gi, (m, r) => r.length + ' ');
     t = wordsToNumbers(t);
   }
   t = ' ' + norm(t) + ' ';
+  // ordinal after the book name: "korintofo a edi kan" -> "1 korintofo" (runs before numbers turn "abien" into 2)
+  (pack.ordAfter || []).forEach((phrases, i) => {
+    t = t.replace(new RegExp(`(\\p{L}+)\\s+${W(phrases)}`, 'gu'), `${i + 1} $1`);
+  });
   if (pack.code !== 'en') t = ' ' + spelledToDigits(t.trim(), pack.numbers) + ' ';
   // ordinals: "primera carta a los Corintios" -> "1 corintios", "erster Brief an die Korinther" -> "1 korinther"
   (pack.ord || []).forEach((words, i) => {

@@ -50,3 +50,27 @@ test('follow-ups in the preacher’s language', () => {
   assert.deepEqual(parseFollowUp('第十七节', 'zh-CN'), { kind: 'verse', verseStart: 17, verseEnd: 17 });
   assert.deepEqual(parseFollowUp('mstari 17', 'sw-KE'), { kind: 'verse', verseStart: 17, verseEnd: 17 });
 });
+
+test('Akan (Twi / Fante), including English mixed in', () => {
+  const ak = (t) => ref(t, 'ak-GH');
+  assert.equal(ak('Momma yɛnkɔ Yohane ti abiɛsa nkyekyɛm dunsia'), 'John 3:16');
+  assert.equal(ak('Nnwom aduonu abiɛsa nkyekyɛm baako kosi anan'), 'Psalms 23:1–4');
+  assert.equal(ak('Korintofo nwoma a edi kan ti dumiɛnsa nkyekyɛm anan kosi ason'), '1 Corinthians 13:4–7');
+  assert.equal(ak('Petro krataa a ɛtɔ so abien ti baako nkyekyɛm abiɛsa'), '2 Peter 1:3');
+  assert.equal(ak('Adiyisɛm ti aduonu baako nkyekyɛm anan'), 'Revelation 21:4');
+  assert.equal(ak('Yohane chapter three verse sixteen'), 'John 3:16');
+  assert.equal(ak('Romafo 8:28'), 'Romans 8:28');
+  assert.equal(ak('Yɛn abien kɔɔ asɔre'), '');
+  assert.equal(ref('Yohane ti 3 nkyekyɛm 16', 'fat-GH'), 'John 3:16'); // Fante uses the Akan pack
+  assert.deepEqual(parseFollowUp('nkyekyɛm a edi so', 'ak-GH'), { kind: 'next' });
+  assert.deepEqual(parseFollowUp('nkyekyɛm dunson', 'ak-GH'), { kind: 'verse', verseStart: 17, verseEnd: 17 });
+});
+
+test('custom words added by a church', async () => {
+  const { setCustomWords } = await import('../public/js/langs.js');
+  assert.equal(ref('Nnwomhyehyɛ tiri ko 23 nkyekyɛm 1', 'ak-GH'), '');
+  setCustomWords({ ak: { books: { Nnwomhyehyɛ: 19 }, chapter: ['tiri ko'], numbers: { kokoko: 5 } } });
+  assert.equal(ref('Nnwomhyehyɛ tiri ko 23 nkyekyɛm 1', 'ak-GH'), 'Psalms 23:1');
+  assert.equal(ref('Yohane ti abiɛsa nkyekyɛm kokoko', 'ak-GH'), 'John 3:5');
+  setCustomWords({});
+});

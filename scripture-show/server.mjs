@@ -23,6 +23,36 @@ const BIBLES = path.join(DATA, 'bibles');
 const BUILTIN_BIBLES = path.join(here, 'bibles');
 const MEDIA = path.join(DATA, 'media');
 const CONTROL_PIN = process.env.CONTROL_PIN || '';
+
+// Khaya (GhanaNLP) speech-to-text for Akan/Twi, Fante, Ga, Ewe, Dagbani … Every setting can be overridden
+// in case GhanaNLP changes its API: endpoint, key header and the language codes it expects.
+const KHAYA = {
+  key: process.env.KHAYA_API_KEY || '',
+  url: process.env.KHAYA_ASR_URL || 'https://translation-api.ghananlp.org/asr/v1/transcribe',
+  header: process.env.KHAYA_KEY_HEADER || 'Ocp-Apim-Subscription-Key',
+  langParam: process.env.KHAYA_LANG_PARAM || 'language',
+  langs: { ak: 'tw', tw: 'tw', fat: 'fat', gaa: 'gaa', ee: 'ee', dag: 'dag', yo: 'yo', ki: 'ki', ...JSON.parse(process.env.KHAYA_LANGS || '{}') },
+};
+const khayaLang = (lang) => KHAYA.langs[String(lang || '').toLowerCase().split(/[-_]/)[0]] || 'tw';
+
+async function khayaTranscribe(audio, contentType, lang) {
+  const url = `${KHAYA.url}${KHAYA.url.includes('?') ? '&' : '?'}${KHAYA.langParam}=${encodeURIComponent(khayaLang(lang))}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { [KHAYA.header]: KHAYA.key, 'content-type': contentType || 'audio/wav', 'cache-control': 'no-cache' },
+    body: audio,
+    signal: AbortSignal.timeout(30000),
+  });
+  const raw = await r.text();
+  if (!r.ok) throw Object.assign(new Error(`Khaya ${r.status}: ${raw.slice(0, 200)}`), { status: 502 });
+  // The response may be a JSON string, a JSON object, or plain text.
+  let text = raw;
+  try {
+    const j = JSON.parse(raw);
+    text = typeof j === 'string' ? j : j.text ?? j.transcription ?? j.transcript ?? j.result ?? j.output ?? j.data?.text ?? raw;
+  } catch { /* plain text */ }
+  return String(text).trim();
+}
 const PORT = Number(process.env.PORT || 4848);
 const UPSTREAM = process.env.BIBLE_API || 'https://bolls.life';
 const AI_MODEL = process.env.AI_MODEL || 'claude-opus-5-5';
@@ -79,6 +109,7 @@ let state = {
   logoText: 'Welcome',
   stageMessage: '',
   splitChars: 240,   // split long passages into screens of ~N characters (0 = never split)
+  customWords: {},   // church-added words per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], verse: [...] } }
   service: [],       // playlist items
   channels: Array.from({ length: CHANNEL_COUNT }, (_, i) => defaultChannel(i)),
 };
@@ -114,7 +145,7 @@ setInterval(() => { for (const res of sseClients) res.write(': ping\n\n'); }, 25
 
 function sanitizePatch(p) {
   const out = {};
-  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd']) if (k in p) out[k] = p[k];
+  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords']) if (k in p) out[k] = p[k];
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
       const n = p.channels.find((x) => Number(x.id) === c.id) || p.channels[i];
@@ -436,9 +467,16 @@ const server = http.createServer(async (req, res) => {
       broadcast();
       return send(res, 200, { ok: true, version: state.version });
     }
-    if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN });
+    if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN, khaya: !!KHAYA.key });
     if (p === '/api/pin' && req.method === 'POST') return send(res, 200, { ok: true }); // PIN already checked above
 
+    if (p === '/api/asr' && req.method === 'POST') {
+      if (!KHAYA.key) return send(res, 503, { error: 'Khaya is not set up: start the server with KHAYA_API_KEY' });
+      const chunks = []; let size = 0;
+      for await (const c of req) { size += c.length; if (size > 15e6) return send(res, 413, { error: 'Audio too long' }); chunks.push(c); }
+      const text = await khayaTranscribe(Buffer.concat(chunks), req.headers['content-type'], url.searchParams.get('lang'));
+      return send(res, 200, { text });
+    }
     if (p === '/api/media' && req.method === 'GET') return send(res, 200, await listMedia());
     if (p === '/api/media' && req.method === 'POST') {
       const original = decodeURIComponent(String(req.headers['x-filename'] || 'upload'));
@@ -520,6 +558,7 @@ export const ready = new Promise((resolve, reject) => {
     for (const u of lanUrls()) console.log(`  On your network       →  ${u}   (phone remote: ${u}/remote)`);
     console.log(`  Output channels       →  ${state.channels.length}  (e.g. http://localhost:${listenPort}/output.html?ch=1)`);
     console.log(`  AI assist             →  ${aiEnabled ? 'on (' + AI_MODEL + ')' : 'off — set ANTHROPIC_API_KEY to enable'}`);
+    console.log(`  Khaya speech (Akan…)  →  ${KHAYA.key ? 'on' : 'off — set KHAYA_API_KEY to hear Akan/Twi, Fante, Ga, Ewe preachers'}`);
     console.log(`  Control PIN           →  ${CONTROL_PIN ? 'required' : 'off (set CONTROL_PIN to protect the console)'}\n`);
     resolve(listenPort);
   });
