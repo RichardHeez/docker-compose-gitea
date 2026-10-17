@@ -16,6 +16,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { BOOKS, bookById } from './public/js/books.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+// Read keys from .env next to this file (Docker does this itself; this covers `npm start`).
+try { process.loadEnvFile(path.join(here, '.env')); } catch { /* no .env */ }
 const PUBLIC = path.join(here, 'public');
 const DATA = process.env.DATA_DIR || path.join(here, 'data');
 const CACHE = path.join(DATA, 'cache');

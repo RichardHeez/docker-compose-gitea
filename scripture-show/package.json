@@ -11,7 +11,8 @@
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist:linux": "electron-builder --linux",
+    "khaya-check": "node scripts/khaya-check.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -36,7 +37,8 @@
       "bibles/**",
       "desktop/**",
       "package.json",
-      "node_modules/**"
+      "node_modules/**",
+      "scripts/**"
     ],
     "asarUnpack": [
       "node_modules/@stagetimerio/grandiose/**"
