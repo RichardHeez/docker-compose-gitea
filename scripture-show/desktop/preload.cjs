@@ -1,7 +1,7 @@
 // Exposes desktop-only features (screens, full-screen outputs, NDI) to the console page.
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('lumenDesktop', {
+contextBridge.exposeInMainWorld('f8Desktop', {
   displays: () => ipcRenderer.invoke('displays'),
   openOutput: (ch, displayId) => ipcRenderer.invoke('open-output', ch, displayId),
   closeOutput: (ch) => ipcRenderer.invoke('close-output', ch),

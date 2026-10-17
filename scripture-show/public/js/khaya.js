@@ -79,7 +79,7 @@ export class PhraseRecognizer {
     const id = this.seq++;
     try {
       const headers = { 'content-type': 'audio/wav' };
-      if (getPin()) headers['x-lumen-pin'] = getPin();
+      if (getPin()) headers['x-f8-pin'] = getPin();
       const r = await fetch(`/api/asr?lang=${encodeURIComponent(this.lang)}`, { method: 'POST', headers, body: toWav(samples, TARGET_RATE) });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);

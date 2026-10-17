@@ -2,17 +2,17 @@
 import { bookById, formatRef, refKey } from './books.js';
 
 // ---------------------------------------------------------------- API (with optional control PIN)
-const PIN_KEY = 'lumen.pin';
+const PIN_KEY = 'f8.pin';
 export const getPin = () => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } };
 export const setPin = (v) => { try { localStorage.setItem(PIN_KEY, v); } catch {} };
 
 export const api = async (p, opts = {}) => {
   const headers = { ...(opts.headers || {}) };
-  if ((opts.method || 'GET') !== 'GET' && getPin()) headers['x-lumen-pin'] = getPin();
+  if ((opts.method || 'GET') !== 'GET' && getPin()) headers['x-f8-pin'] = getPin();
   const r = await fetch(p, { ...opts, headers });
   const body = await r.json().catch(() => ({}));
   if (r.status === 401 && body.pin) {
-    const pin = prompt('Enter the control PIN for this Lumen server');
+    const pin = prompt('Enter the control PIN for this F8 server');
     if (pin) { setPin(pin); return api(p, opts); }
   }
   if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);

@@ -1,5 +1,5 @@
 // NDI output: renders a channel in a hidden off-screen window and sends its frames as an NDI source
-// named "Lumen Ch N". Uses @stagetimerio/grandiose (bundles the NDI SDK); loaded only when needed.
+// named "F8 Ch N". Uses @stagetimerio/grandiose (bundles the NDI SDK); loaded only when needed.
 import { BrowserWindow } from 'electron';
 import { createRequire } from 'node:module';
 
@@ -15,7 +15,7 @@ function lib() {
 export async function startNdi(ch, url, { width = 1920, height = 1080, fps = 30 } = {}) {
   if (senders.has(ch)) return;
   const g = lib();
-  const sender = await g.send({ name: `Lumen Ch ${ch}`, clockVideo: false, clockAudio: false });
+  const sender = await g.send({ name: `F8 Ch ${ch}`, clockVideo: false, clockAudio: false });
   const win = new BrowserWindow({
     show: false, width, height, frame: false, transparent: true, backgroundColor: '#00000000',
     webPreferences: { offscreen: true, backgroundThrottling: false },

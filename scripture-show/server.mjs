@@ -1,4 +1,4 @@
-// Lumen Scripture Show server.
+// F8 Scripture Presenter server.
 // - Serves the operator console and output pages
 // - Proxies + caches Bible text from bolls.life (hundreds of translations, many languages)
 // - Hosts imported/offline Bibles from data/bibles
@@ -31,7 +31,7 @@ const KHAYA = {
   url: process.env.KHAYA_ASR_URL || 'https://translation-api.ghananlp.org/asr/v1/transcribe',
   header: process.env.KHAYA_KEY_HEADER || 'Ocp-Apim-Subscription-Key',
   langParam: process.env.KHAYA_LANG_PARAM || 'language',
-  // Lumen language -> Khaya code (from Khaya's language list: eng, twi, ewe, gaa, fat, yor, dag, kik, gur, luo, mer, kus)
+  // F8 language -> Khaya code (from Khaya's language list: eng, twi, ewe, gaa, fat, yor, dag, kik, gur, luo, mer, kus)
   langs: { en: 'eng', ak: 'twi', tw: 'twi', twi: 'twi', fat: 'fat', ee: 'ewe', ewe: 'ewe', gaa: 'gaa', yo: 'yor', yor: 'yor', dag: 'dag',
     ki: 'kik', kik: 'kik', gur: 'gur', luo: 'luo', mer: 'mer', kus: 'kus', ...JSON.parse(process.env.KHAYA_LANGS || '{}') },
 };
@@ -190,7 +190,7 @@ async function cached(file, maxAgeMs, loader) {
 }
 
 async function upstream(p) {
-  const r = await fetch(UPSTREAM + p, { headers: { 'user-agent': 'LumenScriptureShow/1.0' }, signal: AbortSignal.timeout(15000) });
+  const r = await fetch(UPSTREAM + p, { headers: { 'user-agent': 'F8ScripturePresenter/1.0' }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`upstream ${r.status} for ${p}`);
   return r.json();
 }
@@ -453,8 +453,8 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   try {
-    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, x-lumen-pin, x-filename', 'access-control-allow-methods': 'GET,POST' }); return res.end(); }
-    if (req.method === 'POST' && CONTROL_PIN && req.headers['x-lumen-pin'] !== CONTROL_PIN) return send(res, 401, { error: 'PIN required', pin: true });
+    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, x-f8-pin, x-filename', 'access-control-allow-methods': 'GET,POST' }); return res.end(); }
+    if (req.method === 'POST' && CONTROL_PIN && req.headers['x-f8-pin'] !== CONTROL_PIN) return send(res, 401, { error: 'PIN required', pin: true });
 
     if (p === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'access-control-allow-origin': '*' });
@@ -556,12 +556,12 @@ export const ready = new Promise((resolve, reject) => {
     else reject(e);
   });
   server.on('listening', () => {
-    console.log(`\n  Lumen Scripture Show  →  http://localhost:${listenPort}`);
-    for (const u of lanUrls()) console.log(`  On your network       →  ${u}   (phone remote: ${u}/remote)`);
-    console.log(`  Output channels       →  ${state.channels.length}  (e.g. http://localhost:${listenPort}/output.html?ch=1)`);
-    console.log(`  AI assist             →  ${aiEnabled ? 'on (' + AI_MODEL + ')' : 'off — set ANTHROPIC_API_KEY to enable'}`);
-    console.log(`  Khaya speech (Akan…)  →  ${KHAYA.key ? 'on' : 'off — set KHAYA_API_KEY to hear Akan/Twi, Fante, Ga, Ewe preachers'}`);
-    console.log(`  Control PIN           →  ${CONTROL_PIN ? 'required' : 'off (set CONTROL_PIN to protect the console)'}\n`);
+    console.log(`\n  F8 Scripture Presenter  →  http://localhost:${listenPort}`);
+    for (const u of lanUrls()) console.log(`  On your network         →  ${u}   (phone remote: ${u}/remote)`);
+    console.log(`  Output channels         →  ${state.channels.length}  (e.g. http://localhost:${listenPort}/output.html?ch=1)`);
+    console.log(`  AI assist               →  ${aiEnabled ? 'on (' + AI_MODEL + ')' : 'off — set ANTHROPIC_API_KEY to enable'}`);
+    console.log(`  Khaya speech (Akan…)    →  ${KHAYA.key ? 'on' : 'off — set KHAYA_API_KEY to hear Akan/Twi, Fante, Ga, Ewe preachers'}`);
+    console.log(`  Control PIN             →  ${CONTROL_PIN ? 'required' : 'off (set CONTROL_PIN to protect the console)'}\n`);
     resolve(listenPort);
   });
   server.listen(listenPort, '0.0.0.0');

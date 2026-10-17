@@ -1,7 +1,7 @@
 services:
   scripture-show:
     build: .
-    container_name: lumen-scripture-show
+    container_name: f8-scripture-presenter
     restart: unless-stopped
     ports:
       - "4848:4848"

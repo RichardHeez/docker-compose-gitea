@@ -1,4 +1,4 @@
-// Lumen desktop app: runs the server in-process, opens the console, puts output channels
+// F8 desktop app: runs the server in-process, opens the console, puts output channels
 // full screen on chosen displays (remembered between runs) and can send channels as NDI sources.
 import { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } from 'electron';
 import fs from 'node:fs';
@@ -34,7 +34,7 @@ function openOutput(ch, displayId) {
   const win = new BrowserWindow({
     ...(display ? { x: b.x, y: b.y } : {}), width: b.width, height: b.height,
     fullscreen: !!display, frame: !display, backgroundColor: '#000000', autoHideMenuBar: true,
-    title: `Lumen — Channel ${ch}`,
+    title: `F8 — Channel ${ch}`,
     webPreferences: { backgroundThrottling: false },
   });
   win.loadURL(`${base}/output.html?ch=${ch}&embed`);
@@ -109,7 +109,7 @@ app.whenReady().then(async () => {
   screen.on('display-removed', () => buildMenu(info.channels));
 
   consoleWin = new BrowserWindow({
-    width: 1600, height: 960, minWidth: 1024, minHeight: 640, backgroundColor: '#0b0d17', title: 'Lumen Scripture Show',
+    width: 1600, height: 960, minWidth: 1024, minHeight: 640, backgroundColor: '#0b0d17', title: 'F8 Scripture Presenter',
     webPreferences: { preload: path.join(here, 'preload.cjs') },
   });
   consoleWin.loadURL(base);

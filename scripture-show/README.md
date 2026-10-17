@@ -1,4 +1,4 @@
-# Lumen Scripture Show
+# F8 Scripture Presenter
 
 A modern, BibleShow-style scripture presentation app for churches — with AI that listens to the preacher, a voice that reads verses aloud, hundreds of Bible translations in dozens of languages, and **8 independent output channels** (minimum 6, configurable).
 
@@ -12,7 +12,7 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Fast lookup** | Type `jn 3:16`, `1co13:4-7`, `Ps 23`, `Juan 3:16` — book names in the selected language work too. Word search across the translation. |
 | **AI live listening** | Turn on **AUTO** and click the mic: when the preacher says a scripture (“turn to first Corinthians thirteen four through seven”) it goes straight to the screens. Follow-ups work too — “verse 17”, “verses 18 to 20”, “chapter 4 verse 2”, “next verse”. With an Anthropic API key, Claude also catches verses the preacher *quotes or paraphrases* without citing them. Detections queue up, or go live automatically. |
 | **Preachers in any language** | Pick the preacher’s language and listening understands it: full support (book names, spelled-out numbers, “primera de Corintios”, “versículo siguiente”) for Spanish, Portuguese, French, German, Italian and English, and chapter/verse words for Dutch, Russian, Ukrainian, Polish, Romanian, Swahili, Yoruba, Igbo, Hausa, Afrikaans, Tagalog, Indonesian, Malay, Vietnamese, Hindi, Arabic, Persian, Hebrew, Korean, Chinese and Japanese. Book names for every language are also taken from the Bibles available in it. With AI on, Claude catches quoted verses in any language. |
-| **Akan (Twi, Fante), Ga, Ewe, Dagbani** | Browsers can’t hear these languages, so Lumen sends each spoken phrase to **Khaya** by GhanaNLP (speech-to-text built for Ghanaian languages) through the server. The Akan pack knows Twi book names (Yohane, Nnwom, Romafo, “Korintofo nwoma a edi kan” …), Twi numbers (baako … dunsia … aduonu abiɛsa … ɔha) and handles English mixed in. |
+| **Akan (Twi, Fante), Ga, Ewe, Dagbani** | Browsers can’t hear these languages, so F8 sends each spoken phrase to **Khaya** by GhanaNLP (speech-to-text built for Ghanaian languages) through the server. The Akan pack knows Twi book names (Yohane, Nnwom, Romafo, “Korintofo nwoma a edi kan” …), Twi numbers (baako … dunsia … aduonu abiɛsa … ɔha) and handles English mixed in. |
 | **Custom words** | AI · Voice → *Custom words*: add book names, numbers, “chapter”/“verse”/“to” words and “next verse” phrases for any language, test them instantly, and save them for everyone. |
 | **AI presentation builder** | Paste a sermon topic or notes → get a ready service of title slides + relevant scripture, shown in whatever translation each screen uses. |
 | **Voice** | Reads verses aloud with the system’s text-to-speech voices, auto-matched to the translation’s language. Optional auto-read on go-live. |
@@ -21,7 +21,7 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Text styling** | Per channel: font (incl. Noto for many scripts), size, line spacing, outline, shadow, UPPERCASE, colour, alignment. Click words under the Live monitor to **highlight** them on every screen. |
 | **Media & backgrounds** | Upload images and videos (drag & drop). Show them full screen (video with play/pause/restart), add them to the service, or set them as channel backgrounds. Background edits: blur, brightness, darken, colour tint, fill/fit. |
 | **Phone remote** | `http://<server>:4848/remote` — big Next/Back buttons, go live by reference, Black/Clear/Logo, service list, stage messages. Optional `CONTROL_PIN`. |
-| **Desktop app + NDI** | Electron app that runs everything locally, puts each channel full screen on the display you pick (remembered next time), and can send any channel as an **NDI source** (“Lumen Ch N”, with transparency) to vMix, OBS, TriCaster, etc. |
+| **Desktop app + NDI** | Electron app that runs everything locally, puts each channel full screen on the display you pick (remembered next time), and can send any channel as an **NDI source** (“F8 Ch N”, with transparency) to vMix, OBS, TriCaster, etc. |
 | **Show control** | Preview / Live monitors, Black / Clear / Logo, ←/→ steps through screens and verses, service playlist, stage messages (“5 minutes left”), keyboard shortcuts. |
 
 ## Run it
@@ -46,10 +46,10 @@ Settings (environment variables): `PORT` (4848), `CHANNELS` (8, min 6), `ANTHROP
 ### Akan / Twi and other Ghanaian languages (Khaya)
 
 1. Get an API key from GhanaNLP’s Khaya developer portal (translation.ghananlp.org).
-2. Start Lumen with it: `KHAYA_API_KEY=your-key npm start` (or put it in `docker-compose.yml`).
+2. Start F8 with it: `KHAYA_API_KEY=your-key npm start` (or put it in `docker-compose.yml`).
 3. In AI · Voice choose the preacher’s language *Akan · Twi* (or Fante, Ga, Ewe, Dagbani, Gurene, Kusaal, Kikuyu, Luo, Kimeru). The engine switches to Khaya automatically. Yoruba and English can also use Khaya: set *Speech engine* to Khaya.
 
-If GhanaNLP changes its API, adjust without code changes: `KHAYA_ASR_URL` (endpoint, default `https://translation-api.ghananlp.org/asr/v1/transcribe`), `KHAYA_KEY_HEADER` (default `Ocp-Apim-Subscription-Key`), `KHAYA_LANG_PARAM` (default `language`) and `KHAYA_LANGS` (JSON map from Lumen language to Khaya code). Default codes follow Khaya’s language list: Twi `twi`, Fante `fat`, Ga `gaa`, Ewe `ewe`, Dagbani `dag`, Gurene `gur`, Kusaal `kus`, Yoruba `yor`, Kikuyu `kik`, Luo `luo`, Kimeru `mer`, English `eng`.
+If GhanaNLP changes its API, adjust without code changes: `KHAYA_ASR_URL` (endpoint, default `https://translation-api.ghananlp.org/asr/v1/transcribe`), `KHAYA_KEY_HEADER` (default `Ocp-Apim-Subscription-Key`), `KHAYA_LANG_PARAM` (default `language`) and `KHAYA_LANGS` (JSON map from F8 language to Khaya code). Default codes follow Khaya’s language list: Twi `twi`, Fante `fat`, Ga `gaa`, Ewe `ewe`, Dagbani `dag`, Gurene `gur`, Kusaal `kus`, Yoruba `yor`, Kikuyu `kik`, Luo `luo`, Kimeru `mer`, English `eng`.
 
 The Twi book names and chapter/verse words were written without a native speaker’s review — check them with your team and fix anything under *Custom words*.
 

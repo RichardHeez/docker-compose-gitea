@@ -40,7 +40,7 @@ function applyMediaCmd(cmd) {
 
 async function render(state) {
   const channel = state.channels.find((c) => c.id === chId) || state.channels[0];
-  document.title = `${channel.name} — Ch ${chId} — Lumen`;
+  document.title = `${channel.name} — Ch ${chId} — F8`;
   const transparent = channel.mode === 'alpha';
   document.body.classList.toggle('transparent', transparent);
   const flags = { black: state.black || !channel.enabled, clear: state.clear, logo: state.logo };
@@ -82,7 +82,7 @@ setTimeout(() => { hint.style.opacity = 0; }, 3500);
 if (params.has('embed')) hint.remove();
 
 // "Identify" flash sent from the console
-new BroadcastChannel('lumen').onmessage = (e) => {
+new BroadcastChannel('f8').onmessage = (e) => {
   if (e.data?.type === 'identify') {
     const el = document.getElementById('ident');
     el.textContent = chId; el.style.display = 'grid';

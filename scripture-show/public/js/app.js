@@ -8,7 +8,7 @@ import { langKey, setCustomWords } from './langs.js';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem('lumen.' + k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem('lumen.' + k, JSON.stringify(v)); } catch {} } };
+const store = { get: (k, d) => { try { return JSON.parse(localStorage.getItem('f8.' + k)) ?? d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem('f8.' + k, JSON.stringify(v)); } catch {} } };
 
 let S = null;                 // shared server state
 let info = { ai: false, lan: [], themes: [], modes: [] };
@@ -24,7 +24,7 @@ function toast(msg, err) {
   clearTimeout(toast.t); toast.t = setTimeout(() => { t.className = 'toast'; }, 2600);
 }
 const push = (patch) => control.push(patch).catch((e) => toast(e.message, true));
-const desktop = window.lumenDesktop || null; // present when running inside the desktop app
+const desktop = window.f8Desktop || null; // present when running inside the desktop app
 let mediaList = [];
 
 // ---------------------------------------------------------------- state sync
@@ -308,7 +308,7 @@ function renderChannels() {
         <h5>Media</h5>
         ${check('showMedia', c.showMedia !== false, 'Show full-screen media')}
         ${check('mediaAudio', c.mediaAudio, 'Play video sound')}
-        ${desktop ? `<div class="ndi"><label class="switch"><input type="checkbox" data-act="ndi" ${ndiOn.has(c.id) ? 'checked' : ''}><span></span></label> NDI output <span class="muted small">“Lumen Ch ${c.id}”</span></div>` : ''}
+        ${desktop ? `<div class="ndi"><label class="switch"><input type="checkbox" data-act="ndi" ${ndiOn.has(c.id) ? 'checked' : ''}><span></span></label> NDI output <span class="muted small">“F8 Ch ${c.id}”</span></div>` : ''}
         <div class="actions">
           <button class="btn sm" data-act="screen">Open on screen…</button>
           <button class="btn ghost sm" data-act="copy">Copy URL (OBS)</button>
@@ -362,7 +362,7 @@ async function openChannel(id, pickScreen = false) {
       if (s) features = `popup,fullscreen,left=${s.availLeft},top=${s.availTop},width=${s.availWidth},height=${s.availHeight}`;
     } catch { toast('Screen access was not allowed — opening a normal window'); }
   } else if (pickScreen) toast('This browser cannot pick screens — drag the window to the projector and double-click it');
-  if (!window.open(outputUrl(id), `lumen-ch-${id}`, features)) toast('Pop-up blocked — allow pop-ups for this site', true);
+  if (!window.open(outputUrl(id), `f8-ch-${id}`, features)) toast('Pop-up blocked — allow pop-ups for this site', true);
 }
 
 // ---------------------------------------------------------------- media library
@@ -708,7 +708,7 @@ function wire() {
   setAuto(store.get('autoLive', false));
   $('#autoLive').onchange = (e) => setAuto(e.target.checked);
   $('#autoBtn').onclick = () => { setAuto(!$('#autoLive').checked); toast($('#autoLive').checked ? 'AUTO on — heard scripture goes straight to the screens' : 'AUTO off — heard scripture waits in the Detected list'); };
-  window.__lumenHear = onSpeech; // used by tests to simulate the preacher
+  window.__f8Hear = onSpeech; // used by tests to simulate the preacher
 
   $('#searchForm').onsubmit = (e) => { e.preventDefault(); const q = $('#searchInput').value.trim(); if (q) search(q); };
   $('#searchResults').onclick = (e) => {
@@ -750,7 +750,7 @@ function wire() {
     if (act === 'open') { e.stopPropagation(); return openChannel(id); }
     if (act === 'screen') return openChannel(id, true);
     if (act === 'copy') { navigator.clipboard?.writeText(outputUrl(id)).then(() => toast('URL copied — add it as a Browser Source (1920×1080)')).catch(() => prompt('Copy this URL', outputUrl(id))); return; }
-    if (act === 'identify') return new BroadcastChannel('lumen').postMessage({ type: 'identify' });
+    if (act === 'identify') return new BroadcastChannel('f8').postMessage({ type: 'identify' });
     if (act === 'reset-bg') return updateChannel(id, { background: '', bgBlur: 0, bgDim: 0, bgBrightness: 100, bgTintAmount: 0, bgFit: 'cover' });
     if (e.target.closest('[data-toggle]') && !e.target.closest('label,button')) {
       ch.classList.toggle('open');
@@ -775,7 +775,7 @@ function wire() {
     const ch = S.channels.find((c) => c.id === Number(e.target.closest('.ch').dataset.id));
     if (ch) { ch[e.target.dataset.k] = Number(e.target.value); if (preview && Number($('#liveMonitorCh').value) === ch.id) setPreview(preview); }
   });
-  $('#identifyAll').onclick = () => new BroadcastChannel('lumen').postMessage({ type: 'identify' });
+  $('#identifyAll').onclick = () => new BroadcastChannel('f8').postMessage({ type: 'identify' });
   $('#openAll').onclick = () => S.channels.filter((c) => c.enabled).forEach((c) => openChannel(c.id));
   $('#liveMonitorCh').onchange = (e) => { store.set('monitorCh', Number(e.target.value)); $('#liveFrame').src = `/output.html?ch=${e.target.value}&embed`; if (preview) setPreview(preview); };
 

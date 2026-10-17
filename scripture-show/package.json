@@ -1,5 +1,5 @@
 {
-  "name": "lumen-scripture-show",
+  "name": "f8-scripture-presenter",
   "version": "1.0.0",
   "description": "Modern AI-assisted scripture presentation with voice, all Bible translations and 8 output channels",
   "type": "module",
@@ -26,10 +26,10 @@
     "electron": "^44.9.0",
     "electron-builder": "^26.15.3"
   },
-  "author": "Lumen",
+  "author": "F8",
   "build": {
-    "appId": "app.lumen.scriptureshow",
-    "productName": "Lumen Scripture Show",
+    "appId": "app.f8.scripturepresenter",
+    "productName": "F8 Scripture Presenter",
     "files": [
       "server.mjs",
       "public/**",
