@@ -1,5 +1,5 @@
 // Operator console.
-import { BOOKS, bookById, formatRef, parseReferences, refKey } from './books.js';
+import { BOOKS, bookById, formatRef, parseReferences, refKey, wordsToNumbers } from './books.js';
 import { FONTS, api, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
 import * as control from './control.js';
 
@@ -459,9 +459,14 @@ function setMic(on) {
         if (r.isFinal) onSpeech(r[0].transcript); else interim += r[0].transcript;
       }
       renderTranscript(interim);
-      if (interim) detectLocal(interim, true);
+      // While words are still arriving, ignore the last one: "John 3:1…" may still become "John 3:16".
+      const settled = interim.trim().split(/\s+/).slice(0, -1).join(' ');
+      if (settled) detectLocal(settled, true);
     };
-    rec.onerror = (e) => { if (e.error === 'not-allowed') { toast('Microphone permission denied', true); setMic(false); } };
+    rec.onerror = (e) => {
+      if (e.error === 'not-allowed') { toast('Microphone permission denied', true); setMic(false); }
+      if (e.error === 'network' && desktop) { toast('Listening needs Chrome or Edge — open this console in your browser (Help menu)', true); setMic(false); }
+    };
     rec.onend = () => { if (listening) try { rec.start(); } catch {} }; // keep going through pauses
     try { rec.start(); } catch {}
     toast('Listening… say a reference like “John 3:16”');
@@ -474,9 +479,14 @@ function renderTranscript(interim = '') {
   $('#transcript').scrollTop = 1e9;
 }
 
+let pendingTail = '';   // end of the previous phrase, in case a reference was split across two
+let contextRef = null;  // last passage heard, for "verse 17" / "next verse"
+
 function onSpeech(text) {
   transcript += ' ' + text.trim();
-  detectLocal(transcript.slice(-160));
+  const chunk = `${pendingTail} ${text}`;
+  const found = detectLocal(chunk) || detectFollowUp(text);
+  pendingTail = found ? '' : text.split(/\s+/).slice(-6).join(' ');
   if (info.ai && $('#aiDetect').checked) {
     clearTimeout(aiTimer);
     aiTimer = setTimeout(detectAI, 1200);
@@ -485,10 +495,44 @@ function onSpeech(text) {
 
 function detectLocal(text, interim = false) {
   const refs = parseReferences(text, extraNames);
+  let found = false;
   for (const r of refs) {
     if (interim && !r.verseStart) continue; // wait for the verse number
-    addDetection({ ...r, verseStart: r.verseStart || 1, verseEnd: r.verseEnd || r.verseStart || 1, source: 'speech', confidence: r.verseStart ? 1 : 0.8 });
+    found = true;
+    addDetection({ ...r, verseStart: r.verseStart || 1, verseEnd: r.verseEnd || r.verseStart || 1, source: 'speech', confidence: r.verseStart ? 1 : 0.5 });
   }
+  return found;
+}
+
+// Follow-ups that only make sense next to the passage already in use:
+// "verse 17", "verses 18 to 20", "chapter 4 verse 2", "next verse", "previous verse".
+function detectFollowUp(text) {
+  const ctx = S.live?.kind === 'scripture' ? S.live.ref : contextRef;
+  if (!ctx) return false;
+  const t = wordsToNumbers(` ${text} `).toLowerCase();
+  const book = bookById(ctx.book);
+  const end = ctx.verseEnd || ctx.verseStart || 0, start = ctx.verseStart || 1;
+  if (/\b(next|following) verse\b|\bverse after that\b/.test(t)) {
+    addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: end + 1, verseEnd: end + 1, source: 'speech', confidence: 0.9, force: true });
+    return true;
+  }
+  if (/\b(previous|last) verse\b|\bverse before\b/.test(t) && start > 1) {
+    addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: start - 1, verseEnd: start - 1, source: 'speech', confidence: 0.9, force: true });
+    return true;
+  }
+  let m = /\bchapter\s+(\d{1,3})\s*(?:,|and)?\s*(?:verses?|v|:)\s*(\d{1,3})(?:\s*(?:-|to|through|thru|and)\s*(\d{1,3}))?/.exec(t);
+  if (m && Number(m[1]) <= book.chapters) {
+    const vs = Number(m[2]);
+    addDetection({ book: ctx.book, chapter: Number(m[1]), verseStart: vs, verseEnd: Math.max(vs, Number(m[3] || vs)), source: 'speech', confidence: 0.9 });
+    return true;
+  }
+  m = /\bverses?\s+(\d{1,3})(?:\s*(?:-|to|through|thru|and)\s*(\d{1,3}))?/.exec(t);
+  if (m) {
+    const vs = Number(m[1]);
+    addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: vs, verseEnd: Math.max(vs, Math.min(vs + 20, Number(m[2] || vs))), source: 'speech', confidence: 0.9 });
+    return true;
+  }
+  return false;
 }
 
 async function detectAI() {
@@ -502,11 +546,12 @@ async function detectAI() {
 }
 
 async function addDetection(d) {
+  contextRef = { book: d.book, chapter: d.chapter, verseStart: d.verseStart, verseEnd: d.verseEnd };
   const key = refKey(d);
   const now = Date.now();
   // Same passage within 45s is a repeat; a fuller range replaces a partial one.
   for (const [k, t] of recent) if (now - t > 45000) recent.delete(k);
-  if (recent.has(key)) return;
+  if (recent.has(key) && !d.force) return;
   recent.set(key, now);
   const item = { kind: 'scripture', ref: { book: d.book, chapter: d.chapter, verseStart: d.verseStart, verseEnd: d.verseEnd } };
   const li = document.createElement('li');
@@ -520,7 +565,10 @@ async function addDetection(d) {
   while ($('#detections').children.length > 30) $('#detections').lastChild.remove();
   passage(S.translation, item.ref).then((p) => { li.querySelector('.txt').textContent = p.verses.map((v) => v.text).join(' ') || '(not in this translation)'; }).catch(() => {});
   $('#transcript').innerHTML = $('#transcript').innerHTML; // keep
-  if ($('#autoLive').checked && (d.confidence ?? 1) >= 0.75) {
+  // Don't shrink the screen when the preacher mentions a verse that is already showing.
+  const lr = S.live?.kind === 'scripture' ? S.live.ref : null;
+  const alreadyShowing = lr && lr.book === d.book && lr.chapter === d.chapter && d.verseStart >= lr.verseStart && d.verseEnd <= (lr.verseEnd || lr.verseStart);
+  if ($('#autoLive').checked && (d.confidence ?? 1) >= 0.75 && !alreadyShowing) {
     goLive(item); setPreview(item);
     loadChapter(d.book, d.chapter, { select: [d.verseStart, d.verseEnd] });
   }
@@ -578,7 +626,11 @@ function wire() {
   $('#stopSpeak').onclick = () => speechSynthesis.cancel();
   $('#voiceSel').onchange = (e) => store.set('voice', e.target.value);
   $('#autoSpeak').checked = store.get('autoSpeak', false); $('#autoSpeak').onchange = (e) => store.set('autoSpeak', e.target.checked);
-  $('#autoLive').checked = store.get('autoLive', false); $('#autoLive').onchange = (e) => store.set('autoLive', e.target.checked);
+  const setAuto = (on) => { $('#autoLive').checked = on; $('#autoBtn').classList.toggle('on', on); store.set('autoLive', on); };
+  setAuto(store.get('autoLive', false));
+  $('#autoLive').onchange = (e) => setAuto(e.target.checked);
+  $('#autoBtn').onclick = () => { setAuto(!$('#autoLive').checked); toast($('#autoLive').checked ? 'AUTO on — heard scripture goes straight to the screens' : 'AUTO off — heard scripture waits in the Detected list'); };
+  window.__lumenHear = onSpeech; // used by tests to simulate the preacher
 
   $('#searchForm').onsubmit = (e) => { e.preventDefault(); const q = $('#searchInput').value.trim(); if (q) search(q); };
   $('#searchResults').onclick = (e) => {
@@ -592,7 +644,7 @@ function wire() {
   $('#btnLogo').onclick = () => push({ logo: !S.logo });
   $('#micBtn').onclick = $('#micBtn2').onclick = () => setMic(!listening);
   $('#speechLang').onchange = (e) => { store.set('speechLang', e.target.value); store.set('speechLangSet', true); if (listening) { setMic(false); setMic(true); } };
-  $('#clearDetections').onclick = () => { $('#detections').innerHTML = ''; recent.clear(); transcript = ''; lastAiLen = 0; renderTranscript(); };
+  $('#clearDetections').onclick = () => { $('#detections').innerHTML = ''; recent.clear(); transcript = ''; pendingTail = ''; contextRef = null; lastAiLen = 0; renderTranscript(); };
   $('#genBtn').onclick = generate;
 
   // translation dialog

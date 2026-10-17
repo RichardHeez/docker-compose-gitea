@@ -86,6 +86,7 @@ function buildMenu(channels) {
     { label: 'Outputs', submenu: [...outputMenu, { type: 'separator' }, { label: 'Close all outputs', click: () => outputs.forEach((w) => w.destroy()) }] },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
     { label: 'Help', submenu: [
+      { label: 'Open console in browser (for live listening)', click: () => shell.openExternal(base) },
       { label: 'Phone remote address…', click: () => dialog.showMessageBox({ message: 'Open this on a phone on the same Wi-Fi:', detail: lanRemote() }) },
       { label: 'Open data folder', click: () => shell.openPath(process.env.DATA_DIR) },
     ] },

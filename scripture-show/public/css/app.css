@@ -192,3 +192,5 @@ textarea { resize: vertical; }
 .screen-list small { color: var(--muted); display: block; }
 .pg-badge { font-size: 11px; color: var(--accent2); margin-left: 6px; }
 [hidden] { display: none !important; }
+.pill.auto { font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+.pill.auto.on { background: var(--ok); border-color: var(--ok); color: #fff; }
