@@ -1,0 +1,15 @@
+{
+  "name": "lumen-scripture-show",
+  "version": "1.0.0",
+  "description": "Modern AI-assisted scripture presentation with voice, all Bible translations and 8 output channels",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
+  }
+}

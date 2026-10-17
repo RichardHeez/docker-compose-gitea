@@ -1,0 +1,13 @@
+services:
+  scripture-show:
+    build: .
+    container_name: lumen-scripture-show
+    restart: unless-stopped
+    ports:
+      - "4848:4848"
+    environment:
+      # Optional: enables AI scripture detection and the presentation builder
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CHANNELS=${CHANNELS:-8}
+    volumes:
+      - ./data:/data

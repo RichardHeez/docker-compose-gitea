@@ -1,0 +1,44 @@
+{
+  "meta": { "short_name": "KJV-OFFLINE", "full_name": "King James Version (built-in offline sample)", "language": "English", "dir": "ltr" },
+  "books": {
+    "1": { "1": {
+      "1": "In the beginning God created the heaven and the earth.",
+      "2": "And the earth was without form, and void; and darkness was upon the face of the deep. And the Spirit of God moved upon the face of the waters.",
+      "3": "And God said, Let there be light: and there was light.",
+      "4": "And God saw the light, that it was good: and God divided the light from the darkness.",
+      "5": "And God called the light Day, and the darkness he called Night. And the evening and the morning were the first day." } },
+    "6": { "1": { "9": "Have not I commanded thee? Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest." } },
+    "19": { "23": {
+      "1": "The LORD is my shepherd; I shall not want.",
+      "2": "He maketh me to lie down in green pastures: he leadeth me beside the still waters.",
+      "3": "He restoreth my soul: he leadeth me in the paths of righteousness for his name's sake.",
+      "4": "Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me; thy rod and thy staff they comfort me.",
+      "5": "Thou preparest a table before me in the presence of mine enemies: thou anointest my head with oil; my cup runneth over.",
+      "6": "Surely goodness and mercy shall follow me all the days of my life: and I will dwell in the house of the LORD for ever." } },
+    "20": { "3": {
+      "5": "Trust in the LORD with all thine heart; and lean not unto thine own understanding.",
+      "6": "In all thy ways acknowledge him, and he shall direct thy paths." } },
+    "23": { "40": { "31": "But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint." } },
+    "24": { "29": { "11": "For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end." } },
+    "40": { "28": {
+      "19": "Go ye therefore, and teach all nations, baptizing them in the name of the Father, and of the Son, and of the Holy Ghost:",
+      "20": "Teaching them to observe all things whatsoever I have commanded you: and, lo, I am with you alway, even unto the end of the world. Amen." } },
+    "43": {
+      "1": {
+        "1": "In the beginning was the Word, and the Word was with God, and the Word was God.",
+        "2": "The same was in the beginning with God.",
+        "3": "All things were made by him; and without him was not any thing made that was made.",
+        "4": "In him was life; and the life was the light of men.",
+        "5": "And the light shineth in darkness; and the darkness comprehended it not." },
+      "3": {
+        "16": "For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.",
+        "17": "For God sent not his Son into the world to condemn the world; but that the world through him might be saved." } },
+    "45": { "8": { "28": "And we know that all things work together for good to them that love God, to them who are the called according to his purpose." } },
+    "46": { "13": {
+      "4": "Charity suffereth long, and is kind; charity envieth not; charity vaunteth not itself, is not puffed up,",
+      "5": "Doth not behave itself unseemly, seeketh not her own, is not easily provoked, thinketh no evil;",
+      "6": "Rejoiceth not in iniquity, but rejoiceth in the truth;",
+      "7": "Beareth all things, believeth all things, hopeth all things, endureth all things." } },
+    "50": { "4": { "13": "I can do all things through Christ which strengtheneth me." } }
+  }
+}

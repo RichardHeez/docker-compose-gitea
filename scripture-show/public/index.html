@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lumen Scripture Show</title>
+  <meta name="theme-color" content="#0b0d17">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l3.5 10.5L30 16l-10.5 3.5L16 30l-3.5-10.5L2 16l10.5-3.5z' fill='%23ffd27a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/slide.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark">✦</span> Lumen <small>Scripture Show</small></div>
+    <form id="quick" class="quick" autocomplete="off">
+      <input id="quickInput" placeholder="Type a reference — jn 3:16, Ps 23, 1 Cor 13:4-7 …  (press / )" spellcheck="false">
+      <button class="btn ghost" type="submit">Preview</button>
+      <button class="btn live" type="button" id="quickLive">Go Live</button>
+    </form>
+    <div class="top-actions">
+      <button class="pill" id="trButton" title="Main translation"><span id="trLabel">KJV</span> ▾</button>
+      <button class="icon-btn mic" id="micBtn" title="Listen to the speaker (M)"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12Z"/></svg></button>
+      <div class="seg">
+        <button id="btnBlack" title="Black screen (B)">Black</button>
+        <button id="btnClear" title="Clear text, keep background (C)">Clear</button>
+        <button id="btnLogo" title="Logo (L)">Logo</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Bible browser -->
+    <section class="panel bible">
+      <div class="panel-head">
+        <div class="tabs small" id="testamentTabs"><button data-t="OT" class="on">Old</button><button data-t="NT">New</button></div>
+        <input id="bookFilter" class="mini-input" placeholder="Filter books">
+      </div>
+      <div id="books" class="book-grid"></div>
+      <div class="sub-head"><span id="chapterTitle">Chapters</span></div>
+      <div id="chapters" class="chapter-grid"></div>
+      <form id="searchForm" class="search">
+        <input id="searchInput" placeholder="Search words in this translation…">
+      </form>
+      <div id="searchResults" class="search-results"></div>
+    </section>
+
+    <!-- Monitors + verses -->
+    <section class="center">
+      <div class="monitors">
+        <figure class="monitor">
+          <figcaption><span class="tag preview">Preview</span><span id="previewLabel" class="muted"></span></figcaption>
+          <div id="previewHost" class="stage-host screen"></div>
+        </figure>
+        <figure class="monitor">
+          <figcaption><span class="tag onair">Live</span>
+            <select id="liveMonitorCh" class="mini-select" title="Which channel to monitor"></select>
+            <span id="liveLabel" class="muted"></span></figcaption>
+          <div class="stage-host screen"><iframe id="liveFrame" title="Live output"></iframe></div>
+        </figure>
+      </div>
+
+      <div class="panel verses-panel">
+        <div class="panel-head">
+          <button class="icon-btn" id="prevCh" title="Previous chapter">‹</button>
+          <h2 id="chapterHeading">—</h2>
+          <button class="icon-btn" id="nextCh" title="Next chapter">›</button>
+          <div class="spacer"></div>
+          <button class="btn ghost" id="speakBtn" title="Read the preview aloud">🔊 Read</button>
+          <button class="btn ghost" id="addService" title="Add preview to service">＋ Service</button>
+          <button class="btn live" id="goLive" title="Send preview live (Enter)">Go Live ⏎</button>
+        </div>
+        <ol id="verses" class="verses"></ol>
+        <div class="hint-line">Click a verse to preview · Shift-click for a range · Double-click to go live · ←/→ steps the live verse</div>
+      </div>
+    </section>
+
+    <!-- Right column -->
+    <aside class="panel side">
+      <nav class="tabs" id="sideTabs">
+        <button data-tab="channels" class="on">Outputs</button>
+        <button data-tab="ai">AI &amp; Voice</button>
+        <button data-tab="service">Service</button>
+        <button data-tab="settings">Settings</button>
+      </nav>
+
+      <div class="tab-body" data-body="channels">
+        <div class="row between"><span class="muted" id="chCount"></span>
+          <div class="row"><button class="btn ghost sm" id="identifyAll">Identify</button><button class="btn ghost sm" id="openAll">Open all</button></div></div>
+        <div id="channels" class="channels"></div>
+      </div>
+
+      <div class="tab-body" data-body="ai" hidden>
+        <div class="card">
+          <div class="row between"><h3>Live listening</h3><span id="aiStatus" class="badge">AI off</span></div>
+          <p class="muted small">Listens to the preacher, spots scripture references (and quoted verses with AI) and queues them — or puts them live automatically.</p>
+          <div class="grid2">
+            <label>Speech language<select id="speechLang"></select></label>
+            <label>Microphone<button class="btn" id="micBtn2">Start listening</button></label>
+          </div>
+          <label class="check"><input type="checkbox" id="autoLive"> Auto go-live on detected references</label>
+          <label class="check"><input type="checkbox" id="aiDetect" checked> Use AI to catch quotes &amp; paraphrases</label>
+          <div id="transcript" class="transcript"><span class="muted">Transcript appears here…</span></div>
+          <div class="row between"><h4>Detected</h4><button class="btn ghost sm" id="clearDetections">Clear</button></div>
+          <ul id="detections" class="detections"></ul>
+        </div>
+
+        <div class="card">
+          <h3>AI presentation builder</h3>
+          <p class="muted small">Describe the sermon — topic, outline or notes — and get a ready service of scripture slides in any translation.</p>
+          <textarea id="genPrompt" rows="4" placeholder="e.g. Sermon on hope in hard times: Joseph's story, God's promises, waiting on the Lord…"></textarea>
+          <div class="row"><label class="inline">Slides <input id="genCount" type="number" min="3" max="30" value="8"></label>
+            <div class="spacer"></div><button class="btn primary" id="genBtn">✨ Generate</button></div>
+          <div id="genStatus" class="muted small"></div>
+        </div>
+
+        <div class="card">
+          <h3>Voice</h3>
+          <label class="check"><input type="checkbox" id="autoSpeak"> Read verses aloud when they go live</label>
+          <div class="grid2">
+            <label>Voice<select id="voiceSel"><option value="">Auto (match translation)</option></select></label>
+            <label>Speed <input id="voiceRate" type="range" min="0.6" max="1.4" step="0.05" value="0.95"></label>
+          </div>
+          <div class="row"><button class="btn ghost sm" id="speakLive">🔊 Read live verse</button><button class="btn ghost sm" id="stopSpeak">■ Stop</button></div>
+        </div>
+      </div>
+
+      <div class="tab-body" data-body="service" hidden>
+        <div class="row between"><h3 id="serviceTitle">Service</h3>
+          <div class="row"><button class="btn ghost sm" id="svcPrev" title="Previous item (PgUp)">‹</button><button class="btn ghost sm" id="svcNext" title="Next item live (PgDn)">›</button><button class="btn ghost sm" id="svcClear">Clear</button></div></div>
+        <form id="textSlideForm" class="row">
+          <input id="textSlideInput" placeholder="Add a text slide (announcement, point…)"><button class="btn ghost sm">Add</button>
+        </form>
+        <ol id="service" class="service"></ol>
+      </div>
+
+      <div class="tab-body" data-body="settings" hidden>
+        <div class="card">
+          <h3>Stage &amp; logo</h3>
+          <label>Logo / welcome text<input id="logoText"></label>
+          <label>Message to stage displays<div class="row"><input id="stageMsg" placeholder="e.g. 5 minutes left"><button class="btn ghost sm" id="stageSend">Send</button><button class="btn ghost sm" id="stageClear">Clear</button></div></label>
+        </div>
+        <div class="card">
+          <h3>Import a Bible</h3>
+          <p class="muted small">Add any translation you own (works offline). JSON formats: <code>{books:{43:{3:{16:"…"}}}}</code>, <code>[{book,chapter,verse,text}]</code>, or scrollmapper.</p>
+          <div class="grid2">
+            <label>Short name<input id="impShort" placeholder="e.g. NVI-OFF"></label>
+            <label>Language<input id="impLang" placeholder="e.g. Spanish"></label>
+          </div>
+          <label>Full name<input id="impName" placeholder="Nueva Versión Internacional"></label>
+          <label>File<input id="impFile" type="file" accept=".json,application/json"></label>
+          <button class="btn" id="impBtn">Import</button> <span id="impStatus" class="muted small"></span>
+        </div>
+        <div class="card">
+          <h3>Connect screens</h3>
+          <p class="muted small">Open these URLs on any device on your network, or add them as a Browser Source in OBS / vMix (use an “Alpha” channel for transparent overlays).</p>
+          <div id="lanInfo" class="mono small"></div>
+        </div>
+        <div class="card">
+          <h3>Shortcuts</h3>
+          <div class="keys">
+            <span><kbd>/</kbd> type reference</span><span><kbd>⏎</kbd> go live</span><span><kbd>↑</kbd><kbd>↓</kbd> preview verse</span>
+            <span><kbd>←</kbd><kbd>→</kbd> live verse</span><span><kbd>B</kbd> black</span><span><kbd>C</kbd> clear</span><span><kbd>L</kbd> logo</span>
+            <span><kbd>Esc</kbd> back to live</span><span><kbd>PgDn</kbd> next in service</span><span><kbd>M</kbd> microphone</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="trDialog" class="dialog">
+    <div class="row between"><h3>Choose translation</h3><button class="icon-btn" id="trClose">✕</button></div>
+    <input id="trSearch" placeholder="Search language or translation (e.g. Spanish, NIV, 한국어)…">
+    <div id="trRecent" class="chips"></div>
+    <div id="trList" class="tr-list"><p class="muted">Loading translations…</p></div>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
