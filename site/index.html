@@ -5,67 +5,78 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>VINDR Pro 40</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="VINDR Pro 40 cordless 2-in-1 air blower and vacuum. 55 m/s airflow, 180 W, 6 speeds, 4000 mAh. €37,50 with fast delivery to the UK, Germany and the Nordics.">
+<meta name="description" content="The Christmas gift for the garage. VINDR Pro 40 cordless 2-in-1 blower and vacuum for track-day drivers, fathers and sons. €37,50, delivered before Christmas to the UK, Germany and the Nordics.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,100..125,500..900;1,100..125,700..900&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a calm, gridded product page. Copy left, product + live airflow right; specs set like an instrument datasheet. */
+/* Layout: winter paddock at night. Racing-green ground, snow-white type, the product's red for action, gold for gift details. Chequered ribbon marks the gift moments. */
 :root{
-  --paper:#E8EBEE;      /* fog grey, cool, biased toward the steel of the product */
-  --surface:#F5F6F7;
-  --ink:#121518;
-  --muted:#56606A;
-  --line:#C6CDD3;
-  --signal:#D3222B;     /* the red of the product's end caps */
+  --paper:#0C1D15;      /* British racing green, after dark */
+  --surface:#132A1F;
+  --raised:#1A3527;
+  --ink:#F2EFE6;        /* snow under floodlights */
+  --muted:#A3B4A8;
+  --line:#25432F;
+  --signal:#E0303A;     /* the red of the product's end caps */
   --signal-ink:#FFFFFF;
-  --flow:rgba(18,21,24,.22);
+  --gold:#D9B45F;       /* ribbon and gift tag */
+  --snow:rgba(242,239,230,.85);
+  --check-a:#F2EFE6; --check-b:#0C1D15;
   --display:"Archivo","Arial Narrow",system-ui,sans-serif;
   --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
   --max:1180px;
-  color-scheme:light;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#0E1113; --surface:#161A1E; --ink:#E7EBEE; --muted:#8D97A1; --line:#283038;
-    --signal:#EE3B44; --signal-ink:#FFFFFF; --flow:rgba(231,235,238,.20); color-scheme:dark;
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --paper:#F1F2EC; --surface:#FFFFFF; --raised:#E6EAE2; --ink:#0F2419; --muted:#4D5F54; --line:#D0D8CE;
+    --signal:#C81F29; --signal-ink:#FFFFFF; --gold:#9C7522; --snow:rgba(15,36,25,.30);
+    --check-a:#0F2419; --check-b:#F1F2EC; color-scheme:light;
   }
 }
-:root[data-theme="dark"]{
-  --paper:#0E1113; --surface:#161A1E; --ink:#E7EBEE; --muted:#8D97A1; --line:#283038;
-  --signal:#EE3B44; --signal-ink:#FFFFFF; --flow:rgba(231,235,238,.20); color-scheme:dark;
+:root[data-theme="light"]{
+  --paper:#F1F2EC; --surface:#FFFFFF; --raised:#E6EAE2; --ink:#0F2419; --muted:#4D5F54; --line:#D0D8CE;
+  --signal:#C81F29; --signal-ink:#FFFFFF; --gold:#9C7522; --snow:rgba(15,36,25,.30);
+  --check-a:#0F2419; --check-b:#F1F2EC; color-scheme:light;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--signal)}
 img{max-width:100%;display:block}
 a{color:inherit}
-:focus-visible{outline:2px solid var(--signal);outline-offset:3px;border-radius:4px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:4px}
 .wrap{max-width:var(--max);margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 @media (min-width:720px){.wrap{padding-left:max(32px,env(safe-area-inset-left,0px));padding-right:max(32px,env(safe-area-inset-right,0px))}}
 
 h1,h2,h3{font-family:var(--display);font-variation-settings:"wdth" 125;margin:0;text-wrap:balance;letter-spacing:-.01em}
-h1{font-size:clamp(2.3rem,6.2vw,4.6rem);line-height:.98;font-weight:800}
-h2{font-size:clamp(1.7rem,3.6vw,2.6rem);line-height:1.05;font-weight:750}
+h1{font-size:clamp(2.4rem,6.6vw,5rem);line-height:.95;font-weight:850}
+h1 em{font-style:italic;color:var(--signal);font-weight:900}
+h2{font-size:clamp(1.7rem,3.6vw,2.7rem);line-height:1.04;font-weight:780}
 h3{font-size:1.05rem;font-weight:700;font-variation-settings:"wdth" 110}
 p{margin:0}
-.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.lede{font-size:1.125rem;color:var(--muted);max-width:34ch}
+.eyebrow{font:500 .75rem/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.eyebrow.gold{color:var(--gold)}
+.lede{font-size:1.125rem;color:var(--muted);max-width:38ch}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.chequer{height:12px;background:repeating-conic-gradient(var(--check-a) 0 25%,var(--check-b) 0 50%) 0 0/12px 12px}
 
-/* Header */
-.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+/* Announcement + header */
+.notice{background:var(--signal);color:var(--signal-ink);font:500 .82rem/1.3 var(--mono);letter-spacing:.03em}
+.notice .wrap{display:flex;justify-content:center;gap:8px 16px;flex-wrap:wrap;padding-block:9px;text-align:center}
+.notice b{font-weight:500;background:rgba(0,0,0,.18);padding:1px 7px;border-radius:4px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--paper) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:64px}
 .logo{font:900 1.35rem/1 var(--display);font-variation-settings:"wdth" 125;letter-spacing:.06em;text-decoration:none;display:flex;align-items:center;gap:10px}
-.logo span{display:inline-block;width:10px;height:10px;background:var(--signal);border-radius:2px}
-.nav{display:flex;gap:28px;font-size:.92rem}
+.logo span{display:inline-block;width:12px;height:12px;background:repeating-conic-gradient(var(--ink) 0 25%,var(--signal) 0 50%) 0 0/6px 6px;border-radius:2px}
+.nav{display:flex;gap:26px;font-size:.92rem}
 .nav a{text-decoration:none;color:var(--muted)}
 .nav a:hover{color:var(--ink)}
-@media (max-width:820px){.nav{display:none}}
+@media (max-width:880px){.nav{display:none}}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;cursor:pointer;text-decoration:none;font:600 .98rem/1 var(--body);padding:15px 22px;border-radius:999px;transition:transform .15s ease,background .15s ease}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:0;cursor:pointer;text-decoration:none;font:600 .98rem/1 var(--body);padding:15px 22px;border-radius:999px;transition:transform .15s ease}
 .btn-signal{background:var(--signal);color:var(--signal-ink)}
 .btn-signal:hover{transform:translateY(-1px)}
 .btn-ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
@@ -80,15 +91,18 @@ p{margin:0}
 .price{font:800 2.2rem/1 var(--display);font-variation-settings:"wdth" 112;font-variant-numeric:tabular-nums}
 .price-note{font-size:.88rem;color:var(--muted)}
 .cta-row{display:flex;gap:12px;flex-wrap:wrap}
-.flags{display:flex;flex-wrap:wrap;gap:8px 18px;font:500 .8rem/1.3 var(--mono);color:var(--muted);letter-spacing:.04em}
-.flags b{color:var(--ink);font-weight:500}
-.stage{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:28px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.deadline{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font-size:.92rem}
+.deadline .days{font:800 1.6rem/1 var(--display);font-variation-settings:"wdth" 118;color:var(--gold);font-variant-numeric:tabular-nums}
+.deadline p{color:var(--muted);min-width:0;flex:1 1 200px}
+.deadline p b{color:var(--ink);font-weight:600}
+.stage{position:relative;aspect-ratio:1/1;max-width:100%;border-radius:28px;background:radial-gradient(120% 90% at 70% 70%,var(--raised),var(--surface) 70%);border:1px solid var(--line);overflow:hidden}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%}
-.stage img{position:absolute;right:8%;bottom:6%;width:62%;filter:drop-shadow(0 30px 40px rgba(0,0,0,.28))}
-.readout{position:absolute;left:20px;top:20px;display:flex;flex-direction:column;gap:6px}
-.readout .big{font:800 clamp(2.4rem,6vw,3.6rem)/.9 var(--display);font-variation-settings:"wdth" 125;font-variant-numeric:tabular-nums}
+.stage img{position:absolute;right:8%;bottom:6%;width:62%;filter:drop-shadow(0 30px 40px rgba(0,0,0,.4))}
+.readout{position:absolute;left:20px;bottom:20px;display:flex;flex-direction:column;gap:6px}
+.readout .big{font:800 clamp(2.2rem,5.6vw,3.4rem)/.9 var(--display);font-variation-settings:"wdth" 125;font-variant-numeric:tabular-nums}
 .readout .big small{font:500 .9rem/1 var(--mono);color:var(--muted);margin-left:6px;letter-spacing:.04em}
-.tag{position:absolute;left:20px;bottom:20px;font:500 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.gifttag{position:absolute;right:22px;top:20px;transform:rotate(6deg);transform-origin:top center;background:var(--gold);color:#1B1408;font:600 .78rem/1.25 var(--mono);letter-spacing:.04em;padding:10px 14px 10px 22px;border-radius:4px 10px 10px 4px;clip-path:polygon(12px 0,100% 0,100% 100%,12px 100%,0 50%)}
+.gifttag::before{content:"";position:absolute;left:8px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--surface)}
 @media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.lede{max-width:none}}
 
 /* Numbers band */
@@ -102,22 +116,33 @@ p{margin:0}
 @media (max-width:720px){.stats{grid-template-columns:1fr 1fr}.stat:nth-child(3){border-left:0;padding-left:0}.stat:nth-child(n+3){border-top:1px solid var(--line)}}
 
 section{padding-block:clamp(56px,8vw,104px)}
-.head{display:flex;flex-direction:column;gap:14px;margin-bottom:clamp(28px,4vw,48px);max-width:640px}
+.head{display:flex;flex-direction:column;gap:14px;margin-bottom:clamp(28px,4vw,48px);max-width:660px}
 .head p{color:var(--muted)}
+
+/* Father & son story */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.duo-card{display:flex;flex-direction:column;gap:14px;padding:clamp(22px,3vw,32px);border-radius:22px;border:1px solid var(--line);background:var(--surface);min-width:0}
+.duo-card .who{font:500 .72rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.duo-card ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.duo-card li{display:grid;grid-template-columns:18px 1fr;gap:10px;color:var(--muted)}
+.duo-card li::before{content:"";width:10px;height:10px;margin-top:8px;background:repeating-conic-gradient(var(--ink) 0 25%,transparent 0 50%) 0 0/5px 5px}
+.duo-card li b{color:var(--ink);font-weight:600}
+@media (max-width:760px){.duo{grid-template-columns:1fr}}
 
 /* Uses */
 .uses{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:20px;overflow:hidden}
 .use{background:var(--surface);padding:26px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.use .lvl{font:500 .72rem/1 var(--mono);letter-spacing:.1em;color:var(--signal);text-transform:uppercase}
+.lvl{font:500 .72rem/1 var(--mono);letter-spacing:.1em;color:var(--signal);text-transform:uppercase}
 .use p{color:var(--muted);font-size:.95rem}
 @media (max-width:860px){.uses{grid-template-columns:1fr 1fr}}
 @media (max-width:520px){.uses{grid-template-columns:1fr}}
 
+/* Modes */
 .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .mode{display:flex;flex-direction:column;gap:10px;padding:24px;border-radius:20px;border:1px solid var(--line);background:var(--surface);min-width:0}
-.mode .lvl{font:500 .72rem/1 var(--mono);letter-spacing:.1em;color:var(--signal);text-transform:uppercase}
 .mode p{color:var(--muted);font-size:.95rem}
 @media (max-width:860px){.modes{grid-template-columns:1fr}}
+
 /* Speed dial */
 .dial{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,64px);align-items:center}
 .dial-ui{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:24px;min-width:0}
@@ -138,7 +163,7 @@ section{padding-block:clamp(56px,8vw,104px)}
 .spec th{font-weight:500;color:var(--muted);width:50%}
 .spec td{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500}
 .spec tr:first-child th,.spec tr:first-child td{border-top:1px solid var(--ink)}
-.compare{display:flex;flex-direction:column;gap:16px;padding:24px;border-radius:20px;border:1px solid var(--line);background:var(--surface)}
+.compare{display:flex;flex-direction:column;gap:16px;padding:24px;border-radius:20px;border:1px solid var(--line);background:var(--paper)}
 .compare .row{display:flex;justify-content:space-between;gap:12px;font-size:.95rem}
 .compare .row span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .meter{height:8px;border-radius:99px;background:var(--line);overflow:hidden}
@@ -148,37 +173,44 @@ section{padding-block:clamp(56px,8vw,104px)}
 
 /* Order */
 .order{display:grid;grid-template-columns:1.1fr 1fr;gap:clamp(24px,4vw,48px);align-items:start}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:24px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:24px;overflow:hidden;min-width:0}
+.panel-in{padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:24px}
 fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;min-width:0}
 legend{font:500 .75rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;padding:0}
-.pkg{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.pkg label{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:16px;border:1px solid var(--line);cursor:pointer;background:var(--paper);min-width:0}
+.pkg{display:grid;grid-template-columns:1fr;gap:10px}
+.pkg label{position:relative;display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:16px;border-radius:16px;border:1px solid var(--line);cursor:pointer;background:var(--paper);min-width:0}
 .pkg input{position:absolute;opacity:0;pointer-events:none}
 .pkg label:has(input:checked){border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
-.pkg label:has(input:focus-visible){outline:2px solid var(--signal);outline-offset:2px}
+.pkg label:has(input:focus-visible){outline:2px solid var(--gold);outline-offset:2px}
 .pkg .t{font-weight:600}
-.pkg .p{font:500 .95rem/1 var(--mono);font-variant-numeric:tabular-nums}
-.pkg .d{font-size:.84rem;color:var(--muted)}
-@media (max-width:460px){.pkg{grid-template-columns:1fr}}
+.pkg .p{font:500 .95rem/1.5 var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.pkg .d{grid-column:1/-1;font-size:.86rem;color:var(--muted)}
+.pkg .ribbon{display:inline-block;margin-left:8px;font:500 .66rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;background:var(--gold);color:#1B1408;padding:4px 7px;border-radius:4px;vertical-align:2px}
+.pkg s{color:var(--muted);margin-right:6px}
 .qty-row{display:flex;gap:12px;flex-wrap:wrap}
 .qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
 .qty button{width:44px;height:44px;border:0;background:transparent;color:var(--ink);font-size:1.2rem;cursor:pointer;border-radius:999px}
 .qty output{min-width:32px;text-align:center;font:500 1rem/1 var(--mono)}
-select{appearance:none;-webkit-appearance:none;width:100%;font:500 1rem/1.2 var(--body);color:var(--ink);background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2378828c' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 16px center;border:1px solid var(--line);border-radius:14px;padding:14px 40px 14px 16px}
+select,textarea{width:100%;font:500 1rem/1.4 var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:14px}
+select{appearance:none;-webkit-appearance:none;background:var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2390a196' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 16px center;padding:14px 40px 14px 16px}
+textarea{padding:12px 14px;resize:vertical;min-height:76px;font-weight:400}
+.check{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+.check input{width:20px;height:20px;margin:2px 0 0;accent-color:var(--signal)}
+.check span small{display:block;color:var(--muted);font-size:.86rem}
 .sum{display:flex;flex-direction:column;gap:12px}
 .sum .row{display:flex;justify-content:space-between;gap:12px;font-size:.98rem}
 .sum .row span:last-child{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
 .sum .total{border-top:1px solid var(--ink);padding-top:14px;font-weight:600;font-size:1.1rem}
 .sum .total span:last-child{font:800 1.5rem/1 var(--display);font-variation-settings:"wdth" 112}
-.free{font:500 .82rem/1.4 var(--mono);color:var(--signal)}
+.free{font:500 .82rem/1.4 var(--mono);color:var(--gold)}
 .note{font-size:.86rem;color:var(--muted)}
 #checkoutMsg{font-size:.9rem;padding:14px 16px;border-radius:12px;border:1px dashed var(--line)}
 .ship-table-wrap{overflow-x:auto}
-.ship{width:100%;border-collapse:collapse;font-size:.95rem;min-width:420px}
+.ship{width:100%;border-collapse:collapse;font-size:.95rem;min-width:460px}
 .ship th,.ship td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line);text-align:left}
 .ship th{font:500 .72rem/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .ship td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.ship tr.sel td{color:var(--signal)}
+.ship tr.sel td{color:var(--gold)}
 .ship-col{display:flex;flex-direction:column;gap:20px;min-width:0}
 @media (max-width:900px){.order{grid-template-columns:1fr}}
 
@@ -201,9 +233,7 @@ footer{border-top:1px solid var(--line);padding-block:40px;font-size:.88rem;colo
 footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
 footer nav{display:flex;gap:20px;flex-wrap:wrap}
 
-/* Mobile buy bar */
 .buybar{position:fixed;left:0;right:0;bottom:0;z-index:9;display:none;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-top:1px solid var(--line);padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
-.buybar .mono{font-weight:500}
 @media (max-width:720px){.buybar{display:flex}footer{padding-bottom:110px}}
 
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,.bars button{transition:none}}
@@ -211,18 +241,18 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
 </head>
 <body>
 
+<div class="notice"><div class="wrap"><span>Christmas delivery: order by <b id="noticeDate">16 Dec</b> for <span id="noticeCountry">your country</span></span><span>Free gift wrapping · Returns until 31 January</span></div></div>
 <header class="top">
   <div class="wrap">
     <a class="logo" href="#top" aria-label="VINDR home"><span></span>VINDR</a>
     <nav class="nav" aria-label="Main">
-      <a href="#uses">Uses</a>
+      <a href="#gift">The gift</a>
+      <a href="#uses">Pit lane</a>
       <a href="#modes">Blow + vacuum</a>
-      <a href="#speeds">Speeds</a>
       <a href="#specs">Specs</a>
-      <a href="#order">Delivery</a>
-      <a href="#faq">FAQ</a>
+      <a href="#order">Christmas delivery</a>
     </nav>
-    <a class="btn btn-signal btn-sm" href="#order">Buy · <span class="js-price">€37,50</span></a>
+    <a class="btn btn-signal btn-sm" href="#order">Gift it · <span class="js-price">€37,50</span></a>
   </div>
 </header>
 
@@ -230,31 +260,33 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
   <section class="hero" aria-labelledby="h1">
     <div class="wrap">
       <div class="hero-copy">
-        <p class="eyebrow">VINDR Pro 40 · Cordless blower + vacuum</p>
-        <h1 id="h1">Compressed air, without the can.</h1>
-        <p class="lede">A palm-sized turbine that pushes 55 m/s through a 40 mm nozzle. Clear a keyboard, dry a bike, light the grill, inflate a mattress. Fit the dust cup and it becomes a vacuum for crumbs and dust.</p>
+        <p class="eyebrow gold">Christmas 2026 · The gift edition</p>
+        <h1 id="h1">The gift for the <em>pit crew.</em></h1>
+        <p class="lede">For the dad who spends Sundays in the paddock and the son who hands him the spanners. A cordless turbine that blows gravel out of brake ducts, dries the car after a wet session and vacuums the footwells on the drive home.</p>
         <div class="price-line">
           <span class="price js-price">€37,50</span>
-          <span class="price-note">Incl. VAT · <span class="js-ship-short">Delivery from €4,95</span></span>
+          <span class="price-note">Incl. VAT · Free gift wrapping</span>
         </div>
         <div class="cta-row">
-          <a class="btn btn-signal" href="#order">Order now</a>
-          <a class="btn btn-ghost" href="#specs">See the specs</a>
+          <a class="btn btn-signal" href="#order">Order for Christmas</a>
+          <a class="btn btn-ghost" href="#gift">Father &amp; son pack</a>
         </div>
-        <div class="flags" aria-label="Delivered to">
-          <span><b>UK</b> 4–7 days</span><span><b>DE</b> 2–4 days</span><span><b>SE · DK · FI</b> 3–5 days</span><span><b>NO</b> 4–6 days</span>
+        <div class="deadline" aria-live="polite">
+          <span class="days" id="daysLeft">–</span>
+          <p id="deadlineText">Order in time and it arrives before Christmas Eve.</p>
         </div>
       </div>
       <div class="stage" aria-hidden="true">
         <canvas id="flow"></canvas>
-        <div class="readout"><span class="eyebrow">Air speed</span><span class="big">55<small>m/s</small></span></div>
+        <span class="gifttag">To: the pit crew</span>
         <img src="assets/blower.png" alt="">
-        <span class="tag">Blow + vacuum · 40 mm · 180 W</span>
+        <div class="readout"><span class="eyebrow">Air speed</span><span class="big">55<small>m/s</small></span></div>
       </div>
     </div>
   </section>
 
-  <div class="band" role="list" aria-label="Key figures">
+  <div class="chequer" aria-hidden="true"></div>
+  <div class="band" role="list" aria-label="Key figures" style="border-top:0">
     <div class="wrap stats">
       <div class="stat" role="listitem"><span class="v">55<small>m/s</small></span><span class="k">Air speed at the nozzle</span></div>
       <div class="stat" role="listitem"><span class="v">180<small>W</small></span><span class="k">Motor power</span></div>
@@ -263,20 +295,57 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
     </div>
   </div>
 
-  <section id="uses" aria-labelledby="uses-h">
+  <section id="gift" aria-labelledby="gift-h">
     <div class="wrap">
       <div class="head">
-        <p class="eyebrow">Uses</p>
-        <h2 id="uses-h">One tool for the desk, the car and the cabin.</h2>
-        <p>Start low for delicate work, step up when you need force. Each card shows the speed setting we would start with.</p>
+        <p class="eyebrow gold">Father &amp; son</p>
+        <h2 id="gift-h">One for the garage. One for the bedroom.</h2>
+        <p>Dad gets a proper tool for track days. The son gets one for his sim rig, his PC and his bike. Same turbine, two very different Saturdays.</p>
+      </div>
+      <div class="duo">
+        <div class="duo-card">
+          <span class="who">For dad · Track days</span>
+          <h3>Paddock-ready in the boot</h3>
+          <ul>
+            <li><span><b>Brake ducts and wheel arches.</b> Clear gravel trap stones and dust between sessions.</span></li>
+            <li><span><b>Radiator and intercooler fins.</b> Blow out grass and debris after an off.</span></li>
+            <li><span><b>Dry after the rain.</b> Push water out of mirrors, badges, grilles and wheel nuts.</span></li>
+            <li><span><b>Footwells.</b> Switch to vacuum and pick up the gravel you brought back in.</span></li>
+          </ul>
+        </div>
+        <div class="duo-card">
+          <span class="who">For the son · Sim rig and desk</span>
+          <h3>Dust off the cockpit at home</h3>
+          <ul>
+            <li><span><b>Wheel base and pedals.</b> Keep dust out of the gaps on the low speeds.</span></li>
+            <li><span><b>Gaming PC and console.</b> Clear fans and vents without canned air.</span></li>
+            <li><span><b>Keyboard and desk.</b> Vacuum crumbs straight into the dust cup.</span></li>
+            <li><span><b>Bike and kart.</b> Dry the chain after a wet ride so it doesn't rust.</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="deadline" style="margin-top:16px">
+        <span class="days" id="duoPrice">€69</span>
+        <p><b>Father &amp; son pack.</b> Two Pro 40 blowers, gift-wrapped separately, with free delivery. You save <span id="duoSave">€6</span> against buying two.</p>
+        <a class="btn btn-signal btn-sm" href="#order" id="duoBtn">Choose the pack</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="uses" aria-labelledby="uses-h" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">In the pit lane</p>
+        <h2 id="uses-h">Small enough for the glovebox. Strong enough for the paddock.</h2>
+        <p>Start low for delicate parts and step up when you need force. Each card shows the speed we would start with.</p>
       </div>
       <div class="uses">
-        <div class="use"><span class="lvl">Speed 1–2</span><h3>Keyboards and PCs</h3><p>Lift dust out of keys, fans and ports without the cold blast and residue of canned air.</p></div>
-        <div class="use"><span class="lvl">Speed 2–3</span><h3>Cameras and electronics</h3><p>Clear lenses, consoles and speaker grilles with a gentle, steady stream.</p></div>
-        <div class="use"><span class="lvl">Speed 3–4 + vacuum</span><h3>Car interiors</h3><p>Blow crumbs out of seat rails and vents, then switch to vacuum and collect them.</p></div>
-        <div class="use"><span class="lvl">Speed 4–5</span><h3>Drying after a wash</h3><p>Chase water out of mirrors, badges and bike chains so nothing drips or rusts.</p></div>
-        <div class="use"><span class="lvl">Speed 5–6</span><h3>Grill and fireplace</h3><p>Bring charcoal or a wood stove up to heat in a fraction of the time.</p></div>
-        <div class="use"><span class="lvl">Speed 6 + nozzle</span><h3>Inflate and deflate</h3><p>Fill air mattresses, pool toys and vacuum bags at the cabin or the campsite.</p></div>
+        <div class="use"><span class="lvl">Speed 5–6</span><h3>Brakes and arches</h3><p>Blow brake dust, sand and stones out of calipers, ducts and liners between sessions.</p></div>
+        <div class="use"><span class="lvl">Speed 4–5</span><h3>Drying after a wash</h3><p>Chase water out of mirrors, badges, grilles and wheel bolts so nothing drips or spots.</p></div>
+        <div class="use"><span class="lvl">Speed 3–4 + vacuum</span><h3>Interior and footwells</h3><p>Blow crumbs out of seat rails and vents, then switch to vacuum and collect them.</p></div>
+        <div class="use"><span class="lvl">Speed 3–4</span><h3>Engine bay</h3><p>Lift leaves and dust off covers and out of the scuttle panel before they block drains.</p></div>
+        <div class="use"><span class="lvl">Speed 1–2</span><h3>Sim rig and PC</h3><p>Clear wheel bases, pedals, fans and keyboards with a gentle, steady stream.</p></div>
+        <div class="use"><span class="lvl">Speed 6 + nozzle</span><h3>Paddock camping</h3><p>Inflate air mattresses and get the barbecue going at the circuit campsite.</p></div>
       </div>
     </div>
   </section>
@@ -291,7 +360,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
       <div class="modes">
         <div class="mode"><span class="lvl">Mode 1</span><h3>Blower</h3><p>Air leaves the 40 mm nozzle at up to 55 m/s. Use it bare for cleaning and drying, or with the air nozzle to inflate.</p></div>
         <div class="mode"><span class="lvl">Mode 2</span><h3>Vacuum</h3><p>Fit the dust collection cup, filter and suction hose. Crumbs and dust go into the cup, which empties with one twist.</p></div>
-        <div class="mode"><span class="lvl">Housing</span><h3>Tough ABS plastic</h3><p>The body is moulded from ABS, the impact-resistant plastic used for power tools. It shrugs off knocks in a car door pocket or a toolbox.</p></div>
+        <div class="mode"><span class="lvl">Housing</span><h3>Tough ABS plastic</h3><p>The body is moulded from ABS, the impact-resistant plastic used for power tools. It shrugs off knocks in a toolbox or a door pocket.</p></div>
       </div>
       <p class="note" style="margin-top:16px">Vacuum attachments come with the Complete kit.</p>
     </div>
@@ -302,7 +371,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
       <div class="head" style="margin-bottom:0">
         <p class="eyebrow">Six speeds</p>
         <h2 id="speeds-h">From a breath to a gale.</h2>
-        <p>Six fixed steps, shown on the battery gauge in the handle. Press once to step up. Tap a bar to see what each speed is for.</p>
+        <p>Six fixed steps, shown on the gauge in the handle. Press once to step up. Tap a bar to see what each speed is for.</p>
       </div>
       <div class="dial-ui">
         <div class="bars" id="bars" role="radiogroup" aria-label="Speed setting"></div>
@@ -314,7 +383,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
     </div>
   </section>
 
-  <section id="specs" class="band" style="border-bottom:0" aria-labelledby="specs-h">
+  <section id="specs" style="background:var(--surface);border-top:1px solid var(--line)" aria-labelledby="specs-h">
     <div class="wrap sheet">
       <div style="display:flex;flex-direction:column;gap:28px;min-width:0">
         <div class="head" style="margin-bottom:0">
@@ -352,64 +421,76 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
   <section id="order" aria-labelledby="order-h">
     <div class="wrap">
       <div class="head">
-        <p class="eyebrow">Order</p>
-        <h2 id="order-h">Choose your kit. See the total before checkout.</h2>
-        <p>Prices include VAT. Delivery is calculated for your country, and it is free when your order reaches €75.</p>
+        <p class="eyebrow gold">Christmas order</p>
+        <h2 id="order-h">Wrapped, tracked and under the tree.</h2>
+        <p>Prices include VAT. Delivery is calculated for your country and is free from €75 or with the Father &amp; son pack. Every order can be gift-wrapped for free.</p>
       </div>
       <div class="order">
         <form class="panel" id="orderForm" novalidate>
-          <fieldset>
-            <legend>Package</legend>
-            <div class="pkg">
-              <label><input type="radio" name="pkg" id="pkgStd" value="std" checked><span class="t">Standard</span><span class="p js-p-std">€37,50</span><span class="d">Blower, charging cable and manual. Blower mode only.</span></label>
-              <label><input type="radio" name="pkg" id="pkgKit" value="kit"><span class="t">Complete kit · Blow + vacuum</span><span class="p js-p-kit">€47,50</span><span class="d">Adds the vacuum attachments (dust cup, suction hose, filter) and the air nozzle.</span></label>
-            </div>
-          </fieldset>
-          <div class="qty-row">
-            <fieldset style="flex:0 0 auto">
-              <legend>Quantity</legend>
-              <div class="qty">
-                <button type="button" id="qMinus" aria-label="Remove one">−</button>
-                <output id="qty" aria-live="polite">1</output>
-                <button type="button" id="qPlus" aria-label="Add one">+</button>
+          <div class="chequer" aria-hidden="true"></div>
+          <div class="panel-in">
+            <fieldset>
+              <legend>Package</legend>
+              <div class="pkg">
+                <label><input type="radio" name="pkg" id="pkgStd" value="std" checked><span class="t">Standard</span><span class="p js-p-std">€37,50</span><span class="d">Blower, charging cable and manual. Blower mode only.</span></label>
+                <label><input type="radio" name="pkg" id="pkgKit" value="kit"><span class="t">Complete kit · Blow + vacuum</span><span class="p js-p-kit">€47,50</span><span class="d">Adds the vacuum attachments (dust cup, suction hose, filter) and the air nozzle.</span></label>
+                <label><input type="radio" name="pkg" id="pkgDuo" value="duo"><span class="t">Father &amp; son pack<span class="ribbon">Gift</span></span><span class="p"><s class="js-p-duo-was">€75,00</s><span class="js-p-duo">€69,00</span></span><span class="d">Two Standard blowers, wrapped separately. Free delivery.</span></label>
               </div>
             </fieldset>
-            <fieldset style="flex:1 1 220px">
-              <legend><label for="country">Deliver to</label></legend>
-              <select id="country" name="country"></select>
+            <div class="qty-row">
+              <fieldset style="flex:0 0 auto">
+                <legend>Quantity</legend>
+                <div class="qty">
+                  <button type="button" id="qMinus" aria-label="Remove one">−</button>
+                  <output id="qty" aria-live="polite">1</output>
+                  <button type="button" id="qPlus" aria-label="Add one">+</button>
+                </div>
+              </fieldset>
+              <fieldset style="flex:1 1 220px">
+                <legend><label for="country">Deliver to</label></legend>
+                <select id="country" name="country"></select>
+              </fieldset>
+            </div>
+            <fieldset>
+              <legend>Gift</legend>
+              <label class="check" for="wrap"><input type="checkbox" id="wrap" name="wrap" checked><span>Gift-wrap it for free<small>Wrapped in red paper with a chequered ribbon. No price inside the parcel.</small></span></label>
+              <label for="msg" class="note">Message on the gift card (optional)</label>
+              <textarea id="msg" name="msg" maxlength="140" placeholder="Happy Christmas, Dad. See you in the pit lane."></textarea>
+              <span class="note mono" id="msgCount">0 / 140</span>
             </fieldset>
+            <div class="sum" aria-live="polite">
+              <div class="row"><span id="lineLabel">1 × Standard</span><span id="subtotal">€37,50</span></div>
+              <div class="row"><span>Gift wrapping</span><span id="wrapCost">Free</span></div>
+              <div class="row"><span>Delivery <span class="note" id="days"></span></span><span id="shipping">€4,95</span></div>
+              <p class="free" id="freeMsg"></p>
+              <div class="row total"><span>Total</span><span id="total">€42,45</span></div>
+              <p class="note" id="approx"></p>
+            </div>
+            <button class="btn btn-signal" type="submit" id="checkout">Continue to secure checkout</button>
+            <p id="checkoutMsg" hidden></p>
+            <p class="note" id="taxNote"></p>
           </div>
-          <div class="sum" aria-live="polite">
-            <div class="row"><span id="lineLabel">1 × Standard</span><span id="subtotal">€37,50</span></div>
-            <div class="row"><span>Delivery <span class="note" id="days"></span></span><span id="shipping">€4,95</span></div>
-            <p class="free" id="freeMsg"></p>
-            <div class="row total"><span>Total</span><span id="total">€42,45</span></div>
-            <p class="note" id="approx"></p>
-          </div>
-          <button class="btn btn-signal" type="submit" id="checkout">Continue to secure checkout</button>
-          <p id="checkoutMsg" hidden></p>
-          <p class="note" id="taxNote"></p>
         </form>
 
         <div class="ship-col">
-          <h3>Delivery rates</h3>
+          <h3>Christmas delivery</h3>
           <div class="ship-table-wrap">
             <table class="ship">
-              <thead><tr><th scope="col">Country</th><th scope="col">Delivery</th><th scope="col">Time</th></tr></thead>
+              <thead><tr><th scope="col">Country</th><th scope="col">Delivery</th><th scope="col">Time</th><th scope="col">Order by</th></tr></thead>
               <tbody id="shipRows"></tbody>
             </table>
           </div>
-          <p class="note">Tracked delivery on every order. Orders placed before 14:00 CET on a weekday leave our warehouse the same day. Free delivery from €75, which is any two units.</p>
+          <p class="note">"Order by" is the last day to order for delivery before 24 December. Tracked delivery on every order. Orders placed before 14:00 CET on a weekday leave our warehouse the same day.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="band" aria-label="Our promise" style="border-bottom:0">
+  <section style="background:var(--surface);border-top:1px solid var(--line)" aria-label="Our promise">
     <div class="wrap promise">
-      <div><h3>30-day returns</h3><p>Not right for you? Send it back within 30 days for a full refund.</p></div>
+      <div><h3>Returns until 31 January</h3><p>Every order placed from 1 November can be returned until 31 January for a full refund.</p></div>
       <div><h3>2-year guarantee</h3><p>If it stops working through normal use, we repair or replace it.</p></div>
-      <div><h3>Tracked delivery</h3><p>You get a tracking link by email as soon as your parcel leaves.</p></div>
+      <div><h3>Free gift wrapping</h3><p>Red paper, chequered ribbon and your message on a card. No price inside.</p></div>
       <div><h3>Secure payment</h3><p>Pay by card, PayPal or Klarna. Your card details never touch our servers.</p></div>
     </div>
   </section>
@@ -418,22 +499,23 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
     <div class="wrap">
       <div class="head"><p class="eyebrow">Questions</p><h2 id="faq-h">Before you buy.</h2></div>
       <div class="faq">
-        <details><summary>Is it safe for electronics?</summary><p>Yes. Unlike canned air it uses no propellant, so there is no cold spray and no residue. Start on speed 1 or 2 for keyboards and circuit boards, and hold fan blades still while you clean them.</p></details>
-        <details><summary>Does it work as a vacuum?</summary><p>Yes. The Pro 40 is a blower and a vacuum in one. Fit the dust collection cup, filter and suction hose from the Complete kit, and it pulls crumbs and dust into the cup. It suits car seats, desks and keyboards. It is not a replacement for a full-size vacuum cleaner.</p></details>
+        <details><summary>Will it arrive before Christmas?</summary><p>Yes, if you order by the date shown for your country in the delivery table. After that date we still ship the same day, but we can't promise delivery before 24 December.</p></details>
+        <details><summary>Can I send it straight to the person it's for?</summary><p>Yes. Enter their address at checkout and tick gift wrapping. The parcel has no price inside and your message goes on the card.</p></details>
+        <details><summary>Is it useful at a track day?</summary><p>Yes. It fits in a kit bag or the boot, runs on its own battery and needs no compressor or power socket. Use it on the high speeds for brake ducts, wheel arches and radiators, and on vacuum for the footwells.</p></details>
+        <details><summary>Does it work as a vacuum?</summary><p>Yes. Fit the dust collection cup, filter and suction hose from the Complete kit, and it pulls crumbs, sand and dust into the cup. It suits car interiors, desks and keyboards. It is not a replacement for a full-size vacuum cleaner.</p></details>
+        <details><summary>Is it safe for electronics and a sim rig?</summary><p>Yes. It uses no propellant, so there is no cold spray and no residue. Use speed 1 or 2 for keyboards, wheel bases and circuit boards, and hold fan blades still while you clean them.</p></details>
         <details><summary>What is it made of?</summary><p>The housing is ABS plastic, a tough, impact-resistant material widely used for power tools and electronics.</p></details>
-        <details><summary>How long does the battery last?</summary><p>Run time depends on the speed you choose. Lower speeds run much longer than speed 6. The gauge in the handle shows the charge left, and the included cable recharges it.</p></details>
-        <details><summary>What is in the box?</summary><p>The Standard package contains the blower, a charging cable and the user manual. The Complete kit adds the air nozzle for inflating, a dust collection cup, a suction hose and a spare filter.</p></details>
         <details><summary>Will I pay customs or import fees?</summary><p>Orders to Germany, Sweden, Denmark and Finland include all VAT. For the UK and Norway, import VAT is collected at checkout, so there is nothing to pay on delivery. Iceland is the only destination where local import VAT may be charged on arrival.</p></details>
-        <details><summary>Can I take it on a plane?</summary><p>It runs on a lithium-ion battery, so it belongs in your hand luggage. Check your airline's rules before you fly.</p></details>
-        <details><summary>How do returns work?</summary><p>Email us within 30 days of delivery and we send you a return label. You get your refund within 14 days of us receiving the parcel. Your statutory 14-day right of withdrawal in the EU and UK applies in full.</p></details>
+        <details><summary>What if it's the wrong gift?</summary><p>Orders placed from 1 November can be returned until 31 January. Email us and we send you a return label. Your statutory 14-day right of withdrawal in the EU and UK applies in full.</p></details>
       </div>
     </div>
   </section>
 </main>
 
+<div class="chequer" aria-hidden="true"></div>
 <footer>
   <div class="wrap">
-    <span>© 2026 VINDR. All prices include VAT.</span>
+    <span>© 2026 VINDR. All prices include VAT. Merry Christmas from the pit lane.</span>
     <nav aria-label="Legal">
       <a href="#">Imprint</a><a href="#">Terms</a><a href="#">Privacy</a><a href="#">Right of withdrawal</a><a href="#">Contact</a>
     </nav>
@@ -441,8 +523,8 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
 </footer>
 
 <div class="buybar">
-  <span><span class="mono js-price">€37,50</span> <span class="note">incl. VAT</span></span>
-  <a class="btn btn-signal btn-sm" href="#order">Order now</a>
+  <span><span class="mono js-price">€37,50</span> <span class="note" id="buybarNote">incl. VAT</span></span>
+  <a class="btn btn-signal btn-sm" href="#order">Order for Christmas</a>
 </div>
 
 <script>
@@ -450,30 +532,33 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
   /* ---- Store settings: edit these ---- */
   var CHECKOUT_URL = "";            // e.g. your Stripe Payment Link or Shopify checkout URL
   var FREE_FROM = 75;               // free delivery threshold in EUR
+  var CHRISTMAS = new Date(2026, 11, 24);
   var PACKAGES = {
     std:{name:"Standard", price:37.50},
-    kit:{name:"Complete kit", price:47.50}
+    kit:{name:"Complete kit", price:47.50},
+    duo:{name:"Father & son pack", price:69.00, was:75.00, freeShip:true}
   };
-  // Delivery fee in EUR. fx = approximate rate for showing local currency (charged in EUR).
+  // Delivery fee in EUR. orderBy = last order day [month(0-11), day] for delivery before 24 Dec.
+  // fx = approximate rate for showing local currency (charged in EUR).
   var COUNTRIES = [
-    {code:"DE", name:"Germany",        fee:4.95,  days:"2–4 days", locale:"de-DE", cur:"EUR", fx:1,
+    {code:"DE", name:"Germany",        fee:4.95,  days:"2–4 days", orderBy:[11,19], locale:"de-DE", cur:"EUR", fx:1,
      tax:"Price includes German VAT (19%)."},
-    {code:"GB", name:"United Kingdom", fee:7.95,  days:"4–7 days", locale:"en-GB", cur:"GBP", fx:0.86,
+    {code:"GB", name:"United Kingdom", fee:7.95,  days:"4–7 days", orderBy:[11,15], locale:"en-GB", cur:"GBP", fx:0.86,
      tax:"UK VAT is included and collected at checkout. No fees on delivery."},
-    {code:"SE", name:"Sweden",         fee:6.95,  days:"3–5 days", locale:"sv-SE", cur:"SEK", fx:11.0,
+    {code:"SE", name:"Sweden",         fee:6.95,  days:"3–5 days", orderBy:[11,17], locale:"sv-SE", cur:"SEK", fx:11.0,
      tax:"Price includes VAT. No fees on delivery."},
-    {code:"DK", name:"Denmark",        fee:6.95,  days:"3–5 days", locale:"da-DK", cur:"DKK", fx:7.46,
+    {code:"DK", name:"Denmark",        fee:6.95,  days:"3–5 days", orderBy:[11,17], locale:"da-DK", cur:"DKK", fx:7.46,
      tax:"Price includes VAT. No fees on delivery."},
-    {code:"FI", name:"Finland",        fee:6.95,  days:"3–5 days", locale:"fi-FI", cur:"EUR", fx:1,
+    {code:"FI", name:"Finland",        fee:6.95,  days:"3–5 days", orderBy:[11,17], locale:"fi-FI", cur:"EUR", fx:1,
      tax:"Price includes VAT. No fees on delivery."},
-    {code:"NO", name:"Norway",         fee:8.95,  days:"4–6 days", locale:"nb-NO", cur:"NOK", fx:11.7,
+    {code:"NO", name:"Norway",         fee:8.95,  days:"4–6 days", orderBy:[11,16], locale:"nb-NO", cur:"NOK", fx:11.7,
      tax:"Norwegian VAT is collected at checkout (VOEC). No fees on delivery."},
-    {code:"IS", name:"Iceland",        fee:12.95, days:"5–9 days", locale:"is-IS", cur:"ISK", fx:145,
+    {code:"IS", name:"Iceland",        fee:12.95, days:"5–9 days", orderBy:[11,12], locale:"is-IS", cur:"ISK", fx:145,
      tax:"Local import VAT may be charged on arrival in Iceland."}
   ];
 
   var $ = function(id){return document.getElementById(id)};
-  var state = {pkg:"std", qty:1, country:"DE"};
+  var state = {pkg:"std", qty:1, country:"DE", wrap:true};
 
   function guessCountry(){
     var langs = (navigator.languages || [navigator.language || ""]).join(",");
@@ -491,10 +576,14 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
     try { return new Intl.NumberFormat(c.locale, {style:"currency", currency:c.cur, maximumFractionDigits: c.cur==="ISK"?0:2}).format(v*c.fx); }
     catch(e){ return ""; }
   }
+  function orderByDate(c){ return new Date(CHRISTMAS.getFullYear(), c.orderBy[0], c.orderBy[1], 23, 59); }
+  function dayLabel(d, loc){
+    try { return new Intl.DateTimeFormat(loc || "en-GB", {day:"numeric", month:"short"}).format(d); }
+    catch(e){ return d.getDate() + " Dec"; }
+  }
 
-  // Country select + table
   var sel = $("country");
-  try { var saved = localStorage.getItem("vindr-country"); if (saved) state.country = saved; else state.country = guessCountry(); }
+  try { var saved = localStorage.getItem("vindr-country"); state.country = saved || guessCountry(); }
   catch(e){ state.country = guessCountry(); }
   COUNTRIES.forEach(function(c){
     var o = document.createElement("option"); o.value = c.code; o.textContent = c.name; sel.appendChild(o);
@@ -502,36 +591,51 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
   sel.value = state.country;
 
   function renderTable(){
-    var rows = COUNTRIES.map(function(c){
+    $("shipRows").innerHTML = COUNTRIES.map(function(c){
       return '<tr' + (c.code===state.country?' class="sel"':'') + '><td>' + c.name + '</td><td class="num">' +
-        eur(c.fee, country().locale) + '</td><td class="num">' + c.days + '</td></tr>';
+        eur(c.fee) + '</td><td class="num">' + c.days + '</td><td class="num">' + dayLabel(orderByDate(c), "en-GB") + '</td></tr>';
     }).join("");
-    $("shipRows").innerHTML = rows;
+  }
+
+  function renderDeadline(){
+    var c = country(), now = new Date(), by = orderByDate(c);
+    var days = Math.ceil((by - now) / 86400000);
+    $("noticeDate").textContent = dayLabel(by, "en-GB");
+    $("noticeCountry").textContent = c.name;
+    if (days > 0){
+      $("daysLeft").textContent = days + (days===1?" day":" days");
+      $("deadlineText").innerHTML = "left to order for delivery to <b>" + c.name + "</b> before Christmas. Last day: <b>" + dayLabel(by, "en-GB") + "</b>.";
+    } else {
+      $("daysLeft").textContent = "Late?";
+      $("deadlineText").innerHTML = "The Christmas cut-off for <b>" + c.name + "</b> has passed. We still ship the same day, and returns run until 31 January.";
+    }
   }
 
   function render(){
     var c = country(), p = PACKAGES[state.pkg];
     var sub = p.price * state.qty;
-    var free = sub >= FREE_FROM;
+    var free = sub >= FREE_FROM || p.freeShip;
     var ship = free ? 0 : c.fee;
     var total = sub + ship;
     $("qty").textContent = state.qty;
     $("lineLabel").textContent = state.qty + " × " + p.name;
     $("subtotal").textContent = eur(sub);
+    $("wrapCost").textContent = state.wrap ? "Free" : "Not wrapped";
     $("shipping").textContent = free ? "Free" : eur(ship);
     $("days").textContent = "· " + c.days;
     $("total").textContent = eur(total);
-    var left = FREE_FROM - sub;
-    $("freeMsg").textContent = free ? "Free delivery applied." : "Add " + eur(left) + " more for free delivery.";
+    $("freeMsg").textContent = free ? "Free delivery applied." : "Add " + eur(FREE_FROM - sub) + " more for free delivery, or choose the Father & son pack.";
     var l = local(total);
     $("approx").textContent = l ? "About " + l + ". You are charged in euros; your bank converts the amount." : "";
     $("taxNote").textContent = c.tax;
     var std = eur(PACKAGES.std.price);
-    document.querySelectorAll(".js-price").forEach(function(n){ n.textContent = std; });
-    document.querySelectorAll(".js-p-std").forEach(function(n){ n.textContent = std; });
+    document.querySelectorAll(".js-price,.js-p-std").forEach(function(n){ n.textContent = std; });
     document.querySelectorAll(".js-p-kit").forEach(function(n){ n.textContent = eur(PACKAGES.kit.price); });
-    document.querySelectorAll(".js-ship-short").forEach(function(n){ n.textContent = "Delivery to " + c.name + " " + eur(c.fee); });
-    renderTable();
+    document.querySelectorAll(".js-p-duo").forEach(function(n){ n.textContent = eur(PACKAGES.duo.price); });
+    document.querySelectorAll(".js-p-duo-was").forEach(function(n){ n.textContent = eur(PACKAGES.duo.was); });
+    $("duoPrice").textContent = eur(PACKAGES.duo.price);
+    $("duoSave").textContent = eur(PACKAGES.std.price*2 - PACKAGES.duo.price);
+    renderTable(); renderDeadline();
   }
 
   sel.addEventListener("change", function(){
@@ -542,30 +646,34 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
   document.querySelectorAll('input[name="pkg"]').forEach(function(r){
     r.addEventListener("change", function(){ state.pkg = r.value; render(); });
   });
+  $("duoBtn").addEventListener("click", function(){ $("pkgDuo").checked = true; state.pkg = "duo"; render(); });
+  $("wrap").addEventListener("change", function(){ state.wrap = this.checked; render(); });
+  $("msg").addEventListener("input", function(){ $("msgCount").textContent = this.value.length + " / 140"; });
   $("qMinus").addEventListener("click", function(){ state.qty = Math.max(1, state.qty-1); render(); });
   $("qPlus").addEventListener("click", function(){ state.qty = Math.min(10, state.qty+1); render(); });
   $("orderForm").addEventListener("submit", function(e){
     e.preventDefault();
     if (CHECKOUT_URL){
-      var url = CHECKOUT_URL + (CHECKOUT_URL.indexOf("?")>-1?"&":"?") +
-        "package=" + state.pkg + "&quantity=" + state.qty + "&country=" + state.country;
-      window.location.href = url;
+      var q = "package=" + state.pkg + "&quantity=" + state.qty + "&country=" + state.country +
+        "&giftwrap=" + (state.wrap?1:0) + "&message=" + encodeURIComponent($("msg").value);
+      window.location.href = CHECKOUT_URL + (CHECKOUT_URL.indexOf("?")>-1?"&":"?") + q;
       return;
     }
     var m = $("checkoutMsg");
-    m.textContent = "Order ready: " + $("lineLabel").textContent + " to " + country().name + ", total " + $("total").textContent + ". Checkout opens here once a payment provider is connected.";
+    m.textContent = "Order ready: " + $("lineLabel").textContent + (state.wrap?", gift-wrapped,":"") + " to " + country().name +
+      ", total " + $("total").textContent + ". Checkout opens here once a payment provider is connected.";
     m.hidden = false;
   });
   render();
 
   // Speed dial
   var USES = [
-    "Keyboards, circuit boards and camera sensors.",
-    "Laptop vents, consoles and speaker grilles.",
-    "Car vents, seat rails and window tracks.",
-    "Drying mirrors, badges and bike chains.",
-    "Leaves off a doormat, charcoal up to heat.",
-    "Full force for inflating and the wood stove."
+    "Sim rig wheel base, keyboards and circuit boards.",
+    "Gaming PC fans, console vents and speaker grilles.",
+    "Seat rails, air vents and the engine bay.",
+    "Drying mirrors, badges, grilles and wheel bolts.",
+    "Brake dust and sand out of wheel arches.",
+    "Gravel out of brake ducts, and inflating."
   ];
   var bars = $("bars"), cur = 3;
   for (var i=1;i<=6;i++){
@@ -591,53 +699,70 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
     $("dialUse").textContent = USES[n-1];
     window.__flowSpeed = n;
   }
-  setSpeed(3);
+  setSpeed(4);
 
-  // Airflow streamlines behind the product, leaving the nozzle to the left
+  // Snow falling over the stage; flakes that drift into the nozzle's jet get blasted away
   var cv = $("flow"), ctx = cv.getContext("2d");
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var W=0,H=0,dpr=Math.min(2,window.devicePixelRatio||1), parts=[];
+  var W=0,H=0,dpr=Math.min(2,window.devicePixelRatio||1), flakes=[];
+  var NX=0.34, NY=0.29; // nozzle mouth as a fraction of the stage
   function size(){
     var r = cv.getBoundingClientRect(); W=r.width; H=r.height;
     cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
   }
-  function spawn(p){
-    // nozzle mouth sits around 36% across, 36% down the stage
-    p.x = W*0.40 + Math.random()*W*0.04;
-    p.y = H*0.36 + (Math.random()-0.5)*H*0.10;
-    p.vy = (Math.random()-0.5)*0.5;
-    p.len = 30 + Math.random()*90;
-    p.v = 0.6 + Math.random()*0.8;
-    return p;
+  function flake(f, top){
+    f.x = Math.random()*W*1.1;
+    f.y = top ? -10 - Math.random()*H*0.2 : Math.random()*H;
+    f.r = 0.8 + Math.random()*2.2;
+    f.vx = (Math.random()-0.5)*0.3; f.vy = 0.35 + f.r*0.22;
+    f.ph = Math.random()*6.28;
+    return f;
   }
-  function init(){ parts=[]; for (var i=0;i<70;i++){ var p=spawn({}); p.x = Math.random()*W*0.42; parts.push(p);} }
-  function color(){ return getComputedStyle(document.documentElement).getPropertyValue("--flow").trim() || "rgba(0,0,0,.2)"; }
-  var stroke = color();
+  function init(){ flakes=[]; var n = Math.round(W*H/2600); for (var i=0;i<n;i++) flakes.push(flake({}, false)); }
+  function color(){ return getComputedStyle(document.documentElement).getPropertyValue("--snow").trim() || "rgba(255,255,255,.8)"; }
+  var fill = color(), t = 0;
+  function step(){
+    var nx=W*NX, ny=H*NY, sp=(window.__flowSpeed||4);
+    t += 0.016;
+    for (var i=0;i<flakes.length;i++){
+      var f = flakes[i];
+      f.vy += (0.35 + f.r*0.22 - f.vy)*0.04;
+      f.vx += (Math.sin(t+f.ph)*0.25 - f.vx)*0.03;
+      if (f.x < nx + 6){
+        var half = 14 + (nx - f.x)*0.32;
+        var dy = f.y - ny;
+        if (Math.abs(dy) < half){
+          var k = 1 - Math.abs(dy)/half;
+          f.vx -= (0.5 + sp*0.32) * k;
+          f.vy += dy/half*0.25*k;
+        }
+      }
+      f.x += f.vx; f.y += f.vy;
+      if (f.y > H+10 || f.x < -20 || f.x > W+20) flake(f, true);
+    }
+  }
   function draw(){
     ctx.clearRect(0,0,W,H);
-    ctx.strokeStyle = stroke; ctx.lineCap="round";
-    var sp = (window.__flowSpeed||3);
-    for (var i=0;i<parts.length;i++){
-      var p = parts[i];
-      if (!reduce){
-        p.x -= p.v * (1.4 + sp*1.1);
-        p.y += p.vy * (0.5 + (H*0.36 - p.y)/H*-0.6) ;
+    ctx.fillStyle = fill; ctx.strokeStyle = fill;
+    for (var i=0;i<flakes.length;i++){
+      var f = flakes[i], fast = f.vx < -2.5;
+      if (fast){
+        ctx.globalAlpha = 0.55; ctx.lineWidth = f.r*0.9; ctx.lineCap="round";
+        ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x - f.vx*3, f.y - f.vy*3); ctx.stroke();
+      } else {
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
       }
-      var spread = (W*0.42 - p.x)/W;
-      ctx.lineWidth = 1 + Math.max(0,spread)*1.4;
-      ctx.globalAlpha = Math.max(0, Math.min(1, p.x/(W*0.15)));
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(Math.min(p.x+p.len, W*0.42), p.y); ctx.stroke();
-      if (p.x + p.len < 0) spawn(p);
     }
     ctx.globalAlpha = 1;
-    if (!reduce) requestAnimationFrame(draw);
   }
-  size(); init(); draw();
+  function loop(){ step(); draw(); requestAnimationFrame(loop); }
+  size(); init();
+  if (reduce){ draw(); } else { for (var w=0; w<240; w++) step(); loop(); }
   window.addEventListener("resize", function(){ size(); init(); if (reduce) draw(); });
-  if (window.matchMedia){
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){ stroke = color(); if (reduce) draw(); });
-  }
-  new MutationObserver(function(){ stroke = color(); if (reduce) draw(); }).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+  function recolor(){ fill = color(); if (reduce) draw(); }
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", recolor);
+  new MutationObserver(recolor).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 })();
 </script>
 </body>
