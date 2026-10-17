@@ -3,13 +3,53 @@
   "version": "1.0.0",
   "description": "Modern AI-assisted scripture presentation with voice, all Bible translations and 8 output channels",
   "type": "module",
-  "main": "server.mjs",
+  "main": "desktop/main.mjs",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "desktop": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0"
+  },
+  "optionalDependencies": {
+    "@stagetimerio/grandiose": "^0.2.1"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3"
+  },
+  "author": "Lumen",
+  "build": {
+    "appId": "app.lumen.scriptureshow",
+    "productName": "Lumen Scripture Show",
+    "files": [
+      "server.mjs",
+      "public/**",
+      "bibles/**",
+      "desktop/**",
+      "package.json",
+      "node_modules/**"
+    ],
+    "asarUnpack": [
+      "node_modules/@stagetimerio/grandiose/**"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }

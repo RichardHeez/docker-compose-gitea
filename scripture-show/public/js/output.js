@@ -10,6 +10,33 @@ autoScale(host);
 
 let lastKey = '';
 let seq = 0;
+let lastCmd = null;
+let soundUnlocked = false;
+
+// Browsers block autoplay with sound until the page is clicked once; fall back to muted.
+function startVideos() {
+  host.querySelectorAll('.slide:not(.leaving) video.live-media').forEach((v) => {
+    if (v.muted) return;
+    v.play().catch(() => {
+      v.muted = true; v.play().catch(() => {});
+      if (!soundUnlocked) { hint.textContent = 'Click once to enable video sound'; hint.style.opacity = 1; }
+    });
+  });
+}
+document.addEventListener('click', () => {
+  soundUnlocked = true; hint.style.opacity = 0;
+  host.querySelectorAll('video.live-media[data-sound]').forEach((v) => { v.muted = false; });
+});
+
+function applyMediaCmd(cmd) {
+  if (!cmd || lastCmd === null) { lastCmd = cmd?.id ?? 0; return; } // ignore the command that was current when we connected
+  if (cmd.id === lastCmd) return;
+  lastCmd = cmd.id;
+  const v = host.querySelector('.slide:not(.leaving) video.live-media');
+  if (!v) return;
+  if (cmd.action === 'restart') { v.currentTime = 0; v.play().catch(() => {}); }
+  if (cmd.action === 'toggle') v.paused ? v.play().catch(() => {}) : v.pause();
+}
 
 async function render(state) {
   const channel = state.channels.find((c) => c.id === chId) || state.channels[0];
@@ -17,14 +44,21 @@ async function render(state) {
   const transparent = channel.mode === 'alpha';
   document.body.classList.toggle('transparent', transparent);
   const flags = { black: state.black || !channel.enabled, clear: state.clear, logo: state.logo };
-  const next = state.next ? (state.next.kind === 'scripture' ? formatRef(state.next.ref) : state.next.title) : '';
+  const live = state.live;
+  const next = live?.pages > 1 && live.page < live.pages - 1
+    ? `${formatRef(live.ref)} — screen ${live.page + 2} of ${live.pages}`
+    : state.next ? (state.next.kind === 'scripture' ? formatRef(state.next.ref) : state.next.title || state.next.name) : '';
   const key = JSON.stringify([slideKey(state.live, channel, state), flags, channel, state.logoText, state.stageMessage, next]);
+  applyMediaCmd(state.mediaCmd);
   if (key === lastKey) return;
   lastKey = key;
   const my = ++seq;
   const slide = await resolveSlide(state.live, channel, state);
   if (my !== seq) return; // a newer update arrived while loading
-  show(host, buildSlide(slide, channel, state, { ...flags, nextLabel: next }), channel.transition);
+  const el = buildSlide(slide, channel, state, { ...flags, nextLabel: next });
+  el.querySelectorAll('video.live-media:not([muted])').forEach((v) => v.setAttribute('data-sound', ''));
+  show(host, el, channel.transition);
+  startVideos();
 }
 
 function connect() {

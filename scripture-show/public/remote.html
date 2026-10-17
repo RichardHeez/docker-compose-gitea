@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0d17">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Lumen Remote</title>
+  <link rel="stylesheet" href="/css/slide.css">
+  <style>
+    :root { --bg: #0b0d17; --panel: #141828; --panel2: #1a1f33; --line: #262c45; --text: #e8ebf5; --muted: #8a93ad; --accent: #8b7bff; --accent2: #ffd27a; --live: #e5484d; color-scheme: dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 Inter, system-ui, sans-serif; padding: env(safe-area-inset-top) 16px calc(16px + env(safe-area-inset-bottom)); max-width: 640px; margin-inline: auto; }
+    header { display: flex; align-items: center; gap: 8px; padding: 14px 0 10px; }
+    header b { font-size: 17px; } header .mark { color: var(--accent2); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #30a46c; margin-left: auto; } .dot.off { background: var(--live); }
+    .label { color: var(--muted); font-size: 13px; margin: 2px 0 8px; display: flex; gap: 8px; align-items: center; }
+    .label .tag { background: var(--live); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 5px; letter-spacing: .08em; }
+    .screen { aspect-ratio: 16/9; border-radius: 12px; border: 1px solid var(--line); }
+    .nav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; margin: 12px 0; }
+    button { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--panel2); border-radius: 14px; padding: 12px; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+    button:active { transform: scale(.98); }
+    .big { font-size: 22px; padding: 22px 12px; }
+    .next { background: linear-gradient(135deg, #7c6cff, #5b8cff); border: 0; }
+    .golive { background: linear-gradient(135deg, #ff5b61, #e5484d); border: 0; color: #fff; }
+    .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .seg .on { background: var(--accent2); color: #1b1300; border-color: transparent; }
+    form { display: flex; gap: 8px; margin-bottom: 14px; }
+    input { flex: 1; min-width: 0; font: inherit; color: inherit; background: #0e1120; border: 1px solid var(--line); border-radius: 12px; padding: 12px; outline: none; }
+    input:focus { border-color: var(--accent); }
+    h3 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 16px 0 8px; }
+    ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+    li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: center; cursor: pointer; }
+    li.live { border-color: var(--live); box-shadow: inset 3px 0 0 var(--live); }
+    li .n { color: var(--muted); font-size: 12px; width: 18px; }
+    li small { display: block; color: var(--muted); font-size: 12px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1f2440; border: 1px solid var(--line); padding: 10px 14px; border-radius: 12px; opacity: 0; transition: .25s; pointer-events: none; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header><span class="mark">✦</span><b>Lumen Remote</b><span id="tr" class="muted"></span><span id="dot" class="dot off"></span></header>
+  <div class="label"><span class="tag">LIVE</span><span id="liveLabel">Nothing live</span></div>
+  <div id="mon" class="stage-host screen"></div>
+  <div class="nav">
+    <button class="big" id="prev">‹ Back</button>
+    <button class="big next" id="next">Next ›</button>
+  </div>
+  <div class="seg"><button id="black">Black</button><button id="clear">Clear</button><button id="logo">Logo</button></div>
+  <form id="quick"><input id="ref" placeholder="jn 3:16, Ps 23…" autocomplete="off" enterkeyhint="go"><button class="golive">Go Live</button></form>
+  <h3>Service</h3>
+  <ol id="service"><li class="muted">Loading…</li></ol>
+  <h3>Stage message</h3>
+  <form id="stage"><input id="msg" placeholder="e.g. 5 minutes left"><button>Send</button></form>
+  <div id="toast"></div>
+  <script type="module" src="/js/remote.js"></script>
+</body>
+</html>

@@ -1,12 +1,24 @@
-// Shared slide resolution + rendering for output windows and console monitors.
+// Shared slide resolution + rendering for output windows, console monitors and the remote.
 import { bookById, formatRef, refKey } from './books.js';
 
-export const api = async (p, opts) => {
-  const r = await fetch(p, opts);
+// ---------------------------------------------------------------- API (with optional control PIN)
+const PIN_KEY = 'lumen.pin';
+export const getPin = () => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } };
+export const setPin = (v) => { try { localStorage.setItem(PIN_KEY, v); } catch {} };
+
+export const api = async (p, opts = {}) => {
+  const headers = { ...(opts.headers || {}) };
+  if ((opts.method || 'GET') !== 'GET' && getPin()) headers['x-lumen-pin'] = getPin();
+  const r = await fetch(p, { ...opts, headers });
   const body = await r.json().catch(() => ({}));
+  if (r.status === 401 && body.pin) {
+    const pin = prompt('Enter the control PIN for this Lumen server');
+    if (pin) { setPin(pin); return api(p, opts); }
+  }
   if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
   return body;
 };
+export const postJson = (p, body) => api(p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 // Language name (as listed by the Bible source) -> BCP-47 code for voices & speech recognition.
 export const LANG_CODES = {
@@ -24,6 +36,20 @@ export const LANG_CODES = {
 export const langCode = (language) => {
   const k = String(language || '').toLowerCase();
   return LANG_CODES[k] || LANG_CODES[k.split(/[\s(,]/)[0]] || '';
+};
+
+export const FONTS = {
+  '': 'Theme default',
+  'Playfair Display': 'Playfair Display (serif)',
+  'Lora': 'Lora (serif)',
+  'Merriweather': 'Merriweather (serif)',
+  'Noto Serif': 'Noto Serif (many languages)',
+  'Inter': 'Inter (sans)',
+  'Montserrat': 'Montserrat (sans)',
+  'Noto Sans': 'Noto Sans (many languages)',
+  'Oswald': 'Oswald (condensed)',
+  'Georgia': 'Georgia (system)',
+  'Arial': 'Arial (system)',
 };
 
 // ---------------------------------------------------------------- data
@@ -60,67 +86,156 @@ export async function passage(tr, ref) {
   return { reference: formatRef({ ...ref, verseStart: start, verseEnd: end }, name), translation: tr, dir: info.dir, lang: info.lang, verses: picked };
 }
 
+// ---------------------------------------------------------------- long-passage splitting
+// Words of a passage, each tagged with its verse number when it starts a verse.
+function wordsOf(verses) {
+  const out = [];
+  for (const v of verses) v.text.split(/\s+/).filter(Boolean).forEach((w, i) => out.push({ w, v: i === 0 ? v.verse : null }));
+  return out;
+}
+
+// Splits words into `n` screens of similar length, preferring breaks after punctuation.
+export function splitWords(words, n) {
+  if (n <= 1 || words.length < n * 3) return [words];
+  const lens = words.map((x) => x.w.length + 1);
+  const total = lens.reduce((a, b) => a + b, 0);
+  const cuts = [];
+  let acc = 0; const pos = []; // char offset after each word
+  lens.forEach((l) => { acc += l; pos.push(acc); });
+  for (let k = 1; k < n; k++) {
+    const ideal = (total * k) / n; const window = total / n * 0.45;
+    let best = -1, bestScore = Infinity;
+    for (let i = (cuts.at(-1) ?? -1) + 2; i < words.length - 1; i++) {
+      const d = Math.abs(pos[i] - ideal);
+      if (d > window) { if (pos[i] > ideal) break; else continue; }
+      // Distance from the ideal point plus a penalty for breaking mid-thought.
+      const punct = /[.;:!?]["'”’)]?$/.test(words[i].w) ? 0.2 : /[,—–]["'”’)]?$/.test(words[i].w) ? 0.5 : 1;
+      const verseStart = words[i + 1]?.v ? 0.1 : 1;
+      const score = d + Math.min(punct, verseStart) * (total / n) * 0.35;
+      if (score < bestScore) { bestScore = score; best = i; }
+    }
+    if (best < 0) best = pos.findIndex((p) => p >= ideal);
+    cuts.push(best);
+  }
+  const pages = []; let start = 0;
+  for (const c of cuts) { pages.push(words.slice(start, c + 1)); start = c + 1; }
+  pages.push(words.slice(start));
+  return pages.filter((p) => p.length);
+}
+
+// How many screens an item needs (decided once, from the main translation, so every channel stays in step).
+export async function paginate(item, state) {
+  if (item?.kind !== 'scripture' || !state.splitChars) return { ...item, pages: 1, page: item?.page || 0 };
+  try {
+    const p = await passage(state.translation, item.ref);
+    const len = p.verses.reduce((n, v) => n + v.text.length + 1, 0);
+    const pages = Math.max(1, Math.ceil(len / state.splitChars));
+    return { ...item, pages, page: Math.min(item.page || 0, pages - 1) };
+  } catch { return { ...item, pages: 1, page: 0 }; }
+}
+
 // Turn the shared "live" item into a concrete slide for one channel.
 export async function resolveSlide(item, channel, state) {
   if (!item) return { kind: 'blank' };
   if (item.kind === 'text') return { kind: 'text', title: item.title || '', body: item.body || '' };
+  if (item.kind === 'media') return { kind: 'media', url: item.url, mediaType: item.mediaType, name: item.name, fit: item.fit || 'contain', loop: item.loop !== false };
   if (item.kind !== 'scripture' || !item.ref) return { kind: 'blank' };
   const tr = channel?.translation || state.translation;
-  const slide = { kind: 'scripture', heading: item.heading || '' };
-  try { slide.primary = await passage(tr, item.ref); }
-  catch (e) {
-    slide.primary = { reference: formatRef(item.ref), translation: tr, verses: [], error: e.message };
-  }
+  const pages = item.pages || 1; const page = Math.min(item.page || 0, pages - 1);
+  const slide = { kind: 'scripture', heading: item.heading || '', pages, page, highlight: item.highlight || [] };
+  const cut = (p) => { p.words = splitWords(wordsOf(p.verses), pages)[page] || []; return p; };
+  try { slide.primary = cut(await passage(tr, item.ref)); }
+  catch (e) { slide.primary = { reference: formatRef(item.ref), translation: tr, verses: [], words: [], error: e.message }; }
   if (channel?.secondary && channel.secondary !== tr) {
-    try { slide.secondary = await passage(channel.secondary, item.ref); } catch { /* optional */ }
+    try { slide.secondary = cut(await passage(channel.secondary, item.ref)); } catch { /* optional */ }
   }
   return slide;
 }
 export const slideKey = (item, channel, state) => JSON.stringify([
-  item?.kind, refKey(item?.ref), item?.title, item?.body, channel?.translation || state.translation, channel?.secondary,
+  item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.fit, item?.page, item?.pages, item?.highlight,
+  channel?.translation || state.translation, channel?.secondary,
 ]);
 
 // ---------------------------------------------------------------- rendering
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export const normWord = (w) => String(w).toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]/gu, '');
 
-function verseHtml(p, showNumbers) {
-  if (p.error && !p.verses.length) return `<span class="err">${esc(p.reference)} — not available in ${esc(p.translation)}</span>`;
-  return p.verses.map((v) => (showNumbers || p.verses.length > 1 ? `<sup>${v.verse}</sup>` : '') + esc(v.text)).join(' ');
+function wordsHtml(p, showNumbers, highlight) {
+  if (p.error && !p.words.length) return `<span class="err">${esc(p.reference)} — not available in ${esc(p.translation)}</span>`;
+  const hl = new Set((highlight || []).map(normWord));
+  const multi = p.verses.length > 1;
+  return p.words.map((x) => {
+    const num = x.v && (showNumbers || multi) ? `<sup>${x.v}</sup>` : '';
+    const word = hl.has(normWord(x.w)) ? `<mark class="hl">${esc(x.w)}</mark>` : esc(x.w);
+    return num + word;
+  }).join(' ');
 }
 
-// Builds the DOM for a slide inside `layer`. `opts.overlay` = black/clear/logo flags.
+function backgroundHtml(channel, mode) {
+  if (mode === 'alpha' || mode === 'chroma') return '';
+  const b = channel.background;
+  if (!b) return '';
+  const fit = channel.bgFit === 'contain' ? 'contain' : 'cover';
+  return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(b)
+    ? `<video class="bg-media" src="${esc(b)}" style="object-fit:${fit}" autoplay muted loop playsinline></video>`
+    : `<div class="bg-media" style="background-image:url('${esc(b)}');background-size:${fit}"></div>`;
+}
+
+function styleVars(el, channel) {
+  const set = (k, v) => el.style.setProperty(k, v);
+  if (channel.textColor) set('--text', channel.textColor);
+  set('--scale', channel.fontScale || 1);
+  if (channel.fontFamily) set('--font', `'${channel.fontFamily}', Georgia, sans-serif`);
+  set('--outline', `${(Number(channel.outline) || 0) * 0.03}`);
+  set('--shadow', `${(Number(channel.shadow ?? 5)) / 10}`);
+  set('--lh', channel.lineHeight || 1.28);
+  set('--bg-blur', `${Number(channel.bgBlur) || 0}`);
+  set('--bg-bright', `${(Number(channel.bgBrightness) || 100) / 100}`);
+  set('--bg-dim', `${(Number(channel.bgDim) || 0) / 100}`);
+  set('--bg-tint', channel.bgTint || '#000');
+  set('--bg-tint-amt', `${(Number(channel.bgTintAmount) || 0) / 100}`);
+}
+
+// Builds the DOM for a slide. `opts` = { black, clear, logo, nextLabel, preview }.
 export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
   const mode = channel.mode || 'full';
-  const el = document.createElement('div');
-  const transparent = mode === 'alpha';
-  el.className = `slide mode-${mode} theme-${channel.theme || 'aurora'} align-${channel.align || 'center'}`;
-  if (transparent) el.classList.add('transparent');
-  if (channel.textColor) el.style.setProperty('--text', channel.textColor);
-  el.style.setProperty('--scale', channel.fontScale || 1);
-  const bg = channel.background && mode !== 'alpha' && mode !== 'chroma'
-    ? (/\.(mp4|webm|mov)(\?|$)/i.test(channel.background)
-      ? `<video class="bg-media" src="${esc(channel.background)}" autoplay muted loop playsinline></video>`
-      : `<div class="bg-media" style="background-image:url('${esc(channel.background)}')"></div>`)
-    : '';
+  const overlay = mode === 'lower' || mode === 'chroma' || mode === 'alpha';
   const isStage = mode === 'stage' || mode === 'confidence';
+  const el = document.createElement('div');
+  el.className = `slide mode-${mode} theme-${channel.theme || 'aurora'} align-${channel.align || 'center'}`;
+  if (mode === 'alpha') el.classList.add('transparent');
+  if (channel.uppercase) el.classList.add('upper');
+  if (channel.fontFamily) el.classList.add('custom-font');
+  if (Number(channel.outline) > 0) el.classList.add('outlined');
+  styleVars(el, channel);
 
-  if (opts.black && !isStage) { el.classList.add('is-black'); el.innerHTML = ''; return el; }
+  if (opts.black && !isStage) { el.classList.add('is-black'); return el; }
 
   let body = '';
+  let media = '';
   if (opts.logo && !isStage) {
     body = `<div class="logo"><div class="logo-mark">✦</div><div class="logo-text">${esc(state.logoText || '')}</div></div>`;
   } else if (opts.clear || slide.kind === 'blank') {
     body = '';
+  } else if (slide.kind === 'media') {
+    if (isStage) body = `<div class="box"><div class="title fit">🎬 ${esc(slide.name || 'Media')}</div></div>`;
+    else if (!overlay && channel.showMedia !== false) {
+      const fit = slide.fit === 'cover' ? 'cover' : 'contain';
+      media = slide.mediaType === 'video'
+        ? `<video class="live-media" src="${esc(slide.url)}" style="object-fit:${fit}" autoplay playsinline ${slide.loop ? 'loop' : ''} ${channel.mediaAudio && !opts.preview ? '' : 'muted'}></video>`
+        : `<img class="live-media" src="${esc(slide.url)}" style="object-fit:${fit}" alt="">`;
+    }
   } else if (slide.kind === 'text') {
     body = `<div class="box"><div class="title fit">${esc(slide.title)}</div>${slide.body ? `<div class="subtitle">${esc(slide.body)}</div>` : ''}</div>`;
   } else if (slide.kind === 'scripture') {
     const p = slide.primary, s = slide.secondary;
-    const ref = channel.showReference !== false ? `<div class="ref">${esc(p.reference)}<span class="tr">${esc(p.translation)}</span></div>` : '';
-    const sec = s ? `<div class="secondary" dir="${s.dir || 'auto'}" lang="${esc(s.lang)}">${verseHtml(s, channel.showVerseNumbers)}<div class="ref small">${esc(s.reference)}<span class="tr">${esc(s.translation)}</span></div></div>` : '';
+    const pageTag = slide.pages > 1 ? `<span class="pg">${slide.page + 1}/${slide.pages}</span>` : '';
+    const ref = channel.showReference !== false ? `<div class="ref">${esc(p.reference)}<span class="tr">${esc(p.translation)}</span>${pageTag}</div>` : '';
+    const sec = s ? `<div class="secondary" dir="${s.dir || 'auto'}" lang="${esc(s.lang)}">${wordsHtml(s, channel.showVerseNumbers, slide.highlight)}<div class="ref small">${esc(s.reference)}<span class="tr">${esc(s.translation)}</span></div></div>` : '';
     body = `<div class="box${s ? ' parallel' : ''}">
-      <div class="verse fit" dir="${p.dir || 'auto'}" lang="${esc(p.lang)}">${verseHtml(p, channel.showVerseNumbers)}</div>
-      ${sec}${mode === 'lower' || mode === 'chroma' || mode === 'alpha' ? '' : ref}
-    </div>${mode === 'lower' || mode === 'chroma' || mode === 'alpha' ? ref : ''}`;
+      <div class="verse fit" dir="${p.dir || 'auto'}" lang="${esc(p.lang)}">${wordsHtml(p, channel.showVerseNumbers, slide.highlight)}</div>
+      ${sec}${overlay ? '' : ref}
+    </div>${overlay ? ref : ''}`;
   }
 
   if (isStage) {
@@ -130,7 +245,8 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
     el.innerHTML = `<div class="stage-bar"><div class="clock" data-clock></div><div class="status s-${status.toLowerCase()}">${status}</div></div>
       ${msg}<div class="stage-body">${body}</div>${next}`;
   } else {
-    el.innerHTML = `<div class="bg">${bg}</div><div class="frame">${body}</div>`;
+    el.innerHTML = `<div class="bg"><div class="bg-layer">${backgroundHtml(channel, mode)}</div><div class="bg-tint"></div><div class="bg-dim"></div></div>`
+      + (media ? `<div class="media-layer">${media}</div>` : `<div class="frame">${body}</div>`);
   }
   return el;
 }
@@ -142,11 +258,11 @@ export function fitSlide(el) {
   const fit = el.querySelector('.fit');
   if (!frame || !box || !fit) return;
   const base = el.classList.contains('mode-lower') || el.classList.contains('mode-chroma') || el.classList.contains('mode-alpha') ? 3.2 : 5.6;
-  let lo = 1.2, hi = base, best = lo;
   const cs = getComputedStyle(frame);
   const availH = frame.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   const availW = frame.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const fits = () => box.scrollHeight <= availH * 0.98 && box.scrollWidth <= availW * 1.01;
+  let lo = 1.2, hi = base, best = lo;
   for (let i = 0; i < 12; i++) {
     const mid = (lo + hi) / 2;
     fit.style.fontSize = `calc(var(--u) * ${mid} * var(--scale))`;
@@ -172,8 +288,9 @@ export function show(host, el, transition = 'fade') {
   el.querySelectorAll('[data-clock]').forEach(tickClock);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     el.classList.remove('entering');
-    if (transition === 'cut') old.forEach((o) => o.remove());
-    else old.forEach((o) => { o.classList.add('leaving'); setTimeout(() => o.remove(), 600); });
+    const drop = (o) => { o.querySelectorAll('video').forEach((v) => { v.pause(); v.removeAttribute('src'); v.load(); }); o.remove(); };
+    if (transition === 'cut') old.forEach(drop);
+    else old.forEach((o) => { o.classList.add('leaving'); setTimeout(() => drop(o), 600); });
   }));
 }
 

@@ -164,3 +164,31 @@ textarea { resize: vertical; }
   .verses-panel { max-height: 70vh; }
 }
 @media (max-width: 560px) { .quick .ghost { display: none; } .top-actions { flex-wrap: wrap; } .panel-head { flex-wrap: wrap; } }
+
+/* live tools, highlights, media */
+.live-tools { display: flex; gap: 12px; margin-top: 6px; }
+.live-tools:has([hidden] + [hidden]) { display: none; }
+.word-strip { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 2px 3px; max-height: 64px; overflow: auto; font-size: 12px; }
+.word-strip:empty { display: none; }
+.word-strip span { padding: 1px 4px; border-radius: 4px; cursor: pointer; color: var(--muted); }
+.word-strip span:hover { background: var(--panel2); color: var(--text); }
+.word-strip span.on { background: rgba(255,210,122,.2); color: var(--accent2); }
+.drop { border: 1.5px dashed var(--line2); border-radius: 12px; padding: 18px; text-align: center; cursor: pointer; display: flex; flex-direction: column; gap: 4px; color: var(--text); font-size: 14px; margin-bottom: 8px; }
+.drop.over { border-color: var(--accent); background: rgba(139,123,255,.08); }
+.media-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.media-item { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0f1222; }
+.media-item .thumb { aspect-ratio: 16/9; background: #000 center/cover no-repeat; position: relative; }
+.media-item .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.media-item .thumb .kind { position: absolute; left: 6px; top: 6px; font-size: 10px; background: rgba(0,0,0,.6); padding: 1px 6px; border-radius: 5px; }
+.media-item .name { font-size: 11px; padding: 4px 8px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.media-item .acts { display: flex; gap: 4px; padding: 6px; flex-wrap: wrap; }
+.media-item .acts select { width: auto; flex: 1; padding: 3px 4px; font-size: 11px; border-radius: 6px; }
+.ch-body h5 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent2); }
+.ch-body .ndi { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
+.small-dialog { width: min(440px, 92vw); }
+.screen-list { display: flex; flex-direction: column; gap: 8px; }
+.screen-list button { text-align: left; padding: 12px; border-radius: 10px; border: 1px solid var(--line2); background: var(--panel2); cursor: pointer; }
+.screen-list button:hover { border-color: var(--accent); }
+.screen-list small { color: var(--muted); display: block; }
+.pg-badge { font-size: 11px; color: var(--accent2); margin-left: 6px; }
+[hidden] { display: none !important; }

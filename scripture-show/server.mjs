@@ -7,7 +7,8 @@
 
 import http from 'node:http';
 import fs from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, createReadStream, createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +21,8 @@ const DATA = process.env.DATA_DIR || path.join(here, 'data');
 const CACHE = path.join(DATA, 'cache');
 const BIBLES = path.join(DATA, 'bibles');
 const BUILTIN_BIBLES = path.join(here, 'bibles');
+const MEDIA = path.join(DATA, 'media');
+const CONTROL_PIN = process.env.CONTROL_PIN || '';
 const PORT = Number(process.env.PORT || 4848);
 const UPSTREAM = process.env.BIBLE_API || 'https://bolls.life';
 const AI_MODEL = process.env.AI_MODEL || 'claude-opus-5-5';
@@ -27,6 +30,7 @@ const CHANNEL_COUNT = Math.max(6, Number(process.env.CHANNELS || 8));
 
 await fs.mkdir(CACHE, { recursive: true });
 await fs.mkdir(BIBLES, { recursive: true });
+await fs.mkdir(MEDIA, { recursive: true });
 
 // ---------------------------------------------------------------- show state
 const THEMES = ['aurora', 'midnight', 'sunrise', 'forest', 'ocean', 'paper', 'black'];
@@ -46,6 +50,22 @@ const defaultChannel = (i) => ({
   showReference: true,
   showVerseNumbers: false,
   transition: 'fade',
+  // text style
+  fontFamily: '',             // '' = theme default
+  outline: 0,                 // text outline width (0-10)
+  shadow: 5,                  // text shadow strength (0-10)
+  uppercase: false,
+  lineHeight: 1.28,
+  // background edits
+  bgFit: 'cover',             // cover | contain
+  bgBlur: 0,                  // 0-30
+  bgDim: 0,                   // 0-90 (% black overlay)
+  bgBrightness: 100,          // 30-150 (%)
+  bgTint: '#000000',
+  bgTintAmount: 0,            // 0-80 (%)
+  // media
+  showMedia: i !== 1 && i !== 3,   // lower-third/overlay channels skip full-screen media
+  mediaAudio: i === 0,             // only one screen should play video sound
 });
 
 let state = {
@@ -58,6 +78,7 @@ let state = {
   logo: false,
   logoText: 'Welcome',
   stageMessage: '',
+  splitChars: 240,   // split long passages into screens of ~N characters (0 = never split)
   service: [],       // playlist items
   channels: Array.from({ length: CHANNEL_COUNT }, (_, i) => defaultChannel(i)),
 };
@@ -81,13 +102,6 @@ function persist() {
 }
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
-function merge(target, patch) {
-  for (const [k, v] of Object.entries(patch)) {
-    if (isObj(v) && isObj(target[k])) merge(target[k], v);
-    else target[k] = v;
-  }
-  return target;
-}
 
 const sseClients = new Set();
 function broadcast() {
@@ -100,7 +114,7 @@ setInterval(() => { for (const res of sseClients) res.write(': ping\n\n'); }, 25
 
 function sanitizePatch(p) {
   const out = {};
-  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service']) if (k in p) out[k] = p[k];
+  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd']) if (k in p) out[k] = p[k];
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
       const n = p.channels.find((x) => Number(x.id) === c.id) || p.channels[i];
@@ -354,6 +368,36 @@ For title slides set book, chapter, verse_start, verse_end to 0. Book numbering:
 }
 
 // ---------------------------------------------------------------- http
+const MEDIA_TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif',
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime' };
+async function listMedia() {
+  const files = await fs.readdir(MEDIA).catch(() => []);
+  const out = [];
+  for (const f of files) {
+    const type = MEDIA_TYPES[path.extname(f).toLowerCase()];
+    if (!type) continue;
+    const st = await fs.stat(path.join(MEDIA, f));
+    out.push({ name: f, url: `/media/${encodeURIComponent(f)}`, type: type.startsWith('video') ? 'video' : 'image', size: st.size, added: st.mtimeMs });
+  }
+  return out.sort((a, b) => b.added - a.added);
+}
+
+// Streams a file with HTTP Range support (needed for video seeking).
+async function serveFile(req, res, file, type) {
+  const st = await fs.stat(file);
+  const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range || '');
+  const headers = { 'content-type': type, 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=3600', 'access-control-allow-origin': '*' };
+  if (range) {
+    const start = range[1] ? Number(range[1]) : Math.max(0, st.size - Number(range[2]));
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), st.size - 1) : st.size - 1;
+    if (start >= st.size) { res.writeHead(416, { 'content-range': `bytes */${st.size}` }); return res.end(); }
+    res.writeHead(206, { ...headers, 'content-range': `bytes ${start}-${end}/${st.size}`, 'content-length': end - start + 1 });
+    return pipeline(createReadStream(file, { start, end }), res).catch(() => {});
+  }
+  res.writeHead(200, { ...headers, 'content-length': st.size });
+  return pipeline(createReadStream(file), res).catch(() => {});
+}
+
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
 const send = (res, code, body, type = 'application/json') => {
@@ -369,14 +413,15 @@ async function readBody(req, limit = 60e6) {
 }
 
 function lanUrls() {
-  return Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => `http://${i.address}:${PORT}`);
+  return Object.values(os.networkInterfaces()).flat().filter((i) => i && i.family === 'IPv4' && !i.internal).map((i) => `http://${i.address}:${listenPort}`);
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
   try {
-    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type', 'access-control-allow-methods': 'GET,POST' }); return res.end(); }
+    if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, x-lumen-pin, x-filename', 'access-control-allow-methods': 'GET,POST' }); return res.end(); }
+    if (req.method === 'POST' && CONTROL_PIN && req.headers['x-lumen-pin'] !== CONTROL_PIN) return send(res, 401, { error: 'PIN required', pin: true });
 
     if (p === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'access-control-allow-origin': '*' });
@@ -387,11 +432,36 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/state' && req.method === 'GET') return send(res, 200, state);
     if (p === '/api/state' && req.method === 'POST') {
-      merge(state, sanitizePatch(await readBody(req)));
+      Object.assign(state, sanitizePatch(await readBody(req))); // top-level keys are replaced whole
       broadcast();
       return send(res, 200, { ok: true, version: state.version });
     }
-    if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: PORT, channels: state.channels.length, themes: THEMES, modes: MODES });
+    if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN });
+    if (p === '/api/pin' && req.method === 'POST') return send(res, 200, { ok: true }); // PIN already checked above
+
+    if (p === '/api/media' && req.method === 'GET') return send(res, 200, await listMedia());
+    if (p === '/api/media' && req.method === 'POST') {
+      const original = decodeURIComponent(String(req.headers['x-filename'] || 'upload'));
+      const ext = path.extname(original).toLowerCase();
+      if (!MEDIA_TYPES[ext]) return send(res, 415, { error: 'Use an image (png, jpg, gif, webp, avif) or video (mp4, webm, mov).' });
+      const base = safe(path.basename(original, path.extname(original))).slice(0, 60) || 'media';
+      let name = base + ext; let n = 1;
+      while (existsSync(path.join(MEDIA, name))) name = `${base}-${++n}${ext}`;
+      await pipeline(req, createWriteStream(path.join(MEDIA, name)));
+      return send(res, 200, (await listMedia()).find((m) => m.name === name));
+    }
+    if (p === '/api/media/delete' && req.method === 'POST') {
+      const { name } = await readBody(req);
+      const file = path.join(MEDIA, path.basename(String(name || '')));
+      if (file.startsWith(MEDIA + path.sep)) await fs.unlink(file).catch(() => {});
+      return send(res, 200, { ok: true });
+    }
+    if (p.startsWith('/media/')) {
+      const name = path.basename(decodeURIComponent(p.slice(7)));
+      const type = MEDIA_TYPES[path.extname(name).toLowerCase()];
+      if (!type) return send(res, 404, 'not found', 'text/plain');
+      return await serveFile(req, res, path.join(MEDIA, name), type);
+    }
     if (p === '/api/translations') return send(res, 200, await getTranslations());
 
     let m;
@@ -426,6 +496,7 @@ const server = http.createServer(async (req, res) => {
     let file = path.normalize(path.join(PUBLIC, p === '/' ? 'index.html' : p));
     if (!file.startsWith(PUBLIC)) return send(res, 403, 'forbidden', 'text/plain');
     if (p === '/output' || p === '/stage') file = path.join(PUBLIC, 'output.html');
+    if (p === '/remote') file = path.join(PUBLIC, 'remote.html');
     const data = await fs.readFile(file);
     res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' });
     res.end(data);
@@ -436,9 +507,21 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n  Lumen Scripture Show  →  http://localhost:${PORT}`);
-  for (const u of lanUrls()) console.log(`  On your network       →  ${u}`);
-  console.log(`  Output channels       →  ${state.channels.length}  (e.g. http://localhost:${PORT}/output.html?ch=1)`);
-  console.log(`  AI assist             →  ${aiEnabled ? 'on (' + AI_MODEL + ')' : 'off — set ANTHROPIC_API_KEY to enable'}\n`);
+// Listen on PORT; if it is taken, try the next few ports. `ready` resolves with the port in use.
+let listenPort = PORT;
+export const ready = new Promise((resolve, reject) => {
+  let tries = 0;
+  server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE' && tries++ < 10) { listenPort++; server.listen(listenPort, '0.0.0.0'); }
+    else reject(e);
+  });
+  server.on('listening', () => {
+    console.log(`\n  Lumen Scripture Show  →  http://localhost:${listenPort}`);
+    for (const u of lanUrls()) console.log(`  On your network       →  ${u}   (phone remote: ${u}/remote)`);
+    console.log(`  Output channels       →  ${state.channels.length}  (e.g. http://localhost:${listenPort}/output.html?ch=1)`);
+    console.log(`  AI assist             →  ${aiEnabled ? 'on (' + AI_MODEL + ')' : 'off — set ANTHROPIC_API_KEY to enable'}`);
+    console.log(`  Control PIN           →  ${CONTROL_PIN ? 'required' : 'off (set CONTROL_PIN to protect the console)'}\n`);
+    resolve(listenPort);
+  });
+  server.listen(listenPort, '0.0.0.0');
 });

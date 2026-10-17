@@ -56,6 +56,11 @@
             <select id="liveMonitorCh" class="mini-select" title="Which channel to monitor"></select>
             <span id="liveLabel" class="muted"></span></figcaption>
           <div class="stage-host screen"><iframe id="liveFrame" title="Live output"></iframe></div>
+          <div class="live-tools">
+            <div id="pageCtl" class="row small" hidden><button class="btn ghost sm" id="pgPrev">‹</button><span id="pgLabel"></span><button class="btn ghost sm" id="pgNext">›</button></div>
+            <div id="mediaCtl" class="row small" hidden><button class="btn ghost sm" id="mPlay">⏯ Play/Pause</button><button class="btn ghost sm" id="mRestart">⏮ Restart</button></div>
+          </div>
+          <div id="wordStrip" class="word-strip" title="Click words to highlight them on screen"></div>
         </figure>
       </div>
 
@@ -78,7 +83,8 @@
     <aside class="panel side">
       <nav class="tabs" id="sideTabs">
         <button data-tab="channels" class="on">Outputs</button>
-        <button data-tab="ai">AI &amp; Voice</button>
+        <button data-tab="ai">AI · Voice</button>
+        <button data-tab="media">Media</button>
         <button data-tab="service">Service</button>
         <button data-tab="settings">Settings</button>
       </nav>
@@ -124,6 +130,17 @@
         </div>
       </div>
 
+      <div class="tab-body" data-body="media" hidden>
+        <label id="dropZone" class="drop">
+          <input type="file" id="mediaFile" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden>
+          <b>Drop images or videos here</b><span class="muted small">or click to upload · use them as backgrounds or show them full screen</span>
+        </label>
+        <div id="uploadStatus" class="muted small"></div>
+        <div class="row between"><h4>Library</h4>
+          <label class="inline small">Fit <select id="mediaFit" class="mini-select"><option value="contain">contain</option><option value="cover">fill</option></select></label></div>
+        <div id="mediaGrid" class="media-grid"></div>
+      </div>
+
       <div class="tab-body" data-body="service" hidden>
         <div class="row between"><h3 id="serviceTitle">Service</h3>
           <div class="row"><button class="btn ghost sm" id="svcPrev" title="Previous item (PgUp)">‹</button><button class="btn ghost sm" id="svcNext" title="Next item live (PgDn)">›</button><button class="btn ghost sm" id="svcClear">Clear</button></div></div>
@@ -140,6 +157,12 @@
           <label>Message to stage displays<div class="row"><input id="stageMsg" placeholder="e.g. 5 minutes left"><button class="btn ghost sm" id="stageSend">Send</button><button class="btn ghost sm" id="stageClear">Clear</button></div></label>
         </div>
         <div class="card">
+          <h3>Long passages</h3>
+          <label>Split into screens of about <b id="splitLabel"></b> characters
+            <input type="range" id="splitChars" min="0" max="600" step="20"></label>
+          <p class="muted small">Long verses and ranges are split into several screens; → and ← page through them. 0 turns splitting off (text shrinks to fit instead).</p>
+        </div>
+        <div class="card">
           <h3>Import a Bible</h3>
           <p class="muted small">Add any translation you own (works offline). JSON formats: <code>{books:{43:{3:{16:"…"}}}}</code>, <code>[{book,chapter,verse,text}]</code>, or scrollmapper.</p>
           <div class="grid2">
@@ -152,7 +175,7 @@
         </div>
         <div class="card">
           <h3>Connect screens</h3>
-          <p class="muted small">Open these URLs on any device on your network, or add them as a Browser Source in OBS / vMix (use an “Alpha” channel for transparent overlays).</p>
+          <p class="muted small">Open these URLs on any device on your network, or add them as a Browser Source in OBS / vMix (use an “Alpha” channel for transparent overlays). The phone remote is at <b>/remote</b>. Start the server with <code>CONTROL_PIN=1234</code> to require a PIN for control.</p>
           <div id="lanInfo" class="mono small"></div>
         </div>
         <div class="card">
@@ -172,6 +195,11 @@
     <input id="trSearch" placeholder="Search language or translation (e.g. Spanish, NIV, 한국어)…">
     <div id="trRecent" class="chips"></div>
     <div id="trList" class="tr-list"><p class="muted">Loading translations…</p></div>
+  </dialog>
+
+  <dialog id="screenDialog" class="dialog small-dialog">
+    <div class="row between"><h3 id="screenTitle">Open on screen</h3><button class="icon-btn" id="screenClose">✕</button></div>
+    <div id="screenList" class="screen-list"></div>
   </dialog>
 
   <div id="toast" class="toast"></div>

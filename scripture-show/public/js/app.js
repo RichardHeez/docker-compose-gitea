@@ -1,6 +1,7 @@
 // Operator console.
 import { BOOKS, bookById, formatRef, parseReferences, refKey } from './books.js';
-import { api, autoScale, bookName, books, buildSlide, chapter, langCode, passage, resolveSlide, show, translationInfo, translations } from './render.js';
+import { FONTS, api, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
+import * as control from './control.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -18,7 +19,9 @@ function toast(msg, err) {
   const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : '');
   clearTimeout(toast.t); toast.t = setTimeout(() => { t.className = 'toast'; }, 2600);
 }
-const push = (patch) => api('/api/state', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) }).catch((e) => toast(e.message, true));
+const push = (patch) => control.push(patch).catch((e) => toast(e.message, true));
+const desktop = window.lumenDesktop || null; // present when running inside the desktop app
+let mediaList = [];
 
 // ---------------------------------------------------------------- state sync
 function connect() {
@@ -30,6 +33,7 @@ function connect() {
     if (!prev || JSON.stringify(prev.channels) !== JSON.stringify(S.channels)) renderChannels();
     if (!prev || JSON.stringify(prev.service) !== JSON.stringify(S.service)) renderService();
     if (!prev || JSON.stringify(prev.live) !== JSON.stringify(S.live)) onLiveChanged(prev?.live);
+    if (!prev || prev.splitChars !== S.splitChars) { $('#splitChars').value = S.splitChars; $('#splitLabel').textContent = S.splitChars || 'off —'; }
     renderOverlayButtons();
   });
   es.onerror = () => toast('Reconnecting to server…', true);
@@ -163,6 +167,8 @@ autoScale(previewHost);
 async function itemLabel(item) {
   if (!item) return '';
   if (item.kind === 'text') return item.title;
+  if (item.kind === 'media') return `${item.mediaType === 'video' ? '🎬' : '🖼'} ${item.name}`;
+  if (!item.ref) return '';
   return formatRef(item.ref, await bookName(S.translation, item.ref.book));
 }
 
@@ -170,61 +176,50 @@ async function setPreview(item) {
   preview = item;
   const ch = S.channels.find((c) => c.id === Number($('#liveMonitorCh').value)) || S.channels[0];
   const cfg = { ...ch, mode: ch.mode === 'stage' || ch.mode === 'confidence' ? 'full' : ch.mode };
-  $('#previewLabel').textContent = await itemLabel(item);
-  const slide = await resolveSlide(item, cfg, S);
+  const paged = await paginate(item, S);
+  $('#previewLabel').innerHTML = esc(await itemLabel(item)) + (paged.pages > 1 ? `<span class="pg-badge">${paged.pages} screens</span>` : '');
+  const slide = await resolveSlide(paged, cfg, S);
   if (preview !== item) return;
-  show(previewHost, buildSlide(slide, cfg, S, {}), 'cut');
-}
-
-function nextOf(item) {
-  if (!item) return null;
-  const i = S.service.findIndex((s) => JSON.stringify(s) === JSON.stringify(item));
-  if (i >= 0 && S.service[i + 1]) return S.service[i + 1];
-  if (item.kind === 'scripture') {
-    const r = item.ref; const len = (r.verseEnd || r.verseStart || 1) - (r.verseStart || 1);
-    const start = (r.verseEnd || r.verseStart || 1) + 1;
-    return { kind: 'scripture', ref: { ...r, verseStart: start, verseEnd: start + len } };
-  }
-  return null;
+  show(previewHost, buildSlide(slide, cfg, S, { preview: true }), 'cut');
 }
 
 function goLive(item = preview) {
   if (!item) return toast('Nothing in preview — pick a verse first');
-  push({ live: item, next: nextOf(item), black: false, clear: false, logo: false });
+  control.goLive(S, item).catch((e) => toast(e.message, true));
+}
+
+// Keep the verse list following whatever is live.
+function follow(item) {
+  if (item?.kind !== 'scripture') return;
+  const r = item.ref;
+  if (r.book !== view.book || r.chapter !== view.chapter) loadChapter(r.book, r.chapter, { select: [r.verseStart, r.verseEnd] });
+  else { view.sel = [r.verseStart, r.verseEnd]; renderVerses(); }
 }
 
 async function stepLive(delta) {
-  const live = S.live;
-  if (live?.kind !== 'scripture') return;
-  const r = live.ref;
-  const s = r.verseStart || 1; const e = r.verseEnd || s; const len = e - s + 1;
-  let ns = s + delta * len;
-  let ref = { ...r, verseStart: ns, verseEnd: ns + len - 1 };
-  try {
-    const verses = await chapter(S.translation, r.book, r.chapter);
-    const max = verses.length ? verses[verses.length - 1].verse : 999;
-    if (ns > max) { // roll into next chapter
-      const b = bookById(r.book); if (r.chapter >= b.chapters) return;
-      ref = { book: r.book, chapter: r.chapter + 1, verseStart: 1, verseEnd: len };
-    } else if (ns < 1) {
-      if (r.chapter <= 1) return;
-      const pv = await chapter(S.translation, r.book, r.chapter - 1);
-      const last = pv[pv.length - 1]?.verse || 1;
-      ref = { book: r.book, chapter: r.chapter - 1, verseStart: Math.max(1, last - len + 1), verseEnd: last };
-    } else ref.verseEnd = Math.min(ref.verseEnd, max);
-  } catch {}
-  const item = { kind: 'scripture', ref };
-  goLive(item);
-  if (ref.book !== view.book || ref.chapter !== view.chapter) loadChapter(ref.book, ref.chapter, { select: [ref.verseStart, ref.verseEnd] });
-  else { view.sel = [ref.verseStart, ref.verseEnd]; }
-  setPreview(item);
+  const item = await control.step(S, delta).catch((e) => toast(e.message, true));
+  if (item && !(item.pages > 1 && control.sameItem(item, S.live))) { follow(item); setPreview(item); }
 }
 
 async function onLiveChanged(prev) {
-  $('#liveLabel').textContent = await itemLabel(S.live);
+  const live = S.live;
+  $('#liveLabel').textContent = await itemLabel(live);
   renderVerses();
   renderService();
-  if (S.live && JSON.stringify(prev) !== JSON.stringify(S.live) && $('#autoSpeak').checked) speakItem(S.live);
+  // page controls for split passages
+  $('#pageCtl').hidden = !(live?.pages > 1);
+  if (live?.pages > 1) $('#pgLabel').textContent = `Screen ${live.page + 1} of ${live.pages}`;
+  $('#mediaCtl').hidden = !(live?.kind === 'media' && live.mediaType === 'video');
+  // clickable words of what is on screen, for highlighting
+  if (live?.kind === 'scripture') {
+    passage(S.translation, live.ref).then((p) => {
+      const words = splitWords(p.verses.flatMap((v) => v.text.split(/\s+/).filter(Boolean).map((w) => ({ w }))), live.pages || 1)[live.page || 0] || [];
+      const hl = new Set((live.highlight || []).map(normWord));
+      $('#wordStrip').innerHTML = words.map((x) => `<span data-w="${esc(x.w)}" class="${hl.has(normWord(x.w)) ? 'on' : ''}">${esc(x.w)}</span>`).join('');
+    }).catch(() => { $('#wordStrip').innerHTML = ''; });
+  } else $('#wordStrip').innerHTML = '';
+  if (control.sameItem(prev, live)) return; // only a page/highlight change
+  if (live && $('#autoSpeak').checked) speakItem(live);
 }
 
 function renderOverlayButtons() {
@@ -253,38 +248,68 @@ const MODE_LABELS = { full: 'Full screen', lower: 'Lower third', stage: 'Stage d
 const THEMES = ['aurora', 'midnight', 'sunrise', 'forest', 'ocean', 'paper', 'black'];
 const openCh = new Set(store.get('openCh', []));
 
+const sel = (k, value, options) => `<select data-k="${k}">${options.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+const range = (k, value, min, max, step = 1) => `<input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${value}">`;
+const check = (k, on, label) => `<label class="check"><input type="checkbox" data-k="${k}" ${on ? 'checked' : ''}> ${label}</label>`;
+
 function renderChannels() {
   $('#chCount').textContent = `${S.channels.length} output channels`;
   const focused = document.activeElement?.closest?.('.ch');
   if (focused && $('#channels').contains(focused) && document.activeElement.matches('input[type=text],input:not([type]),input[type=url]')) return; // don't clobber typing
-  $('#channels').innerHTML = S.channels.map((c) => `
+  const bgOptions = [['', 'Theme only'], ...mediaList.map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`])];
+  $('#channels').innerHTML = S.channels.map((c) => {
+    const custom = c.background && !mediaList.some((m) => m.url === c.background);
+    return `
     <div class="ch ${c.enabled ? '' : 'off'} ${openCh.has(c.id) ? 'open' : ''}" data-id="${c.id}">
       <div class="ch-head" data-toggle>
         <span class="ch-num">${c.id}</span>
-        <span class="ch-name"><b>${esc(c.name)}</b><span>${MODE_LABELS[c.mode] || c.mode} · ${esc(c.translation || S.translation)}${c.secondary ? ' + ' + esc(c.secondary) : ''}</span></span>
+        <span class="ch-name"><b>${esc(c.name)}</b><span>${MODE_LABELS[c.mode] || c.mode} · ${esc(c.translation || S.translation)}${c.secondary ? ' + ' + esc(c.secondary) : ''}${ndiOn.has(c.id) ? ' · NDI' : ''}</span></span>
         <button class="btn ghost sm" data-act="open" title="Open output window">Open</button>
         <label class="switch" title="Enabled" onclick="event.stopPropagation()"><input type="checkbox" data-k="enabled" ${c.enabled ? 'checked' : ''}><span></span></label>
       </div>
       <div class="ch-body">
         <label class="full">Name<input data-k="name" value="${esc(c.name)}"></label>
-        <label>Layout<select data-k="mode">${Object.entries(MODE_LABELS).map(([k, v]) => `<option value="${k}" ${k === c.mode ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
-        <label>Theme<select data-k="theme">${THEMES.map((t) => `<option ${t === c.theme ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        <label>Layout${sel('mode', c.mode, Object.entries(MODE_LABELS))}</label>
+        <label>Theme${sel('theme', c.theme, THEMES.map((t) => [t, t]))}</label>
         <label>Translation<select data-k="translation" data-val="${esc(c.translation)}"><option value="">Follow main (${esc(S.translation)})</option>${trOptionsHtml}</select></label>
         <label>Parallel translation<select data-k="secondary" data-val="${esc(c.secondary)}"><option value="">None</option>${trOptionsHtml}</select></label>
-        <label>Text size <input type="range" data-k="fontScale" min="0.5" max="1.6" step="0.05" value="${c.fontScale}"></label>
-        <label>Align<select data-k="align"><option ${c.align === 'center' ? 'selected' : ''}>center</option><option ${c.align === 'left' ? 'selected' : ''}>left</option></select></label>
-        <label class="full">Background image / video URL<input type="url" data-k="background" value="${esc(c.background)}" placeholder="https://…/background.mp4"></label>
-        <label class="check"><input type="checkbox" data-k="showReference" ${c.showReference !== false ? 'checked' : ''}> Show reference</label>
-        <label class="check"><input type="checkbox" data-k="showVerseNumbers" ${c.showVerseNumbers ? 'checked' : ''}> Verse numbers</label>
-        <label>Transition<select data-k="transition"><option ${c.transition === 'fade' ? 'selected' : ''}>fade</option><option ${c.transition === 'cut' ? 'selected' : ''}>cut</option></select></label>
+
+        <h5>Text</h5>
+        <label>Font${sel('fontFamily', c.fontFamily, Object.entries(FONTS))}</label>
         <label>Text color<input type="color" data-k="textColor" value="${c.textColor || '#ffffff'}"></label>
+        <label>Size ${range('fontScale', c.fontScale, 0.5, 1.6, 0.05)}</label>
+        <label>Line spacing ${range('lineHeight', c.lineHeight || 1.28, 1, 1.8, 0.02)}</label>
+        <label>Outline ${range('outline', c.outline || 0, 0, 10)}</label>
+        <label>Shadow ${range('shadow', c.shadow ?? 5, 0, 10)}</label>
+        <label>Align${sel('align', c.align, [['center', 'center'], ['left', 'left']])}</label>
+        <label>Transition${sel('transition', c.transition, [['fade', 'fade'], ['cut', 'cut']])}</label>
+        ${check('showReference', c.showReference !== false, 'Show reference')}
+        ${check('showVerseNumbers', c.showVerseNumbers, 'Verse numbers')}
+        ${check('uppercase', c.uppercase, 'UPPERCASE')}
+
+        <h5>Background</h5>
+        <label class="full">Image / video<select data-k="background">${bgOptions.map(([v, l]) => `<option value="${esc(v)}" ${v === c.background ? 'selected' : ''}>${esc(l)}</option>`).join('')}${custom ? `<option value="${esc(c.background)}" selected>URL: ${esc(c.background)}</option>` : ''}</select></label>
+        <label class="full">…or a URL<input type="url" data-k="background" value="${custom ? esc(c.background) : ''}" placeholder="https://…/background.mp4"></label>
+        <label>Fit${sel('bgFit', c.bgFit || 'cover', [['cover', 'fill screen'], ['contain', 'fit whole image']])}</label>
+        <label>Blur ${range('bgBlur', c.bgBlur || 0, 0, 30)}</label>
+        <label>Brightness ${range('bgBrightness', c.bgBrightness || 100, 30, 150)}</label>
+        <label>Darken ${range('bgDim', c.bgDim || 0, 0, 90)}</label>
+        <label>Tint color<input type="color" data-k="bgTint" value="${c.bgTint || '#000000'}"></label>
+        <label>Tint amount ${range('bgTintAmount', c.bgTintAmount || 0, 0, 80)}</label>
+
+        <h5>Media</h5>
+        ${check('showMedia', c.showMedia !== false, 'Show full-screen media')}
+        ${check('mediaAudio', c.mediaAudio, 'Play video sound')}
+        ${desktop ? `<div class="ndi"><label class="switch"><input type="checkbox" data-act="ndi" ${ndiOn.has(c.id) ? 'checked' : ''}><span></span></label> NDI output <span class="muted small">“Lumen Ch ${c.id}”</span></div>` : ''}
         <div class="actions">
           <button class="btn sm" data-act="screen">Open on screen…</button>
           <button class="btn ghost sm" data-act="copy">Copy URL (OBS)</button>
           <button class="btn ghost sm" data-act="identify">Identify</button>
+          <button class="btn ghost sm" data-act="reset-bg">Reset background</button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   $$('#channels select[data-val]').forEach((s) => { s.value = s.dataset.val; });
 }
 
@@ -295,43 +320,90 @@ function updateChannel(id, patch) {
 }
 
 const outputUrl = (id) => `${location.origin}/output.html?ch=${id}`;
-const windows = {};
+const ndiOn = new Set();
+
+function chooseScreen(id, screens) {
+  return new Promise((resolve) => {
+    $('#screenTitle').textContent = `Open channel ${id} on…`;
+    $('#screenList').innerHTML = screens.map((s, i) => `<button data-i="${i}"><b>${esc(s.label)}</b><small>${s.width}×${s.height}${s.primary ? ' · this screen' : ''}</small></button>`).join('')
+      + '<button data-i="-1"><b>Window</b><small>A normal window you can drag anywhere</small></button>';
+    const dlg = $('#screenDialog');
+    const done = (v) => { dlg.close(); resolve(v); };
+    $('#screenList').onclick = (e) => { const b = e.target.closest('button'); if (b) done(Number(b.dataset.i)); };
+    $('#screenClose').onclick = () => done(null);
+    dlg.showModal();
+  });
+}
+
 async function openChannel(id, pickScreen = false) {
+  if (desktop) {
+    const displays = await desktop.displays();
+    if (!pickScreen) return desktop.openOutput(id, null);
+    const i = await chooseScreen(id, displays);
+    if (i === null) return;
+    return desktop.openOutput(id, i >= 0 ? displays[i].id : null);
+  }
   let features = 'popup,width=960,height=540';
   if (pickScreen && 'getScreenDetails' in window) {
     try {
       const sd = await window.getScreenDetails();
-      const list = sd.screens.map((s, i) => `${i + 1}: ${s.label || 'Screen ' + (i + 1)} (${s.width}×${s.height})${s.isPrimary ? ' – primary' : ''}`).join('\n');
-      const pick = Number(prompt(`Open channel ${id} on which screen?\n${list}`, String(Math.min(2, sd.screens.length))));
-      const s = sd.screens[pick - 1];
+      const screens = sd.screens.map((s, i) => ({ label: s.label || `Screen ${i + 1}`, width: s.width, height: s.height, primary: s.isPrimary, s }));
+      const i = await chooseScreen(id, screens);
+      if (i === null) return;
+      const s = screens[i]?.s;
       if (s) features = `popup,fullscreen,left=${s.availLeft},top=${s.availTop},width=${s.availWidth},height=${s.availHeight}`;
     } catch { toast('Screen access was not allowed — opening a normal window'); }
-  } else if (pickScreen) toast('Your browser cannot pick screens — drag the window to the projector and double-click it');
-  windows[id] = window.open(outputUrl(id), `lumen-ch-${id}`, features);
-  if (!windows[id]) toast('Pop-up blocked — allow pop-ups for this site', true);
+  } else if (pickScreen) toast('This browser cannot pick screens — drag the window to the projector and double-click it');
+  if (!window.open(outputUrl(id), `lumen-ch-${id}`, features)) toast('Pop-up blocked — allow pop-ups for this site', true);
+}
+
+// ---------------------------------------------------------------- media library
+async function loadMedia() {
+  mediaList = await api('/api/media').catch(() => []);
+  const chOpts = S ? S.channels.map((c) => `<option value="${c.id}">Ch ${c.id} · ${esc(c.name)}</option>`).join('') : '';
+  $('#mediaGrid').innerHTML = mediaList.length ? mediaList.map((m, i) => `
+    <div class="media-item" data-i="${i}">
+      <div class="thumb" ${m.type === 'image' ? `style="background-image:url('${esc(m.url)}')"` : ''}>${m.type === 'video' ? `<video src="${esc(m.url)}#t=1" preload="metadata" muted></video>` : ''}<span class="kind">${m.type}</span></div>
+      <div class="name" title="${esc(m.name)}">${esc(m.name)}</div>
+      <div class="acts">
+        <button class="btn live sm" data-act="live">Live</button>
+        <button class="btn ghost sm" data-act="preview">Preview</button>
+        <button class="btn ghost sm" data-act="service">＋</button>
+        <button class="btn ghost sm" data-act="del" title="Delete">✕</button>
+        <select data-act="bg"><option value="">Set as background…</option><option value="all">All full-screen channels</option>${chOpts}</select>
+      </div>
+    </div>`).join('') : '<p class="muted small">No media yet.</p>';
+  if (S) renderChannels();
+}
+
+const mediaItem = (m) => ({ kind: 'media', url: m.url, mediaType: m.type, name: m.name, fit: $('#mediaFit').value, loop: true });
+
+async function uploadFiles(files) {
+  for (const f of files) {
+    $('#uploadStatus').textContent = `Uploading ${f.name}…`;
+    try { await api('/api/media', { method: 'POST', headers: { 'x-filename': encodeURIComponent(f.name) }, body: f }); }
+    catch (e) { toast(`${f.name}: ${e.message}`, true); }
+  }
+  $('#uploadStatus').textContent = '';
+  loadMedia();
 }
 
 // ---------------------------------------------------------------- service
 function renderService() {
   if (!S) return;
-  const liveKey = JSON.stringify(S.live);
   $('#service').innerHTML = S.service.length ? S.service.map((it, i) => `
-    <li class="svc ${JSON.stringify(it) === liveKey ? 'live' : ''}" data-i="${i}">
+    <li class="svc ${control.sameItem(it, S.live) ? 'live' : ''}" data-i="${i}">
       <span class="idx">${i + 1}</span>
-      <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : 'Scripture')}</div></div>
+      <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : it.kind === 'media' ? it.name : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : it.kind === 'media' ? (it.mediaType === 'video' ? 'Video' : 'Image') : 'Scripture')}</div></div>
       <button class="btn live sm" data-act="live">Live</button>
       <button class="x" data-act="up" title="Move up">↑</button>
       <button class="x" data-act="del" title="Remove">✕</button>
     </li>`).join('') : '<li class="muted small">Your service is empty. Add verses with “＋ Service”, or let AI build one.</li>';
 }
 const setService = (service) => push({ service });
-function serviceStep(d) {
-  if (!S.service.length) return;
-  const i = S.service.findIndex((s) => JSON.stringify(s) === JSON.stringify(S.live));
-  const n = Math.min(S.service.length - 1, Math.max(0, i + d));
-  if (i < 0 && d < 0) return;
-  const item = S.service[i < 0 ? 0 : n];
-  goLive(item); setPreview(item);
+async function serviceStep(d) {
+  const item = await control.serviceStep(S, d).catch((e) => toast(e.message, true));
+  if (item) { follow(item); setPreview(item); }
 }
 
 // ---------------------------------------------------------------- voice (TTS)
@@ -348,6 +420,7 @@ async function speakItem(item) {
   if (!('speechSynthesis' in window) || !item) return;
   speechSynthesis.cancel();
   let text = '', lang = '';
+  if (item.kind === 'media') return;
   if (item.kind === 'text') text = `${item.title}. ${item.body || ''}`;
   else {
     const p = await passage(S.translation, item.ref).catch(() => null);
@@ -537,6 +610,7 @@ function wire() {
     if (act === 'screen') return openChannel(id, true);
     if (act === 'copy') { navigator.clipboard?.writeText(outputUrl(id)).then(() => toast('URL copied — add it as a Browser Source (1920×1080)')).catch(() => prompt('Copy this URL', outputUrl(id))); return; }
     if (act === 'identify') return new BroadcastChannel('lumen').postMessage({ type: 'identify' });
+    if (act === 'reset-bg') return updateChannel(id, { background: '', bgBlur: 0, bgDim: 0, bgBrightness: 100, bgTintAmount: 0, bgFit: 'cover' });
     if (e.target.closest('[data-toggle]') && !e.target.closest('label,button')) {
       ch.classList.toggle('open');
       ch.classList.contains('open') ? openCh.add(id) : openCh.delete(id);
@@ -544,11 +618,21 @@ function wire() {
     }
   });
   $('#channels').addEventListener('change', (e) => {
+    const id = Number(e.target.closest('.ch')?.dataset.id);
+    if (e.target.dataset.act === 'ndi') {
+      e.target.checked ? ndiOn.add(id) : ndiOn.delete(id);
+      desktop.ndi(id, e.target.checked).then((r) => r?.error && (toast(r.error, true), ndiOn.delete(id), renderChannels()));
+      return;
+    }
     const k = e.target.dataset.k; if (!k) return;
-    const id = Number(e.target.closest('.ch').dataset.id);
     const v = e.target.type === 'checkbox' ? e.target.checked : e.target.type === 'range' ? Number(e.target.value) : e.target.value;
     updateChannel(id, { [k]: v });
     if (Number($('#liveMonitorCh').value) === id && preview) setPreview(preview);
+  });
+  $('#channels').addEventListener('input', (e) => { // live preview of sliders while dragging
+    if (e.target.type !== 'range') return;
+    const ch = S.channels.find((c) => c.id === Number(e.target.closest('.ch').dataset.id));
+    if (ch) { ch[e.target.dataset.k] = Number(e.target.value); if (preview && Number($('#liveMonitorCh').value) === ch.id) setPreview(preview); }
   });
   $('#identifyAll').onclick = () => new BroadcastChannel('lumen').postMessage({ type: 'identify' });
   $('#openAll').onclick = () => S.channels.filter((c) => c.enabled).forEach((c) => openChannel(c.id));
@@ -559,8 +643,8 @@ function wire() {
     const li = e.target.closest('.svc'); if (!li) return;
     const i = Number(li.dataset.i); const item = S.service[i];
     const act = e.target.closest('[data-act]')?.dataset.act;
-    if (act === 'preview') { setPreview(item); if (item.kind === 'scripture') loadChapter(item.ref.book, item.ref.chapter, { select: [item.ref.verseStart, item.ref.verseEnd] }); }
-    if (act === 'live') { goLive(item); setPreview(item); }
+    if (act === 'preview') { setPreview(item); follow(item); }
+    if (act === 'live') { goLive(item); setPreview(item); follow(item); }
     if (act === 'del') setService(S.service.filter((_, j) => j !== i));
     if (act === 'up' && i > 0) { const s = [...S.service]; [s[i - 1], s[i]] = [s[i], s[i - 1]]; setService(s); }
   });
@@ -574,7 +658,39 @@ function wire() {
     setService([...S.service, item]); setPreview(item); $('#textSlideInput').value = '';
   };
 
+  // live tools
+  $('#pgPrev').onclick = () => stepLive(-1);
+  $('#pgNext').onclick = () => stepLive(1);
+  $('#mPlay').onclick = () => push({ mediaCmd: { id: Date.now(), action: 'toggle' } });
+  $('#mRestart').onclick = () => push({ mediaCmd: { id: Date.now(), action: 'restart' } });
+  $('#wordStrip').onclick = (e) => { const w = e.target.closest('[data-w]'); if (w) control.toggleHighlight(S, w.dataset.w); };
+
+  // media
+  $('#mediaFile').onchange = (e) => { uploadFiles([...e.target.files]); e.target.value = ''; };
+  const dz = $('#dropZone');
+  dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('over'); };
+  dz.ondragleave = () => dz.classList.remove('over');
+  dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove('over'); uploadFiles([...e.dataTransfer.files]); };
+  $('#mediaGrid').addEventListener('click', async (e) => {
+    const el = e.target.closest('.media-item'); const act = e.target.closest('button[data-act]')?.dataset.act;
+    if (!el || !act) return;
+    const m = mediaList[Number(el.dataset.i)]; const item = mediaItem(m);
+    if (act === 'live') { goLive(item); setPreview(item); }
+    if (act === 'preview') setPreview(item);
+    if (act === 'service') { setService([...S.service, item]); toast('Added to service'); }
+    if (act === 'del' && confirm(`Delete ${m.name}?`)) { await postJson('/api/media/delete', { name: m.name }).catch((er) => toast(er.message, true)); loadMedia(); }
+  });
+  $('#mediaGrid').addEventListener('change', (e) => {
+    if (e.target.dataset.act !== 'bg' || !e.target.value) return;
+    const m = mediaList[Number(e.target.closest('.media-item').dataset.i)];
+    const target = e.target.value;
+    const channels = S.channels.map((c) => (target === 'all' ? c.mode === 'full' : c.id === Number(target)) ? { ...c, background: m.url } : c);
+    push({ channels }); toast('Background set'); e.target.value = '';
+  });
+
   // settings
+  $('#splitChars').oninput = (e) => { $('#splitLabel').textContent = Number(e.target.value) || 'off —'; };
+  $('#splitChars').onchange = (e) => push({ splitChars: Number(e.target.value) });
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#stageSend').onclick = () => push({ stageMessage: $('#stageMsg').value });
   $('#stageClear').onclick = () => { $('#stageMsg').value = ''; push({ stageMessage: '' }); };
@@ -629,5 +745,8 @@ function wire() {
   const urls = [location.origin, ...(info.lan || [])];
   $('#lanInfo').innerHTML = urls.map((u) => `<div>Console: ${esc(u)}/</div><div>Output N: ${esc(u)}/output.html?ch=N</div>`).join('<br>');
   translations().then(buildTrOptions).then(() => S && renderChannels()).catch(() => {});
+  if (info.pinRequired) await postJson('/api/pin', {}).catch(() => {}); // asks for the PIN once
   connect();
+  loadMedia();
+  if (desktop) desktop.ndiStatus?.().then((ids) => { (ids || []).forEach((i) => ndiOn.add(i)); if (S) renderChannels(); });
 })();
