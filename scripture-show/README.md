@@ -47,9 +47,9 @@ Settings (environment variables): `PORT` (4848), `CHANNELS` (8, min 6), `ANTHROP
 
 1. Get an API key from GhanaNLP’s Khaya developer portal (translation.ghananlp.org).
 2. Start Lumen with it: `KHAYA_API_KEY=your-key npm start` (or put it in `docker-compose.yml`).
-3. In AI · Voice choose the preacher’s language *Akan · Twi* (or Fante, Ga, Ewe, Dagbani). The engine switches to Khaya automatically.
+3. In AI · Voice choose the preacher’s language *Akan · Twi* (or Fante, Ga, Ewe, Dagbani, Gurene, Kusaal, Kikuyu, Luo, Kimeru). The engine switches to Khaya automatically. Yoruba and English can also use Khaya: set *Speech engine* to Khaya.
 
-If GhanaNLP changes its API, adjust without code changes: `KHAYA_ASR_URL` (endpoint, default `https://translation-api.ghananlp.org/asr/v1/transcribe`), `KHAYA_KEY_HEADER` (default `Ocp-Apim-Subscription-Key`), `KHAYA_LANG_PARAM` (default `language`) and `KHAYA_LANGS` (JSON map of language codes, default Akan → `tw`).
+If GhanaNLP changes its API, adjust without code changes: `KHAYA_ASR_URL` (endpoint, default `https://translation-api.ghananlp.org/asr/v1/transcribe`), `KHAYA_KEY_HEADER` (default `Ocp-Apim-Subscription-Key`), `KHAYA_LANG_PARAM` (default `language`) and `KHAYA_LANGS` (JSON map from Lumen language to Khaya code). Default codes follow Khaya’s language list: Twi `twi`, Fante `fat`, Ga `gaa`, Ewe `ewe`, Dagbani `dag`, Gurene `gur`, Kusaal `kus`, Yoruba `yor`, Kikuyu `kik`, Luo `luo`, Kimeru `mer`, English `eng`.
 
 The Twi book names and chapter/verse words were written without a native speaker’s review — check them with your team and fix anything under *Custom words*.
 

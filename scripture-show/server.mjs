@@ -31,9 +31,11 @@ const KHAYA = {
   url: process.env.KHAYA_ASR_URL || 'https://translation-api.ghananlp.org/asr/v1/transcribe',
   header: process.env.KHAYA_KEY_HEADER || 'Ocp-Apim-Subscription-Key',
   langParam: process.env.KHAYA_LANG_PARAM || 'language',
-  langs: { ak: 'tw', tw: 'tw', fat: 'fat', gaa: 'gaa', ee: 'ee', dag: 'dag', yo: 'yo', ki: 'ki', ...JSON.parse(process.env.KHAYA_LANGS || '{}') },
+  // Lumen language -> Khaya code (from Khaya's language list: eng, twi, ewe, gaa, fat, yor, dag, kik, gur, luo, mer, kus)
+  langs: { en: 'eng', ak: 'twi', tw: 'twi', twi: 'twi', fat: 'fat', ee: 'ewe', ewe: 'ewe', gaa: 'gaa', yo: 'yor', yor: 'yor', dag: 'dag',
+    ki: 'kik', kik: 'kik', gur: 'gur', luo: 'luo', mer: 'mer', kus: 'kus', ...JSON.parse(process.env.KHAYA_LANGS || '{}') },
 };
-const khayaLang = (lang) => KHAYA.langs[String(lang || '').toLowerCase().split(/[-_]/)[0]] || 'tw';
+const khayaLang = (lang) => KHAYA.langs[String(lang || '').toLowerCase().split(/[-_]/)[0]] || 'twi';
 
 async function khayaTranscribe(audio, contentType, lang) {
   const url = `${KHAYA.url}${KHAYA.url.includes('?') ? '&' : '?'}${KHAYA.langParam}=${encodeURIComponent(khayaLang(lang))}`;

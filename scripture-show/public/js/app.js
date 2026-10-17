@@ -448,9 +448,10 @@ async function speakItem(item) {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false, transcript = '', recent = new Map(), aiTimer = null, aiBusy = false, lastAiLen = 0;
 
-const SPEECH_LANGS = ['en-US', 'en-GB', 'en-NG', 'en-GH', 'en-IN', 'ak-GH', 'fat-GH', 'gaa-GH', 'ee-GH', 'dag-GH', 'es-ES', 'es-MX', 'pt-BR', 'pt-PT', 'fr-FR', 'de-DE', 'it-IT', 'nl-NL', 'ru-RU', 'uk-UA', 'pl-PL', 'ro-RO', 'hu-HU', 'cs-CZ', 'el-GR', 'tr-TR', 'ar-SA', 'he-IL', 'fa-IR', 'hi-IN', 'bn-IN', 'ta-IN', 'te-IN', 'ml-IN', 'ur-PK', 'zh-CN', 'zh-TW', 'ja-JP', 'ko-KR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'fil-PH', 'sw-KE', 'am-ET', 'yo-NG', 'ig-NG', 'ha-NG', 'zu-ZA', 'af-ZA', 'sv-SE', 'nb-NO', 'da-DK', 'fi-FI'];
-const KHAYA_LANGS = ['ak', 'tw', 'fat', 'gaa', 'ee', 'dag'];
-const LANG_NAMES = { 'ak-GH': 'Akan · Twi (Asante, Akuapem)', 'fat-GH': 'Akan · Fante', 'gaa-GH': 'Ga', 'ee-GH': 'Ewe', 'dag-GH': 'Dagbani' };
+const SPEECH_LANGS = ['en-US', 'en-GB', 'en-NG', 'en-GH', 'en-IN', 'ak-GH', 'fat-GH', 'gaa-GH', 'ee-GH', 'dag-GH', 'gur-GH', 'kus-GH', 'ki-KE', 'luo-KE', 'mer-KE', 'es-ES', 'es-MX', 'pt-BR', 'pt-PT', 'fr-FR', 'de-DE', 'it-IT', 'nl-NL', 'ru-RU', 'uk-UA', 'pl-PL', 'ro-RO', 'hu-HU', 'cs-CZ', 'el-GR', 'tr-TR', 'ar-SA', 'he-IL', 'fa-IR', 'hi-IN', 'bn-IN', 'ta-IN', 'te-IN', 'ml-IN', 'ur-PK', 'zh-CN', 'zh-TW', 'ja-JP', 'ko-KR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'fil-PH', 'sw-KE', 'am-ET', 'yo-NG', 'ig-NG', 'ha-NG', 'zu-ZA', 'af-ZA', 'sv-SE', 'nb-NO', 'da-DK', 'fi-FI'];
+const KHAYA_LANGS = ['ak', 'tw', 'fat', 'gaa', 'ee', 'dag', 'gur', 'kus', 'ki', 'luo', 'mer'];
+const LANG_NAMES = { 'ak-GH': 'Akan · Twi (Asante, Akuapem)', 'fat-GH': 'Akan · Fante', 'gaa-GH': 'Ga', 'ee-GH': 'Ewe', 'dag-GH': 'Dagbani',
+  'gur-GH': 'Gurene (Frafra)', 'kus-GH': 'Kusaal', 'ki-KE': 'Kikuyu', 'luo-KE': 'Luo (Dholuo)', 'mer-KE': 'Kimeru' };
 const langLabel = (l) => { if (LANG_NAMES[l]) return `${LANG_NAMES[l]} · ${l}`; try { return `${new Intl.DisplayNames([l], { type: 'language' }).of(l)} · ${l}`; } catch { return l; } };
 $('#speechLang').innerHTML = SPEECH_LANGS.map((l) => `<option value="${l}">${esc(langLabel(l))}</option>`).join('');
 $('#speechLang').value = store.get('speechLang', 'en-US');
