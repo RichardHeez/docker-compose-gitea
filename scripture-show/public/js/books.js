@@ -1,3 +1,5 @@
+import { asciiDigits, hanToDigits, packFor, spelledToDigits } from './langs.js';
+
 // Canonical 66-book list (standard 1-66 numbering, shared with the bolls.life API),
 // plus a reference parser for typed input and live speech transcripts.
 
@@ -117,55 +119,96 @@ export function wordsToNumbers(text) {
   return out.join('').replace(/ {2,}/g, ' ');
 }
 
-const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\./g, '').replace(/\s+/g, ' ').trim();
+// Lowercase, strip Latin accents (keeps other scripts intact), tidy dots: "Gén. 3.16" -> "gen 3:16".
+const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').normalize('NFC')
+  .replace(/ß/g, 'ss').replace(/[’'`´]/g, ' ').replace(/(\d)\.(\d)/g, '$1:$2').replace(/\./g, ' ').replace(/(\p{L})[-‐](?=\p{L})/gu, '$1 ')
+  .replace(/\s+/g, ' ').trim();
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CJK = '\\p{sc=Han}\\p{sc=Hangul}\\p{sc=Hiragana}\\p{sc=Katakana}';
+// A whole word in any script (\b only understands ASCII).
+const W = (words) => `(?<![\\p{L}\\p{N}])(?:${words.map((w) => esc(norm(w))).sort((x, y) => y.length - x.length).join('|')})(?![\\p{L}\\p{N}])`;
 
-let aliasCache = new Map();
-function aliasTable(extraNames) {
-  const key = extraNames ? Object.keys(extraNames).length + ':' + Object.keys(extraNames).slice(0, 3).join() : 'base';
+const aliasCache = new Map();
+const extraKeys = new WeakMap();
+function aliasTable(extraNames, lang) {
+  const pack = packFor(lang);
+  let ek = 'none';
+  if (extraNames) { if (!extraKeys.has(extraNames)) extraKeys.set(extraNames, Math.random().toString(36)); ek = extraKeys.get(extraNames); }
+  const key = `${pack.code}|${ek}`;
   if (aliasCache.has(key)) return aliasCache.get(key);
   const map = new Map();
-  for (const b of BOOKS) {
-    const names = [b.name, ...b.abbr];
-    for (const n of names) {
-      const k = norm(n);
-      map.set(k, b.id);
-      const m = k.match(/^([123]) (.+)$/);
-      if (m) map.set(m[1] + m[2], b.id); // "1john"
-    }
-  }
-  if (extraNames) for (const [n, id] of Object.entries(extraNames)) {
-    const k = norm(n);
-    if (k.length >= 2 && !map.has(k)) map.set(k, Number(id));
+  const add = (name, id) => {
+    const k = norm(name);
+    if (k.length < 2) return;
+    if (!map.has(k)) map.set(k, Number(id));
     const m = k.match(/^([123]) ?(.+)$/);
-    if (m) { map.set(m[1] + ' ' + m[2], Number(id)); map.set(m[1] + m[2], Number(id)); }
-  }
+    if (m) { if (!map.has(m[1] + ' ' + m[2])) map.set(m[1] + ' ' + m[2], Number(id)); if (!map.has(m[1] + m[2])) map.set(m[1] + m[2], Number(id)); }
+  };
+  // In other languages, short English abbreviations ("is", "la", "es") are ordinary words — leave them out.
+  for (const b of BOOKS) for (const n of [b.name, ...b.abbr.filter((a) => pack.code === 'en' || norm(a).replace(/\d|\s/g, '').length >= 4)]) add(n, b.id);
+  for (const [n, id] of Object.entries(pack.books || {})) add(n, id);
+  if (extraNames) for (const [n, id] of Object.entries(extraNames)) add(n, id);
   const alts = [...map.keys()].sort((a, b) => b.length - a.length).map(esc).join('|');
   const re = new RegExp(
-    `(?:^|[^\\p{L}\\d])(${alts})\\s*(\\d{1,3})(?:\\s*(?::|\\.|,|\\s+verses?\\s+|\\s+vv?\\s+|\\s+)\\s*(\\d{1,3}))?` +
-    `(?:\\s*(?:-|–|—|to|through|thru|and)\\s*(\\d{1,3}))?(?=$|[^\\p{L}\\d])`,
+    `(?:^|[^\\p{L}\\d]|(?<=[${CJK}]))(${alts})\\s*(\\d{1,3})(?:\\s*(?::|,|\\s+verses?\\s+|\\s+vv?\\s+|\\s+)\\s*(\\d{1,3}))?` +
+    `(?:\\s*(?:-|–|—|to|through|thru|and)\\s*(\\d{1,3}))?(?=$|[^\\p{L}\\d]|[${CJK}])`,
     'giu');
   const entry = { map, re };
   aliasCache.set(key, entry);
   return entry;
 }
 
-function prepare(text) {
-  let t = ' ' + text + ' ';
-  t = t.replace(/\b(first|1st)\b/gi, '1').replace(/\b(second|2nd)\b/gi, '2').replace(/\b(third|3rd)\b/gi, '3');
-  t = t.replace(/\b(I{1,3})\s+(?=(samuel|kings|chronicles|corinthians|thessalonians|timothy|peter|john)\b)/gi, (m, r) => r.length + ' ');
-  t = wordsToNumbers(t);
-  t = t.replace(/\b(the\s+)?(book\s+of|gospel\s+(according\s+)?(to|of)\s+(saint\s+|st\.?\s+)?)/gi, ' ');
-  t = t.replace(/\b(chapter|chapters|chap|ch)\b\.?/gi, ' ');
-  t = t.replace(/\s+/g, ' ');
-  return norm(t);
+// Shared first steps: any-script digits, Han numerals, accents, spelled-out numbers.
+function base(text, pack) {
+  let t = ' ' + asciiDigits(String(text)) + ' ';
+  if (pack.hanNumbers) t = hanToDigits(t);
+  if (pack.code === 'en') {
+    t = t.replace(/\b(first|1st)\b/gi, '1').replace(/\b(second|2nd)\b/gi, '2').replace(/\b(third|3rd)\b/gi, '3');
+    t = t.replace(/\b(I{1,3})\s+(?=(samuel|kings|chronicles|corinthians|thessalonians|timothy|peter|john)\b)/gi, (m, r) => r.length + ' ');
+    t = wordsToNumbers(t);
+  }
+  t = ' ' + norm(t) + ' ';
+  if (pack.code !== 'en') t = ' ' + spelledToDigits(t.trim(), pack.numbers) + ' ';
+  // ordinals: "primera carta a los Corintios" -> "1 corintios", "erster Brief an die Korinther" -> "1 korinther"
+  (pack.ord || []).forEach((words, i) => {
+    const filler = pack.filler?.length ? `(?:\\s+${W(pack.filler)})*` : '';
+    t = t.replace(new RegExp(`${W(words)}${filler}\\s+`, 'gu'), `${i + 1} `);
+  });
+  // "1 de Corintios" (left after ordinals given as digits)
+  if (pack.filler?.length) t = t.replace(new RegExp(`(?<![\\p{L}\\p{N}:])([123])(?:\\s+${W(pack.filler)})+\\s+(?=\\p{L})`, 'gu'), '$1 ');
+  for (const phrase of pack.strip || []) t = t.replace(new RegExp(W([phrase]), 'gu'), ' ');
+  return t;
+}
+
+function prepare(text, lang) {
+  const pack = packFor(lang);
+  let t = base(text, pack);
+  if (pack.code === 'en') {
+    t = t.replace(/\b(the\s+)?(book\s+of|gospel\s+(according\s+)?(to|of)\s+(saint\s+|st\s+)?)/gi, ' ');
+    t = t.replace(/\b(chapter|chapters|chap|ch)\b/gi, ' ');
+  } else {
+    const range = [...(pack.range || [])];
+    if (pack.postfix) {
+      // "3장 16절부터 18절까지" / "3章16节到18节"
+      if (range.length) t = t.replace(new RegExp(`(\\d)\\s*(?:${[...pack.verse].map(esc).join('|')})?\\s*(?:${range.map(esc).join('|')})\\s*(?=\\d)`, 'gu'), '$1-');
+      t = t.replace(new RegExp(`(\\d)\\s*(?:${[...pack.chapter, ...pack.verse, ...(pack.rangeEnd || [])].map(esc).join('|')})`, 'gu'), '$1 ');
+    } else {
+      if (range.length) t = t.replace(new RegExp(`(\\d)\\s+(?:${W(pack.verse)}\\s*)?${W(range)}\\s+(?:${W(pack.verse)}\\s*)?(?=\\d)`, 'gu'), '$1-');
+      // "trece del cuatro al siete" / "13 vom 4 bis 7": a "from" word between chapter and verse
+      t = t.replace(new RegExp(`(\\d)\\s+${W(['de', 'del', 'desde', 'do', 'du', 'von', 'vom', 'dal', 'da', 'ab', 'od', 'от', 'з', 'kutoka'])}\\s+(?=\\d)`, 'gu'), '$1 ');
+      const words = [...pack.chapter, ...pack.verse];
+      if (words.length) t = t.replace(new RegExp(`${W(words)}\\s*(?=\\d)`, 'gu'), ' ');
+    }
+  }
+  return t.replace(/\s+/g, ' ');
 }
 
 // Returns [{book, chapter, verseStart, verseEnd}] found in the text, in order.
-export function parseReferences(text, extraNames) {
+// `lang` (e.g. "es-ES") enables that language's book names, numbers and chapter/verse words.
+export function parseReferences(text, extraNames, lang = 'en') {
   if (!text) return [];
-  const { map, re } = aliasTable(extraNames);
-  const t = prepare(text);
+  const { map, re } = aliasTable(extraNames, lang);
+  const t = prepare(text, lang);
   const out = [];
   re.lastIndex = 0;
   let m;
@@ -186,6 +229,37 @@ export function parseReferences(text, extraNames) {
     out.push({ book: id, chapter, verseStart, verseEnd });
   }
   return out;
+}
+
+// Follow-ups that refer to the passage already in use, in the preacher's language:
+// "verse 17", "versículos 18 al 20", "chapitre 4 verset 2", "3장 16절", "next verse" / "siguiente versículo".
+// Returns { kind: 'next'|'prev'|'chapter'|'verse', chapter?, verseStart?, verseEnd? } or null.
+export function parseFollowUp(text, lang = 'en') {
+  const pack = packFor(lang);
+  const en = packFor('en');
+  const t = base(text, pack);
+  const has = (phrases) => phrases.length && new RegExp(W(phrases), 'u').test(t);
+  if (has([...(pack.next || []), ...en.next])) return { kind: 'next' };
+  if (has([...(pack.prev || []), ...en.prev])) return { kind: 'prev' };
+  const chapterW = [...pack.chapter, ...(pack.code === 'en' ? [] : en.chapter.slice(0, 2))];
+  const verseW = [...pack.verse, ...(pack.code === 'en' ? [] : en.verse.slice(0, 2))];
+  const rangeW = [...(pack.range || []), 'to', 'through'];
+  let m;
+  if (pack.postfix) {
+    const alt = (ws) => ws.map(esc).join('|');
+    const rg = `(?:\\s*(?:${alt(rangeW)}|-)\\s*(\\d{1,3})\\s*(?:${alt(verseW)})?)?`;
+    m = new RegExp(`(\\d{1,3})\\s*(?:${alt(chapterW)})\\s*(\\d{1,3})\\s*(?:${alt(verseW)})${rg}`, 'u').exec(t);
+    if (m) return { kind: 'chapter', chapter: +m[1], verseStart: +m[2], verseEnd: Math.max(+m[2], +(m[3] || m[2])) };
+    m = new RegExp(`(\\d{1,3})\\s*(?:${alt(verseW)})${rg}`, 'u').exec(t);
+    if (m) return { kind: 'verse', verseStart: +m[1], verseEnd: Math.max(+m[1], +(m[2] || m[1])) };
+    return null;
+  }
+  const rg = `(?:\\s*(?:-|${W(rangeW)})\\s*(?:${W(verseW)}\\s*)?(\\d{1,3}))?`;
+  m = new RegExp(`${W(chapterW)}\\s*(\\d{1,3})\\s*(?:,|${W(['and', 'y', 'e', 'et', 'und', 'i', 'na'])})?\\s*(?:${W(verseW)}\\s*|:)\\s*(\\d{1,3})${rg}`, 'u').exec(t);
+  if (m) return { kind: 'chapter', chapter: +m[1], verseStart: +m[2], verseEnd: Math.max(+m[2], +(m[3] || m[2])) };
+  m = new RegExp(`${W(verseW)}\\s*(\\d{1,3})${rg}`, 'u').exec(t);
+  if (m) return { kind: 'verse', verseStart: +m[1], verseEnd: Math.max(+m[1], Math.min(+m[1] + 20, +(m[2] || m[1]))) };
+  return null;
 }
 
 export function formatRef(ref, bookName) {

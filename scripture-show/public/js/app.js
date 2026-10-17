@@ -1,6 +1,6 @@
 // Operator console.
-import { BOOKS, bookById, formatRef, parseReferences, refKey, wordsToNumbers } from './books.js';
-import { FONTS, api, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
+import { BOOKS, bookById, formatRef, parseFollowUp, parseReferences, refKey } from './books.js';
+import { FONTS, api, langCode, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
 import * as control from './control.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -13,6 +13,8 @@ let info = { ai: false, lan: [], themes: [], modes: [] };
 const view = { book: 43, chapter: 3, testament: 'NT', verses: [], anchor: null, sel: null };
 let preview = null;           // item in preview
 let extraNames = {};          // book names in the current translation (for typed/spoken refs)
+let trLang = '';              // language code of the current translation
+let speechNames = {};         // book names in the preacher's language (from Bibles in that language)
 let trOptionsHtml = '';
 
 function toast(msg, err) {
@@ -55,13 +57,15 @@ function firstState() {
 // ---------------------------------------------------------------- translations
 async function onTranslationChanged() {
   const t = await translationInfo(S.translation);
+  trLang = t.lang;
   $('#trLabel').textContent = t.id;
   $('#trButton').title = `${t.name}${t.language ? ' · ' + t.language : ''}`;
   try {
     const list = await books(S.translation);
     extraNames = Object.fromEntries(list.map((b) => [b.name, b.id]));
   } catch { extraNames = {}; }
-  if (t.lang && !store.get('speechLangSet', false)) $('#speechLang').value = t.lang;
+  if (t.lang && !store.get('speechLangSet', false) && [...$('#speechLang').options].some((o) => o.value === t.lang)) $('#speechLang').value = t.lang;
+  loadSpeechNames();
   renderBooks();
   loadChapter(view.book, view.chapter, { keepSelection: true });
   if (preview) setPreview(preview);
@@ -230,7 +234,8 @@ function renderOverlayButtons() {
 
 // Parse a typed reference and preview it.
 async function quickRef(text, live = false) {
-  const refs = parseReferences(text, extraNames);
+  let refs = parseReferences(text, extraNames, 'en');
+  if (!refs.length) refs = parseReferences(text, extraNames, trLang || 'en');
   if (!refs.length) {
     if (text.trim().length > 2) { $('#searchInput').value = text; search(text.trim()); toast('No reference found — searching the text instead'); }
     return;
@@ -441,7 +446,8 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null, listening = false, transcript = '', recent = new Map(), aiTimer = null, aiBusy = false, lastAiLen = 0;
 
 const SPEECH_LANGS = ['en-US', 'en-GB', 'en-NG', 'en-IN', 'es-ES', 'es-MX', 'pt-BR', 'pt-PT', 'fr-FR', 'de-DE', 'it-IT', 'nl-NL', 'ru-RU', 'uk-UA', 'pl-PL', 'ro-RO', 'hu-HU', 'cs-CZ', 'el-GR', 'tr-TR', 'ar-SA', 'he-IL', 'fa-IR', 'hi-IN', 'bn-IN', 'ta-IN', 'te-IN', 'ml-IN', 'ur-PK', 'zh-CN', 'zh-TW', 'ja-JP', 'ko-KR', 'vi-VN', 'th-TH', 'id-ID', 'ms-MY', 'fil-PH', 'sw-KE', 'am-ET', 'yo-NG', 'ig-NG', 'ha-NG', 'zu-ZA', 'af-ZA', 'sv-SE', 'nb-NO', 'da-DK', 'fi-FI'];
-$('#speechLang').innerHTML = SPEECH_LANGS.map((l) => `<option>${l}</option>`).join('');
+const langLabel = (l) => { try { return `${new Intl.DisplayNames([l], { type: 'language' }).of(l)} · ${l}`; } catch { return l; } };
+$('#speechLang').innerHTML = SPEECH_LANGS.map((l) => `<option value="${l}">${esc(langLabel(l))}</option>`).join('');
 $('#speechLang').value = store.get('speechLang', 'en-US');
 
 function setMic(on) {
@@ -460,7 +466,7 @@ function setMic(on) {
       }
       renderTranscript(interim);
       // While words are still arriving, ignore the last one: "John 3:1…" may still become "John 3:16".
-      const settled = interim.trim().split(/\s+/).slice(0, -1).join(' ');
+      const settled = /^(zh|ja)/.test(speechLang()) ? interim.replace(/[\d零〇一二两三四五六七八九十百]+$/u, '') : interim.trim().split(/\s+/).slice(0, -1).join(' ');
       if (settled) detectLocal(settled, true);
     };
     rec.onerror = (e) => {
@@ -493,13 +499,27 @@ function onSpeech(text) {
   }
 }
 
+const speechLang = () => $('#speechLang').value || 'en-US';
+
+// Book names as the preacher says them: from Bibles in the speech language, plus the current translation.
+async function loadSpeechNames() {
+  const lang = speechLang().split('-')[0];
+  const names = { ...extraNames };
+  try {
+    const langs = await translations();
+    const ids = langs.filter((l) => langCode(l.language).split('-')[0] === lang).flatMap((l) => l.translations.map((t) => t.id)).slice(0, 4);
+    for (const id of ids) for (const b of await books(id).catch(() => [])) if (b.id <= 66) names[b.name] = b.id;
+  } catch { /* offline: built-in names still work */ }
+  speechNames = names;
+}
+
 function detectLocal(text, interim = false) {
-  const refs = parseReferences(text, extraNames);
+  const refs = parseReferences(text, speechNames, speechLang());
   let found = false;
   for (const r of refs) {
     if (interim && !r.verseStart) continue; // wait for the verse number
     found = true;
-    addDetection({ ...r, verseStart: r.verseStart || 1, verseEnd: r.verseEnd || r.verseStart || 1, source: 'speech', confidence: r.verseStart ? 1 : 0.5 });
+    addDetection({ ...r, verseStart: r.verseStart || 1, verseEnd: r.verseEnd || r.verseStart || 1, source: 'speech', confidence: r.verseStart ? 1 : 0.5, chapterOnly: !r.verseStart });
   }
   return found;
 }
@@ -509,30 +529,14 @@ function detectLocal(text, interim = false) {
 function detectFollowUp(text) {
   const ctx = S.live?.kind === 'scripture' ? S.live.ref : contextRef;
   if (!ctx) return false;
-  const t = wordsToNumbers(` ${text} `).toLowerCase();
-  const book = bookById(ctx.book);
+  const f = parseFollowUp(text, speechLang());
+  if (!f) return false;
   const end = ctx.verseEnd || ctx.verseStart || 0, start = ctx.verseStart || 1;
-  if (/\b(next|following) verse\b|\bverse after that\b/.test(t)) {
-    addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: end + 1, verseEnd: end + 1, source: 'speech', confidence: 0.9, force: true });
-    return true;
-  }
-  if (/\b(previous|last) verse\b|\bverse before\b/.test(t) && start > 1) {
-    addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: start - 1, verseEnd: start - 1, source: 'speech', confidence: 0.9, force: true });
-    return true;
-  }
-  let m = /\bchapter\s+(\d{1,3})\s*(?:,|and)?\s*(?:verses?|v|:)\s*(\d{1,3})(?:\s*(?:-|to|through|thru|and)\s*(\d{1,3}))?/.exec(t);
-  if (m && Number(m[1]) <= book.chapters) {
-    const vs = Number(m[2]);
-    addDetection({ book: ctx.book, chapter: Number(m[1]), verseStart: vs, verseEnd: Math.max(vs, Number(m[3] || vs)), source: 'speech', confidence: 0.9 });
-    return true;
-  }
-  m = /\bverses?\s+(\d{1,3})(?:\s*(?:-|to|through|thru|and)\s*(\d{1,3}))?/.exec(t);
-  if (m) {
-    const vs = Number(m[1]);
-    addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: vs, verseEnd: Math.max(vs, Math.min(vs + 20, Number(m[2] || vs))), source: 'speech', confidence: 0.9 });
-    return true;
-  }
-  return false;
+  if (f.kind === 'next') addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: end + 1, verseEnd: end + 1, source: 'speech', confidence: 0.9, force: true });
+  else if (f.kind === 'prev') { if (start <= 1) return true; addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: start - 1, verseEnd: start - 1, source: 'speech', confidence: 0.9, force: true }); }
+  else if (f.kind === 'chapter') { if (f.chapter > bookById(ctx.book).chapters) return false; addDetection({ book: ctx.book, chapter: f.chapter, verseStart: f.verseStart, verseEnd: f.verseEnd, source: 'speech', confidence: 0.9 }); }
+  else addDetection({ book: ctx.book, chapter: ctx.chapter, verseStart: f.verseStart, verseEnd: f.verseEnd, source: 'speech', confidence: 0.9 });
+  return true;
 }
 
 async function detectAI() {
@@ -547,7 +551,7 @@ async function detectAI() {
 
 async function addDetection(d) {
   contextRef = { book: d.book, chapter: d.chapter, verseStart: d.verseStart, verseEnd: d.verseEnd };
-  const key = refKey(d);
+  const key = refKey(d) + (d.chapterOnly ? '*' : ''); // "Psalm 23" then "verse 1" are different events
   const now = Date.now();
   // Same passage within 45s is a repeat; a fuller range replaces a partial one.
   for (const [k, t] of recent) if (now - t > 45000) recent.delete(k);
@@ -643,7 +647,7 @@ function wire() {
   $('#btnClear').onclick = () => push({ clear: !S.clear });
   $('#btnLogo').onclick = () => push({ logo: !S.logo });
   $('#micBtn').onclick = $('#micBtn2').onclick = () => setMic(!listening);
-  $('#speechLang').onchange = (e) => { store.set('speechLang', e.target.value); store.set('speechLangSet', true); if (listening) { setMic(false); setMic(true); } };
+  $('#speechLang').onchange = (e) => { store.set('speechLang', e.target.value); store.set('speechLangSet', true); loadSpeechNames(); if (listening) { setMic(false); setMic(true); } };
   $('#clearDetections').onclick = () => { $('#detections').innerHTML = ''; recent.clear(); transcript = ''; pendingTail = ''; contextRef = null; lastAiLen = 0; renderTranscript(); };
   $('#genBtn').onclick = generate;
 
