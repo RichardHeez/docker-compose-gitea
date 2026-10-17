@@ -143,6 +143,30 @@ section{padding-block:clamp(56px,8vw,104px)}
 .mode p{color:var(--muted);font-size:.95rem}
 @media (max-width:860px){.modes{grid-template-columns:1fr}}
 
+/* Complete kit */
+.kitbox{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:clamp(20px,4vw,48px);align-items:center;padding:clamp(18px,3vw,28px);border-radius:24px;border:1px solid var(--line);background:var(--surface);margin-bottom:16px;position:relative;overflow:hidden}
+.kitbox::after{content:"";position:absolute;top:0;bottom:0;right:clamp(28px,6vw,72px);width:14px;background:repeating-conic-gradient(var(--signal) 0 25%,transparent 0 50%) 0 0/7px 7px;opacity:.9}
+.kitbox .copy{display:flex;flex-direction:column;gap:12px;padding-right:56px;min-width:0}
+.kitbox .copy p{color:var(--muted)}
+.tray{background:#ECEBE3;border-radius:16px;display:grid;place-items:center;padding:18px;aspect-ratio:4/3;max-width:100%}
+.tray img{max-height:100%;width:auto;object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,.18))}
+.kitbox .tray{aspect-ratio:16/9}
+.kitbox .tray img{max-width:78%;max-height:150px}
+.kit{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.piece{display:flex;flex-direction:column;gap:12px;padding:14px 14px 20px;border-radius:20px;border:1px solid var(--line);background:var(--surface);min-width:0}
+.piece .tray img{max-height:110px}
+.piece .txt{display:flex;flex-direction:column;gap:6px;padding-inline:6px;min-width:0}
+.piece p{color:var(--muted);font-size:.93rem}
+.chip{align-self:flex-start;font:500 .68rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip.vac{color:var(--gold);border-color:color-mix(in srgb,var(--gold) 45%,transparent)}
+.chip.blow{color:var(--signal);border-color:color-mix(in srgb,var(--signal) 45%,transparent)}
+@media (max-width:860px){.kitbox{grid-template-columns:1fr}.kitbox .copy{padding-right:40px}}
+@media (max-width:620px){
+  .kit{grid-template-columns:1fr;gap:10px}
+  .piece{flex-direction:row;align-items:center;padding:10px}
+  .piece .tray{width:96px;flex:0 0 96px;aspect-ratio:1/1;padding:10px}
+  .piece .tray img{max-height:76px}
+}
 /* Speed dial */
 .dial{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,64px);align-items:center}
 .dial-ui{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px;display:flex;flex-direction:column;gap:24px;min-width:0}
@@ -249,6 +273,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
       <a href="#gift">The gift</a>
       <a href="#uses">Pit lane</a>
       <a href="#modes">Blow + vacuum</a>
+      <a href="#kit">The kit</a>
       <a href="#specs">Specs</a>
       <a href="#order">Christmas delivery</a>
     </nav>
@@ -359,10 +384,40 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
       </div>
       <div class="modes">
         <div class="mode"><span class="lvl">Mode 1</span><h3>Blower</h3><p>Air leaves the 40 mm nozzle at up to 55 m/s. Use it bare for cleaning and drying, or with the air nozzle to inflate.</p></div>
-        <div class="mode"><span class="lvl">Mode 2</span><h3>Vacuum</h3><p>Fit the dust collection cup, filter and suction hose. Crumbs and dust go into the cup, which empties with one twist.</p></div>
+        <div class="mode"><span class="lvl">Mode 2</span><h3>Vacuum</h3><p>Fit the transparent dust cup and filter, then pick the floor, flat or brush nozzle. Crumbs and dust go into the cup, which empties with one twist.</p></div>
         <div class="mode"><span class="lvl">Housing</span><h3>Tough ABS plastic</h3><p>The body is moulded from ABS, the impact-resistant plastic used for power tools. It shrugs off knocks in a toolbox or a door pocket.</p></div>
       </div>
-      <p class="note" style="margin-top:16px">Vacuum attachments come with the Complete kit.</p>
+      <p class="note" style="margin-top:16px">Vacuum attachments come with the <a href="#kit">Complete kit</a>.</p>
+    </div>
+  </section>
+
+  <section id="kit" aria-labelledby="kit-h" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow gold">Complete kit · 10 pieces</p>
+        <h2 id="kit-h">Every attachment, in one box.</h2>
+        <p>The Complete kit turns the Pro 40 into a full blower and vacuum. Along with the transparent dust cup, you get nine attachments for every job from the paddock to the desk, packed in their own storage box.</p>
+      </div>
+      <div class="kitbox">
+        <div class="tray"><img src="assets/kit/box.webp" alt="Storage box for the Complete kit" loading="lazy"></div>
+        <div class="copy">
+          <span class="chip vac">Storage box</span>
+          <h3 style="font-size:clamp(1.3rem,2.4vw,1.7rem)">A place for every piece. And a box worth unwrapping.</h3>
+          <p>Every nozzle, brush and the filter lives in the fitted storage box, so nothing rattles around the boot or gets lost in the kit bag. At Christmas it doubles as the gift box, and our free wrapping goes around it.</p>
+          <a class="btn btn-signal btn-sm" href="#order" id="kitBtn" style="align-self:flex-start">Choose the Complete kit · <span class="js-p-kit">€47,50</span></a>
+        </div>
+      </div>
+      <div class="kit">
+        <div class="piece"><div class="tray"><img src="assets/kit/floor.webp" alt="Floor nozzle" loading="lazy"></div><div class="txt"><span class="chip vac">Vacuum</span><h3>Floor nozzle</h3><p>Wide head for car mats, boot carpet and the garage floor.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/flat.webp" alt="Long flat nozzle" loading="lazy"></div><div class="txt"><span class="chip vac">Vacuum</span><h3>Long flat nozzle</h3><p>Reaches between the seats and down the sides of the centre console.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/brushnozzle.webp" alt="Brush nozzle" loading="lazy"></div><div class="txt"><span class="chip vac">Vacuum</span><h3>Brush nozzle</h3><p>Loosens dust from air vents, the dashboard and fabric seats.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/longblow.webp" alt="Long blow nozzle" loading="lazy"></div><div class="txt"><span class="chip blow">Blow</span><h3>Long blow nozzle</h3><p>Focuses the jet deep into brake ducts, calipers and radiator fins.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/shortblow.webp" alt="Short blow nozzle" loading="lazy"></div><div class="txt"><span class="chip blow">Blow</span><h3>Short blow nozzle</h3><p>A tighter, faster jet for seat rails, keyboards and door shuts.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/brush.webp" alt="Blower brush" loading="lazy"></div><div class="txt"><span class="chip blow">Blow</span><h3>Blower brush</h3><p>Brush and air together for grilles, wheel bases and PC fans.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/airnozzle.webp" alt="Multi-function air nozzle" loading="lazy"></div><div class="txt"><span class="chip ">Inflate</span><h3>Multi-function air nozzle</h3><p>Fits air mattresses, pool toys and vacuum storage bags.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/filter.webp" alt="Filter" loading="lazy"></div><div class="txt"><span class="chip vac">Vacuum</span><h3>Filter</h3><p>Sits in the dust cup and stops dust reaching the motor.</p></div></div>
+        <div class="piece"><div class="tray"><img src="assets/kit/cable.webp" alt="Charging cable" loading="lazy"></div><div class="txt"><span class="chip ">Charge</span><h3>Charging cable</h3><p>Recharges the battery from any USB charger.</p></div></div>
+      </div>
     </div>
   </section>
 
@@ -433,7 +488,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
               <legend>Package</legend>
               <div class="pkg">
                 <label><input type="radio" name="pkg" id="pkgStd" value="std" checked><span class="t">Standard</span><span class="p js-p-std">€37,50</span><span class="d">Blower, charging cable and manual. Blower mode only.</span></label>
-                <label><input type="radio" name="pkg" id="pkgKit" value="kit"><span class="t">Complete kit · Blow + vacuum</span><span class="p js-p-kit">€47,50</span><span class="d">Adds the vacuum attachments (dust cup, suction hose, filter) and the air nozzle.</span></label>
+                <label><input type="radio" name="pkg" id="pkgKit" value="kit"><span class="t">Complete kit · Blow + vacuum</span><span class="p js-p-kit">€47,50</span><span class="d">Adds the dust cup, filter and nine attachments for blowing, vacuuming and inflating, in a fitted storage box. <a href="#kit">See the kit</a></span></label>
                 <label><input type="radio" name="pkg" id="pkgDuo" value="duo"><span class="t">Father &amp; son pack<span class="ribbon">Gift</span></span><span class="p"><s class="js-p-duo-was">€75,00</s><span class="js-p-duo">€69,00</span></span><span class="d">Two Standard blowers, wrapped separately. Free delivery.</span></label>
               </div>
             </fieldset>
@@ -502,7 +557,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
         <details><summary>Will it arrive before Christmas?</summary><p>Yes, if you order by the date shown for your country in the delivery table. After that date we still ship the same day, but we can't promise delivery before 24 December.</p></details>
         <details><summary>Can I send it straight to the person it's for?</summary><p>Yes. Enter their address at checkout and tick gift wrapping. The parcel has no price inside and your message goes on the card.</p></details>
         <details><summary>Is it useful at a track day?</summary><p>Yes. It fits in a kit bag or the boot, runs on its own battery and needs no compressor or power socket. Use it on the high speeds for brake ducts, wheel arches and radiators, and on vacuum for the footwells.</p></details>
-        <details><summary>Does it work as a vacuum?</summary><p>Yes. Fit the dust collection cup, filter and suction hose from the Complete kit, and it pulls crumbs, sand and dust into the cup. It suits car interiors, desks and keyboards. It is not a replacement for a full-size vacuum cleaner.</p></details>
+        <details><summary>Does it work as a vacuum?</summary><p>Yes. Fit the transparent dust cup, filter and one of the three vacuum nozzles from the Complete kit, and it pulls crumbs, sand and dust into the cup. It suits car interiors, desks and keyboards. It is not a replacement for a full-size vacuum cleaner.</p></details>
         <details><summary>Is it safe for electronics and a sim rig?</summary><p>Yes. It uses no propellant, so there is no cold spray and no residue. Use speed 1 or 2 for keyboards, wheel bases and circuit boards, and hold fan blades still while you clean them.</p></details>
         <details><summary>What is it made of?</summary><p>The housing is ABS plastic, a tough, impact-resistant material widely used for power tools and electronics.</p></details>
         <details><summary>Will I pay customs or import fees?</summary><p>Orders to Germany, Sweden, Denmark and Finland include all VAT. For the UK and Norway, import VAT is collected at checkout, so there is nothing to pay on delivery. Iceland is the only destination where local import VAT may be charged on arrival.</p></details>
@@ -646,6 +701,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}
   document.querySelectorAll('input[name="pkg"]').forEach(function(r){
     r.addEventListener("change", function(){ state.pkg = r.value; render(); });
   });
+  $("kitBtn").addEventListener("click", function(){ $("pkgKit").checked = true; state.pkg = "kit"; render(); });
   $("duoBtn").addEventListener("click", function(){ $("pkgDuo").checked = true; state.pkg = "duo"; render(); });
   $("wrap").addEventListener("change", function(){ state.wrap = this.checked; render(); });
   $("msg").addEventListener("input", function(){ $("msgCount").textContent = this.value.length + " / 140"; });
