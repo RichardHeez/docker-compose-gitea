@@ -62,6 +62,14 @@
             <div id="mediaCtl" class="row small" hidden><button class="btn ghost sm" id="mPlay">⏯ Play/Pause</button><button class="btn ghost sm" id="mRestart">⏮ Restart</button></div>
           </div>
           <div id="wordStrip" class="word-strip" title="Click words to highlight them on screen"></div>
+          <div class="clear-bar" id="clearBar">
+            <button data-clear="all" class="all" title="Clear everything (F1)">Clear all <kbd>F1</kbd></button>
+            <button data-clear="slide" title="Clear the slide text (F2)">Slide <kbd>F2</kbd></button>
+            <button data-clear="media" title="Hide backgrounds & media (F3)">Media <kbd>F3</kbd></button>
+            <button data-clear="props" title="Hide props (F4)">Props <kbd>F4</kbd></button>
+            <button data-clear="messages" title="Hide the message (F5)">Message <kbd>F5</kbd></button>
+            <button data-clear="audio" title="Fade out audio (F6)">Audio <kbd>F6</kbd></button>
+          </div>
         </figure>
       </div>
 
@@ -84,6 +92,7 @@
     <aside class="panel side">
       <nav class="tabs" id="sideTabs">
         <button data-tab="channels" class="on">Outputs</button>
+        <button data-tab="show">Show</button>
         <button data-tab="songs">Songs</button>
         <button data-tab="ai">AI · Voice</button>
         <button data-tab="media">Media</button>
@@ -95,6 +104,59 @@
         <div class="row between"><span class="muted" id="chCount"></span>
           <div class="row"><button class="btn ghost sm" id="identifyAll">Identify</button><button class="btn ghost sm" id="openAll">Open all</button></div></div>
         <div id="channels" class="channels"></div>
+      </div>
+
+      <div class="tab-body" data-body="show" hidden>
+        <div class="card">
+          <div class="row between"><h3>Timers &amp; clocks</h3><button class="btn ghost sm" id="timerAdd" type="button">＋ Timer</button></div>
+          <div id="timerList" class="timer-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Message</h3>
+          <p class="muted small">Shows over the slides on audience screens without interrupting them. Tokens: <code>{timer}</code>, <code>{timer:Name}</code>, <code>{clock}</code>.</p>
+          <textarea id="msgText" rows="2" placeholder="e.g. Parent of child #23, please come to the nursery"></textarea>
+          <div class="row"><select id="msgStyle" class="mini-select"><option value="lower">Lower band</option><option value="ticker">Scrolling ticker</option><option value="top">Top band</option></select>
+            <span class="spacer"></span><button class="btn sm" id="msgShow" type="button">Show</button><button class="btn ghost sm" id="msgHide" type="button">Hide</button></div>
+          <div id="msgRecent" class="chips"></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Props</h3><div class="row"><button class="btn ghost sm" id="propAddText" type="button">＋ Text</button><button class="btn ghost sm" id="propAddMedia" type="button">＋ Image</button></div></div>
+          <p class="muted small">Logo bugs, watermarks and overlays that stay above the slides.</p>
+          <div id="propList" class="prop-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Announcements loop</h3>
+          <p class="muted small">Plays on screens using the <b>Announcements loop</b> layout (lobby, foyer) while the main screen runs the service. Add slides with ⟳ in the Media tab or the Service list.</p>
+          <ol id="annList" class="ann-list"></ol>
+          <div class="row"><label class="inline small">Seconds each <input id="annSecs" type="number" min="2" max="300"></label><span class="spacer"></span>
+            <button class="btn sm" id="annPlay" type="button">▶ Play</button><button class="btn ghost sm" id="annStop" type="button">■ Stop</button></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Looks</h3><button class="btn ghost sm" id="lookSave" type="button">＋ Save current</button></div>
+          <p class="muted small">A look remembers every screen's layout, theme, background, text style and on/off. Switch all screens at once.</p>
+          <div id="lookList" class="look-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Macros</h3><button class="btn ghost sm" id="macroAdd" type="button">＋ Macro</button></div>
+          <p class="muted small">One button that does several things at once.</p>
+          <div id="macroList" class="macro-grid"></div>
+          <div id="macroEditor" class="macro-editor" hidden>
+            <div class="grid2"><label>Name<input id="mcName" placeholder="e.g. Start of service"></label><label>Colour<input id="mcColor" type="color" value="#8b7bff"></label></div>
+            <label>Apply look<select id="mcLook"></select></label>
+            <div class="mc-clears"><span class="muted small">Clear:</span>
+              <label class="check"><input type="checkbox" value="slide"> slide</label><label class="check"><input type="checkbox" value="media"> media</label>
+              <label class="check"><input type="checkbox" value="props"> props</label><label class="check"><input type="checkbox" value="messages"> message</label><label class="check"><input type="checkbox" value="audio"> audio</label></div>
+            <div class="grid2"><label>Timer<select id="mcTimer"></select></label><label>Timer action<select id="mcTimerAct"><option value="">—</option><option value="start">Start</option><option value="stop">Stop</option><option value="reset">Reset</option><option value="restart">Reset &amp; start</option></select></label></div>
+            <div class="grid2"><label>Announcements<select id="mcAnn"><option value="">—</option><option value="play">Play</option><option value="stop">Stop</option></select></label><label>Go live with service item #<input id="mcGo" type="number" min="1"></label></div>
+            <label>Show message<input id="mcMsg" placeholder="leave empty for none"></label>
+            <div class="row"><button class="btn primary sm" id="mcSave" type="button">Save macro</button><button class="btn ghost sm" id="mcCancel" type="button">Cancel</button><span class="spacer"></span><button class="btn ghost sm" id="mcDelete" type="button">Delete</button></div>
+          </div>
+        </div>
       </div>
 
       <div class="tab-body" data-body="songs" hidden>
@@ -116,6 +178,9 @@
             <label>CCLI song number<input id="sgCcli" inputmode="numeric" placeholder="optional"></label>
             <label>Lines per slide: <b id="songLinesLabel"></b><input type="range" id="songLines" min="1" max="8" step="1"></label>
           </div>
+          <label>Arrangement <span class="muted">— the sung order; click a group below to add it, leave empty for the lyrics order</span>
+            <input id="sgArr" placeholder="Verse 1, Chorus, Verse 2, Chorus, Bridge, Chorus"></label>
+          <div id="sgGroups" class="chips groups"></div>
           <label>Lyrics <span class="muted">— a blank line between sections; label them [Verse 1], [Chorus], [Bridge]…</span>
             <textarea id="sgLyrics" rows="9" spellcheck="false"></textarea></label>
           <div class="row">
@@ -193,6 +258,13 @@
       </div>
 
       <div class="tab-body" data-body="media" hidden>
+        <div class="card audio-card">
+          <div class="row between"><h3>Audio</h3><span id="audioTitle" class="muted small">Nothing playing</span></div>
+          <div class="audio-bar"><span id="audioProgress"></span></div>
+          <div class="row"><button class="btn sm" id="audioToggle" type="button">▶</button><button class="btn ghost sm" id="audioFade" type="button">Fade out</button>
+            <label class="check"><input type="checkbox" id="audioLoop"> Loop</label><span class="spacer"></span><label class="inline small">Vol <input type="range" id="audioVol" min="0" max="1" step="0.05" value="0.8"></label></div>
+          <p class="muted small">Plays from this computer (connect it to the sound desk). Upload mp3/m4a/wav below.</p>
+        </div>
         <label id="dropZone" class="drop">
           <input type="file" id="mediaFile" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden>
           <b>Drop images or videos here</b><span class="muted small">or click to upload · use them as backgrounds or show them full screen</span>

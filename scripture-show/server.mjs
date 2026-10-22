@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { BOOKS, bookById } from './public/js/books.js';
 import { lyricsToText } from './public/js/songs.js';
+import { DEFAULT_TIMERS } from './public/js/timers.js';
 import { importSongFiles } from './lib/importers.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -73,7 +74,7 @@ await fs.mkdir(MEDIA, { recursive: true });
 
 // ---------------------------------------------------------------- show state
 const THEMES = ['aurora', 'midnight', 'sunrise', 'forest', 'ocean', 'paper', 'black'];
-const MODES = ['full', 'lower', 'stage', 'chroma', 'alpha', 'confidence'];
+const MODES = ['full', 'lower', 'stage', 'chroma', 'alpha', 'confidence', 'announce'];
 const defaultChannel = (i) => ({
   id: i + 1,
   name: ['Main Screen', 'Livestream', 'Stage Display', 'Lower Third (OBS)', 'Lobby', 'Overflow', 'Translation 2', 'Translation 3'][i] || `Channel ${i + 1}`,
@@ -105,6 +106,8 @@ const defaultChannel = (i) => ({
   // media
   showMedia: i !== 1 && i !== 3,   // lower-third/overlay channels skip full-screen media
   mediaAudio: i === 0,             // only one screen should play video sound
+  showProps: true,                 // logo bugs / overlays
+  showMessages: i !== 2,           // operator messages (stage gets its own stage message)
 });
 
 let state = {
@@ -119,6 +122,14 @@ let state = {
   stageMessage: '',
   splitChars: 240,   // split long passages into screens of ~N characters (0 = never split)
   songLines: 4,      // lyric lines per slide
+  // ProPresenter-style layers & tools
+  timers: DEFAULT_TIMERS,
+  message: { text: '', visible: false, style: 'lower' },                 // lower | ticker | top
+  props: [],         // [{ id, name, kind: 'media'|'text', url, text, position, size, opacity, visible }]
+  announcements: { items: [], seconds: 8, playing: false, index: 0, startedAt: 0 },
+  looks: [],         // [{ id, name, channels: [...] }]
+  macros: [],        // [{ id, name, color, actions: [...] }]
+  clearMedia: false, // hide backgrounds & media on every screen
   ccliLicense: '',   // church's CCLI licence number, shown on song slides
   customWords: {},   // church-added words per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], verse: [...] } }
   service: [],       // playlist items
@@ -129,6 +140,7 @@ const STATE_FILE = path.join(DATA, 'state.json');
 try {
   const saved = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
   state = { ...state, ...saved, version: 0 };
+  if (!Array.isArray(state.timers) || !state.timers.length) state.timers = DEFAULT_TIMERS;
   // keep at least CHANNEL_COUNT channels, fill in any new fields
   state.channels = Array.from({ length: Math.max(CHANNEL_COUNT, saved.channels?.length || 0) },
     (_, i) => ({ ...defaultChannel(i), ...(saved.channels?.[i] || {}), id: i + 1 }));
@@ -148,15 +160,27 @@ const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const sseClients = new Set();
 function broadcast() {
   state.version++;
+  state.serverNow = Date.now(); // lets every screen show the same timer values
   const msg = `event: state\ndata: ${JSON.stringify(state)}\n\n`;
   for (const res of sseClients) res.write(msg);
   persist();
 }
 setInterval(() => { for (const res of sseClients) res.write(': ping\n\n'); }, 25000);
 
+// Announcements loop: advance on the server so lobby screens keep cycling even if no console is open.
+setInterval(() => {
+  const a = state.announcements;
+  if (!a?.playing || !a.items?.length) return;
+  if (Date.now() - (a.startedAt || 0) >= Math.max(2, Number(a.seconds) || 8) * 1000) {
+    state.announcements = { ...a, index: ((a.index || 0) + 1) % a.items.length, startedAt: Date.now() };
+    broadcast();
+  }
+}, 500);
+
 function sanitizePatch(p) {
   const out = {};
-  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords', 'songLines', 'ccliLicense']) if (k in p) out[k] = p[k];
+  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords', 'songLines', 'ccliLicense',
+    'timers', 'message', 'props', 'announcements', 'looks', 'macros', 'clearMedia']) if (k in p) out[k] = p[k];
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
       const n = p.channels.find((x) => Number(x.id) === c.id) || p.channels[i];
@@ -486,7 +510,8 @@ For title slides set book, chapter, verse_start, verse_end to 0. Book numbering:
 
 // ---------------------------------------------------------------- http
 const MEDIA_TYPES = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif',
-  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime' };
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+  '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.flac': 'audio/flac' };
 async function listMedia() {
   const files = await fs.readdir(MEDIA).catch(() => []);
   const out = [];
@@ -494,7 +519,7 @@ async function listMedia() {
     const type = MEDIA_TYPES[path.extname(f).toLowerCase()];
     if (!type) continue;
     const st = await fs.stat(path.join(MEDIA, f));
-    out.push({ name: f, url: `/media/${encodeURIComponent(f)}`, type: type.startsWith('video') ? 'video' : 'image', size: st.size, added: st.mtimeMs });
+    out.push({ name: f, url: `/media/${encodeURIComponent(f)}`, type: type.split('/')[0] === 'audio' ? 'audio' : type.startsWith('video') ? 'video' : 'image', size: st.size, added: st.mtimeMs });
   }
   return out.sort((a, b) => b.added - a.added);
 }
@@ -543,6 +568,7 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/events') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive', 'access-control-allow-origin': '*' });
+      state.serverNow = Date.now();
       res.write(`retry: 1500\nevent: state\ndata: ${JSON.stringify(state)}\n\n`);
       sseClients.add(res);
       req.on('close', () => sseClients.delete(res));
@@ -569,7 +595,8 @@ const server = http.createServer(async (req, res) => {
       if (!title || !String(b.lyrics || '').trim()) return send(res, 400, { error: 'A song needs a title and lyrics' });
       const id = b.id && !String(b.id).startsWith('pd-') ? String(b.id) : `song-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
       const song = { id, title, artist: String(b.artist || '').slice(0, 200), ccli: String(b.ccli || '').slice(0, 20), lyrics: String(b.lyrics).slice(0, 50000),
-        source: String(b.source || 'library').slice(0, 40), updated: Date.now() };
+        source: String(b.source || 'library').slice(0, 40), updated: Date.now(),
+        arrangement: Array.isArray(b.arrangement) ? b.arrangement.map((x) => String(x).slice(0, 40)).filter(Boolean).slice(0, 60) : [] };
       songs = [song, ...songs.filter((x) => x.id !== id)];
       await saveSongs();
       return send(res, 200, song);
@@ -634,7 +661,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/media' && req.method === 'POST') {
       const original = decodeURIComponent(String(req.headers['x-filename'] || 'upload'));
       const ext = path.extname(original).toLowerCase();
-      if (!MEDIA_TYPES[ext]) return send(res, 415, { error: 'Use an image (png, jpg, gif, webp, avif) or video (mp4, webm, mov).' });
+      if (!MEDIA_TYPES[ext]) return send(res, 415, { error: 'Use an image (png, jpg, gif, webp, avif), video (mp4, webm, mov) or audio (mp3, m4a, wav, ogg, flac).' });
       const base = safe(path.basename(original, path.extname(original))).slice(0, 60) || 'media';
       let name = base + ext; let n = 1;
       while (existsSync(path.join(MEDIA, name))) name = `${base}-${++n}${ext}`;

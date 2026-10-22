@@ -24,6 +24,17 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Media & backgrounds** | Upload images and videos (drag & drop). Show them full screen (video with play/pause/restart), add them to the service, or set them as channel backgrounds. Background edits: blur, brightness, darken, colour tint, fill/fit. |
 | **Phone remote** | `http://<server>:4848/remote` — big Next/Back buttons, go live by reference, Black/Clear/Logo, service list, stage messages. Optional `CONTROL_PIN`. |
 | **Desktop app + NDI** | Electron app that runs everything locally, puts each channel full screen on the display you pick (remembered next time), and can send any channel as an **NDI source** (“F8 Ch N”, with transparency) to vMix, OBS, TriCaster, etc. |
+| **Timers & clocks** | Countdown, count down to a time of day (“service starts 10:00”), count up (sermon length). Start/stop/reset; show full screen as a countdown slide, on the stage display, or inside messages with `{timer}` tokens. All screens show the same second. |
+| **Messages** | Text over the slides on audience screens — lower band, top band or scrolling ticker — without interrupting what’s live (“Parent of child #23 to the nursery”). Recent messages one tap away. |
+| **Props** | Always-on overlays: a logo bug in any corner, a “LIVE” tag, a full-screen watermark. Per-screen on/off. |
+| **Clear layers** | Clear All / Slide / Media / Props / Message / Audio (F1–F6), like ProPresenter’s clear groups. |
+| **Announcements loop** | A looping slideshow (images, videos, text, scripture) on screens set to the *Announcements loop* layout — lobby and foyer screens keep cycling while the main screen runs the service. |
+| **Audio** | Upload mp3/m4a/wav and play walk-in or offering music from the operator computer, with loop, volume and fade-out. |
+| **Looks** | Save how every screen is set up (“Worship”, “Sermon”, “Pre-service”) and switch them all in one click. |
+| **Macros** | One button that applies a look, clears layers, starts/resets a timer, plays announcements, shows a message and goes live with a service item. On the phone remote too. |
+| **Song arrangements** | Choose the sung order (V1, C, V2, C, B, C, C) with colour-coded groups like ProPresenter. |
+| **Stage notes** | Notes on a service item appear only on the stage display. |
+| **Transitions** | Fade, dissolve, push, zoom, blur or cut, per screen. |
 | **Show control** | Preview / Live monitors, Black / Clear / Logo, ←/→ steps through screens and verses, service playlist, stage messages (“5 minutes left”), keyboard shortcuts. |
 
 ## Run it
@@ -84,7 +95,7 @@ All outputs stay in sync through the server, so they can be on any device on the
 
 ## Keyboard
 
-`/` type reference · `Enter` go live · `↑ ↓` preview verse · `← →` previous/next screen or verse live · `B` black · `C` clear · `L` logo · `Esc` remove overlays · `PgUp/PgDn` service · `M` microphone
+`/` type reference · `Enter` go live · `F1` clear all · `F2` slide · `F3` media · `F4` props · `F5` message · `F6` audio · `↑ ↓` preview verse · `← →` previous/next screen or verse live · `B` black · `C` clear · `L` logo · `Esc` remove overlays · `PgUp/PgDn` service · `M` microphone
 
 ## Notes
 

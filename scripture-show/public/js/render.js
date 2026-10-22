@@ -1,5 +1,6 @@
 // Shared slide resolution + rendering for output windows, console monitors and the remote.
 import { bookById, formatRef, refKey } from './books.js';
+import { timerOver, timerText } from './timers.js';
 
 // ---------------------------------------------------------------- API (with optional control PIN)
 const PIN_KEY = 'f8.pin';
@@ -139,6 +140,7 @@ export async function paginate(item, state) {
 export async function resolveSlide(item, channel, state) {
   if (!item) return { kind: 'blank' };
   if (item.kind === 'text') return { kind: 'text', title: item.title || '', body: item.body || '' };
+  if (item.kind === 'timer') return { kind: 'timer', title: item.title || '', timerId: item.timerId };
   if (item.kind === 'song') {
     const page = Math.max(0, Math.min(item.page || 0, (item.slides?.length || 1) - 1));
     const cur = item.slides?.[page] || { label: '', lines: [] };
@@ -206,7 +208,7 @@ function styleVars(el, channel) {
 
 // Builds the DOM for a slide. `opts` = { black, clear, logo, nextLabel, preview }.
 export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
-  const mode = channel.mode || 'full';
+  const mode = channel.mode === 'announce' ? 'full' : channel.mode || 'full';
   const overlay = mode === 'lower' || mode === 'chroma' || mode === 'alpha';
   const isStage = mode === 'stage' || mode === 'confidence';
   const el = document.createElement('div');
@@ -244,6 +246,8 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
       ? `<div class="box"><div class="song-label">${esc(slide.label)} · ${slide.page + 1}/${slide.pages}</div><div class="lyrics fit">${lines}</div></div>`
       : `<div class="box song"><div class="lyrics fit">${lines}</div>${overlay ? '' : footer}</div>`;
     if (isStage && slide.next) opts = { ...opts, nextLabel: `${slide.next.label}: ${slide.next.lines[0] || ''}` };
+  } else if (slide.kind === 'timer') {
+    body = `<div class="box">${slide.title ? `<div class="subtitle timer-title">${esc(slide.title)}</div>` : ''}<div class="timer-big" data-timer="${esc(slide.timerId)}"></div></div>`;
   } else if (slide.kind === 'text') {
     body = `<div class="box"><div class="title fit">${esc(slide.title)}</div>${slide.body ? `<div class="subtitle">${esc(slide.body)}</div>` : ''}</div>`;
   } else if (slide.kind === 'scripture') {
@@ -261,8 +265,9 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
     const msg = state.stageMessage ? `<div class="stage-msg">${esc(state.stageMessage)}</div>` : '';
     const status = opts.black ? 'BLACK' : opts.logo ? 'LOGO' : opts.clear ? 'CLEAR' : 'LIVE';
     const next = opts.nextLabel ? `<div class="stage-next"><span>NEXT</span>${esc(opts.nextLabel)}</div>` : '';
+    const notes = opts.notes ? `<div class="stage-notes"><span>NOTES</span>${esc(opts.notes)}</div>` : '';
     el.innerHTML = `<div class="stage-bar"><div class="clock" data-clock></div><div class="status s-${status.toLowerCase()}">${status}</div></div>
-      ${msg}<div class="stage-body">${body}</div>${next}`;
+      ${msg}${notes}<div class="stage-body">${body}</div>${next}`;
   } else {
     el.innerHTML = `<div class="bg"><div class="bg-layer">${backgroundHtml(channel, mode)}</div><div class="bg-tint"></div><div class="bg-dim"></div></div>`
       + (media ? `<div class="media-layer">${media}</div>` : `<div class="frame">${body}</div>`);
@@ -312,20 +317,33 @@ export function autoScale(host) {
 // Cross-fades a new slide into `host`.
 export function show(host, el, transition = 'fade') {
   const old = [...host.querySelectorAll('.slide')];
-  el.classList.add('entering');
+  const tr = ['fade', 'cut', 'dissolve', 'push', 'zoom', 'blur'].includes(transition) ? transition : 'fade';
+  el.classList.add('entering', `tr-${tr}`);
   host.appendChild(el);
+  updateTimers(el, show.state);
   fitSlide(el);
   document.fonts?.ready.then(() => el.isConnected && fitSlide(el)); // re-fit once web fonts arrive
   el.querySelectorAll('[data-clock]').forEach(tickClock);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     el.classList.remove('entering');
     const drop = (o) => { o.querySelectorAll('video').forEach((v) => { v.pause(); v.removeAttribute('src'); v.load(); }); o.remove(); };
-    if (transition === 'cut') old.forEach(drop);
-    else old.forEach((o) => { o.classList.add('leaving'); setTimeout(() => drop(o), 600); });
+    if (tr === 'cut') old.forEach(drop);
+    else old.forEach((o) => { o.className = o.className.replace(/\btr-\w+/g, ''); o.classList.add('leaving', `tr-${tr}`); setTimeout(() => drop(o), tr === 'dissolve' ? 1100 : 650); });
   }));
 }
 
 function tickClock(node) {
   const t = () => { if (!node.isConnected) return clearInterval(id); node.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
   const id = setInterval(t, 1000); t();
+}
+
+// Fill every [data-timer] element under `root` with that timer's current value (call every second).
+show.state = null; // latest state, set by the page so new slides show timer values immediately
+export function updateTimers(root, state) {
+  if (!root || !state) return;
+  root.querySelectorAll('[data-timer]').forEach((el) => {
+    const t = (state.timers || []).find((x) => x.id === el.dataset.timer);
+    el.textContent = t ? timerText(t) : '';
+    el.classList.toggle('over', !!t && timerOver(t));
+  });
 }

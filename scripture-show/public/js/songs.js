@@ -106,3 +106,22 @@ export function splitPastedSongs(text) {
     return { title: title.replace(/^["“]|["”]$/g, '').trim(), ...meta, lyrics: lyricsToText(sections), sections: sections.length, source: 'Pasted' };
   }).filter((s) => s.title && s.sections);
 }
+
+// ProPresenter-style group colours for song sections.
+const GROUP_COLORS = [
+  [/^pre[- ]?chorus/i, '#f2994a'], [/^chorus|^refrain/i, '#e5484d'], [/^verse/i, '#3e8bff'], [/^bridge/i, '#a06cf2'],
+  [/^tag|^vamp|^hook|^chant/i, '#30a46c'], [/^intro|^outro|^ending|^coda|^interlude|^instrumental/i, '#8a93ad'],
+];
+export const groupColor = (label) => (GROUP_COLORS.find(([re]) => re.test(String(label || ''))) || [null, '#c9a227'])[1];
+
+// Unique section names in the order they first appear.
+export const sectionNames = (sections) => [...new Set(sections.map((s) => s.label))];
+
+// Apply an arrangement (list of section names, may repeat) to parsed sections.
+export function arrangeSections(sections, arrangement) {
+  const order = (Array.isArray(arrangement) ? arrangement : String(arrangement || '').split(/\s*,\s*/)).map((x) => String(x).trim()).filter(Boolean);
+  if (!order.length) return sections;
+  const byName = new Map(); for (const s of sections) if (!byName.has(s.label.toLowerCase())) byName.set(s.label.toLowerCase(), s);
+  const out = order.map((n) => byName.get(n.toLowerCase())).filter(Boolean);
+  return out.length ? out : sections;
+}

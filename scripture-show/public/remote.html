@@ -35,6 +35,10 @@
     li .n { color: var(--muted); font-size: 12px; width: 18px; }
     li small { display: block; color: var(--muted); font-size: 12px; }
     .muted { color: var(--muted); font-size: 13px; }
+    .clearall { width: 100%; margin-bottom: 12px; background: #3a1d24; border-color: #6b2a35; }
+    .macros { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .macros button { border: 0; color: #fff; padding: 16px 8px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+    .hide-msg { width: 100%; margin: -6px 0 12px; }
     #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #1f2440; border: 1px solid var(--line); padding: 10px 14px; border-radius: 12px; opacity: 0; transition: .25s; pointer-events: none; }
     #toast.show { opacity: 1; }
   </style>
@@ -48,9 +52,14 @@
     <button class="big next" id="next">Next ›</button>
   </div>
   <div class="seg"><button id="black">Black</button><button id="clear">Clear</button><button id="logo">Logo</button></div>
+  <button id="clearAll" class="clearall">Clear all</button>
+  <div id="macroWrap" hidden><h3>Macros</h3><div id="macros" class="macros"></div></div>
   <form id="quick"><input id="ref" placeholder="jn 3:16, Ps 23…" autocomplete="off" enterkeyhint="go"><button class="golive">Go Live</button></form>
   <h3>Service</h3>
   <ol id="service"><li class="muted">Loading…</li></ol>
+  <h3>Message on screens</h3>
+  <form id="msgForm"><input id="msgText" placeholder="e.g. Parent of child #23 to the nursery"><button>Show</button></form>
+  <button id="msgHide" class="hide-msg" hidden>Hide message</button>
   <h3>Stage message</h3>
   <form id="stage"><input id="msg" placeholder="e.g. 5 minutes left"><button>Send</button></form>
   <div id="toast"></div>

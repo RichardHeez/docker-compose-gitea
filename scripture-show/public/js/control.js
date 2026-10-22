@@ -24,7 +24,7 @@ export async function goLive(S, item, { page = 0 } = {}) {
   if (!item) return null;
   const live = await paginate({ ...core(item), page, highlight: [] }, S);
   if (page < 0) live.page = live.pages - 1;
-  await push({ live, next: nextOf(S, live), black: false, clear: false, logo: false });
+  await push({ live, next: nextOf(S, live), black: false, clear: false, logo: false, clearMedia: false });
   return live;
 }
 

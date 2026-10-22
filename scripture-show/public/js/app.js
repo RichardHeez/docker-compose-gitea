@@ -2,7 +2,9 @@
 import { BOOKS, bookById, formatRef, parseFollowUp, parseReferences, refKey } from './books.js';
 import { FONTS, api, langCode, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
 import * as control from './control.js';
-import { lyricsToText, parseLyrics, slidesFor, songSummary, splitPastedSongs } from './songs.js';
+import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, slidesFor, songSummary, splitPastedSongs } from './songs.js';
+import * as tools from './showtools.js';
+import { updateTimers } from './render.js';
 import { PhraseRecognizer } from './khaya.js';
 import { langKey, setCustomWords } from './langs.js';
 
@@ -44,6 +46,8 @@ function connect() {
     if (!prev || JSON.stringify(prev.live) !== JSON.stringify(S.live)) markLiveSongSlide();
     if (!prev || prev.splitChars !== S.splitChars) { $('#splitChars').value = S.splitChars; $('#splitLabel').textContent = S.splitChars || 'off —'; }
     renderOverlayButtons();
+    show.state = S;
+    tools.onState(S, prev);
   });
   es.onerror = () => toast('Reconnecting to server…', true);
 }
@@ -257,7 +261,7 @@ async function quickRef(text, live = false) {
 }
 
 // ---------------------------------------------------------------- channels
-const MODE_LABELS = { full: 'Full screen', lower: 'Lower third', stage: 'Stage display', chroma: 'Lower third · green key', alpha: 'Lower third · transparent', confidence: 'Confidence monitor' };
+const MODE_LABELS = { full: 'Full screen', lower: 'Lower third', stage: 'Stage display', chroma: 'Lower third · green key', alpha: 'Lower third · transparent', confidence: 'Confidence monitor', announce: 'Announcements loop' };
 const THEMES = ['aurora', 'midnight', 'sunrise', 'forest', 'ocean', 'paper', 'black'];
 const openCh = new Set(store.get('openCh', []));
 
@@ -295,7 +299,7 @@ function renderChannels() {
         <label>Outline ${range('outline', c.outline || 0, 0, 10)}</label>
         <label>Shadow ${range('shadow', c.shadow ?? 5, 0, 10)}</label>
         <label>Align${sel('align', c.align, [['center', 'center'], ['left', 'left']])}</label>
-        <label>Transition${sel('transition', c.transition, [['fade', 'fade'], ['cut', 'cut']])}</label>
+        <label>Transition${sel('transition', c.transition, [['fade', 'Fade'], ['dissolve', 'Dissolve'], ['push', 'Push'], ['zoom', 'Zoom'], ['blur', 'Blur'], ['cut', 'Cut']])}</label>
         ${check('showReference', c.showReference !== false, 'Show reference')}
         ${check('showVerseNumbers', c.showVerseNumbers, 'Verse numbers')}
         ${check('uppercase', c.uppercase, 'UPPERCASE')}
@@ -313,6 +317,8 @@ function renderChannels() {
         <h5>Media</h5>
         ${check('showMedia', c.showMedia !== false, 'Show full-screen media')}
         ${check('mediaAudio', c.mediaAudio, 'Play video sound')}
+        ${check('showProps', c.showProps !== false, 'Show props')}
+        ${check('showMessages', c.showMessages !== false, 'Show messages')}
         ${desktop ? `<div class="ndi"><label class="switch"><input type="checkbox" data-act="ndi" ${ndiOn.has(c.id) ? 'checked' : ''}><span></span></label> NDI output <span class="muted small">“F8 Ch ${c.id}”</span></div>` : ''}
         <div class="actions">
           <button class="btn sm" data-act="screen">Open on screen…</button>
@@ -376,17 +382,19 @@ async function loadMedia() {
   const chOpts = S ? S.channels.map((c) => `<option value="${c.id}">Ch ${c.id} · ${esc(c.name)}</option>`).join('') : '';
   $('#mediaGrid').innerHTML = mediaList.length ? mediaList.map((m, i) => `
     <div class="media-item" data-i="${i}">
-      <div class="thumb" ${m.type === 'image' ? `style="background-image:url('${esc(m.url)}')"` : ''}>${m.type === 'video' ? `<video src="${esc(m.url)}#t=1" preload="metadata" muted></video>` : ''}<span class="kind">${m.type}</span></div>
+      <div class="thumb ${m.type === 'audio' ? 'audio' : ''}" ${m.type === 'image' ? `style="background-image:url('${esc(m.url)}')"` : ''}>${m.type === 'video' ? `<video src="${esc(m.url)}#t=1" preload="metadata" muted></video>` : m.type === 'audio' ? '<div class="note">♪</div>' : ''}<span class="kind">${m.type}</span></div>
       <div class="name" title="${esc(m.name)}">${esc(m.name)}</div>
-      <div class="acts">
+      ${m.type === 'audio' ? `<div class="acts"><button class="btn sm" data-act="play">▶ Play</button><button class="btn ghost sm" data-act="del" title="Delete">✕</button></div>` : `<div class="acts">
         <button class="btn live sm" data-act="live">Live</button>
+        <button class="btn ghost sm" data-act="loop" title="Add to the announcements loop">⟳</button>
         <button class="btn ghost sm" data-act="preview">Preview</button>
         <button class="btn ghost sm" data-act="service">＋</button>
         <button class="btn ghost sm" data-act="del" title="Delete">✕</button>
         <select data-act="bg"><option value="">Set as background…</option><option value="all">All full-screen channels</option>${chOpts}</select>
-      </div>
+      </div>`}
     </div>`).join('') : '<p class="muted small">No media yet.</p>';
   if (S) renderChannels();
+  tools.refreshProps();
 }
 
 const mediaItem = (m) => ({ kind: 'media', url: m.url, mediaType: m.type, name: m.name, fit: $('#mediaFit').value, loop: true });
@@ -407,8 +415,10 @@ function renderService() {
   $('#service').innerHTML = S.service.length ? S.service.map((it, i) => `
     <li class="svc ${control.sameItem(it, S.live) ? 'live' : ''}" data-i="${i}">
       <span class="idx">${i + 1}</span>
-      <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : it.kind === 'media' ? it.name : it.kind === 'song' ? `🎵 ${it.title}` : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : it.kind === 'media' ? (it.mediaType === 'video' ? 'Video' : 'Image') : it.kind === 'song' ? `Song · ${it.slides?.length || 0} slides${it.artist ? ' · ' + it.artist : ''}` : 'Scripture')}</div></div>
+      <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : it.kind === 'media' ? it.name : it.kind === 'song' ? `🎵 ${it.title}` : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : it.kind === 'media' ? (it.mediaType === 'video' ? 'Video' : 'Image') : it.kind === 'song' ? `Song · ${it.slides?.length || 0} slides${it.artist ? ' · ' + it.artist : ''}` : 'Scripture')}</div>${it.notes ? `<div class="notes">📝 ${esc(it.notes)}</div>` : ''}</div>
       <button class="btn live sm" data-act="live">Live</button>
+      <button class="x" data-act="notes" title="Stage notes (shown only on the stage display)">✎</button>
+      <button class="x" data-act="loop" title="Add to the announcements loop">⟳</button>
       <button class="x" data-act="up" title="Move up">↑</button>
       <button class="x" data-act="del" title="Remove">✕</button>
     </li>`).join('') : '<li class="muted small">Your service is empty. Add verses with “＋ Service”, or let AI build one.</li>';
@@ -425,11 +435,12 @@ let songSlides = [];      // its slides at the current lines-per-slide
 let songTimer = null;
 
 const songItem = (sg, page = 0) => ({ kind: 'song', songId: sg.id || '', title: sg.title || 'Untitled', artist: sg.artist || '', ccli: sg.ccli || '',
-  slides: slidesFor(parseLyrics(sg.lyrics), S.songLines || 4), page });
+  slides: slidesFor(arrangeSections(parseLyrics(sg.lyrics), sg.arrangement), S.songLines || 4), page });
 
 function readSongForm() {
   if (!song) return null;
-  Object.assign(song, { title: $('#sgTitle').value.trim(), artist: $('#sgArtist').value.trim(), ccli: $('#sgCcli').value.trim(), lyrics: $('#sgLyrics').value });
+  Object.assign(song, { title: $('#sgTitle').value.trim(), artist: $('#sgArtist').value.trim(), ccli: $('#sgCcli').value.trim(), lyrics: $('#sgLyrics').value,
+    arrangement: $('#sgArr').value.split(',').map((x) => x.trim()).filter(Boolean) });
   return song;
 }
 
@@ -439,6 +450,7 @@ function openSong(sg) {
   $('#songEdTitle').textContent = song.id ? 'Song' : 'New song';
   $('#sgTitle').value = song.title || ''; $('#sgArtist').value = song.artist || ''; $('#sgCcli').value = song.ccli || '';
   $('#sgLyrics').value = song.lyrics || '';
+  $('#sgArr').value = (song.arrangement || []).join(', ');
   $('#sgDelete').hidden = !song.id || String(song.id).startsWith('pd-');
   $('#sgSource').textContent = song.source && !['library'].includes(song.source)
     ? `Source: ${song.source}. Check the words before projecting — online lyrics can contain mistakes. Your church needs a licence (e.g. CCLI) to project copyrighted songs.` : '';
@@ -449,9 +461,11 @@ function openSong(sg) {
 function renderSongSlides() {
   if (!song || !S) return;
   readSongForm();
-  songSlides = slidesFor(parseLyrics(song.lyrics), S.songLines || 4);
+  const parsed = parseLyrics(song.lyrics);
+  songSlides = slidesFor(arrangeSections(parsed, song.arrangement), S.songLines || 4);
+  $('#sgGroups').innerHTML = sectionNames(parsed).map((n) => `<button type="button" data-g="${esc(n)}" style="--gc:${groupColor(n)}">${esc(n)}</button>`).join('');
   $('#sgCount').textContent = `${songSlides.length} slide${songSlides.length === 1 ? '' : 's'}`;
-  $('#sgSlides').innerHTML = songSlides.map((sl, i) => `<div class="song-slide" data-i="${i}"><div class="lbl">${esc(sl.label)}</div>${sl.lines.map(esc).join('<br>')}</div>`).join('')
+  $('#sgSlides').innerHTML = songSlides.map((sl, i) => `<div class="song-slide" data-i="${i}" style="--gc:${groupColor(sl.label)}"><div class="lbl">${esc(sl.label)}</div>${sl.lines.map(esc).join('<br>')}</div>`).join('')
     || '<p class="muted small">Paste or type the lyrics above.</p>';
   markLiveSongSlide();
 }
@@ -545,6 +559,8 @@ function wireImport() {
 }
 
 function wireSongs() {
+  $('#sgGroups').onclick = (e) => { const b = e.target.closest('[data-g]'); if (!b) return; const cur = $('#sgArr').value.trim(); $('#sgArr').value = cur ? `${cur}, ${b.dataset.g}` : b.dataset.g; renderSongSlides(); };
+  $('#sgArr').oninput = () => { clearTimeout(songTimer); songTimer = setTimeout(renderSongSlides, 250); };
   wireImport();
   $('#songSearchForm').onsubmit = (e) => { e.preventDefault(); searchSongs(); };
   let t; $('#songQ').oninput = () => { clearTimeout(t); t = setTimeout(() => { // library is instant, online waits for Enter or a pause
@@ -966,6 +982,15 @@ function wire() {
     if (act === 'live') { goLive(item); setPreview(item); follow(item); }
     if (act === 'del') setService(S.service.filter((_, j) => j !== i));
     if (act === 'up' && i > 0) { const s = [...S.service]; [s[i - 1], s[i]] = [s[i], s[i - 1]]; setService(s); }
+    if (act === 'loop') tools.addAnnouncement(item);
+    if (act === 'notes') {
+      const notes = prompt('Stage notes for this item (only the stage display shows them):', item.notes || '');
+      if (notes !== null) {
+        const updated = { ...item, notes: notes.trim() };
+        setService(S.service.map((x, j) => (j === i ? updated : x)));
+        if (control.sameItem(item, S.live)) push({ live: { ...S.live, notes: updated.notes } });
+      }
+    }
   });
   $('#svcClear').onclick = () => { if (confirm('Clear the whole service?')) setService([]); };
   $('#svcNext').onclick = () => serviceStep(1);
@@ -995,6 +1020,8 @@ function wire() {
     if (!el || !act) return;
     const m = mediaList[Number(el.dataset.i)]; const item = mediaItem(m);
     if (act === 'live') { goLive(item); setPreview(item); }
+    if (act === 'play') tools.playAudio(m);
+    if (act === 'loop') tools.addAnnouncement(item);
     if (act === 'preview') setPreview(item);
     if (act === 'service') { setService([...S.service, item]); toast('Added to service'); }
     if (act === 'del' && confirm(`Delete ${m.name}?`)) { await postJson('/api/media/delete', { name: m.name }).catch((er) => toast(er.message, true)); loadMedia(); }
@@ -1012,6 +1039,8 @@ function wire() {
   $('#splitChars').onchange = (e) => push({ splitChars: Number(e.target.value) });
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
+  tools.initShowTools({ $, $$, esc, push, toast, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
+  setInterval(() => updateTimers(previewHost, S), 250);
   wireSongs();
   $('#stageSend').onclick = () => push({ stageMessage: $('#stageMsg').value });
   $('#stageClear').onclick = () => { $('#stageMsg').value = ''; push({ stageMessage: '' }); };
@@ -1052,6 +1081,7 @@ function wire() {
     else if (k === 'Escape') push({ black: false, clear: false, logo: false });
     else if (k === 'PageDown') { e.preventDefault(); serviceStep(1); }
     else if (k === 'PageUp') { e.preventDefault(); serviceStep(-1); }
+    else if (/^F[1-6]$/.test(k)) { e.preventDefault(); tools.clearLayer(['all', 'slide', 'media', 'props', 'messages', 'audio'][Number(k.slice(1)) - 1]); }
   });
 }
 
