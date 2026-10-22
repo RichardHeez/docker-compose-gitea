@@ -12,7 +12,7 @@ autoScale(mon);
 
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2200); }
 const run = (p) => p.catch((e) => toast(e.message));
-const label = async (it) => !it ? 'Nothing live' : it.kind === 'scripture' ? formatRef(it.ref, await bookName(S.translation, it.ref.book)) + (it.pages > 1 ? ` · ${it.page + 1}/${it.pages}` : '') : it.title || it.name || '';
+const label = async (it) => !it ? 'Nothing live' : it.kind === 'song' ? `🎵 ${it.title} · ${it.slides?.[it.page || 0]?.label || ''} · ${(it.page || 0) + 1}/${it.slides?.length || 1}` : it.kind === 'scripture' ? formatRef(it.ref, await bookName(S.translation, it.ref.book)) + (it.pages > 1 ? ` · ${it.page + 1}/${it.pages}` : '') : it.title || it.name || '';
 
 let seq = 0;
 async function render(prev) {
@@ -24,7 +24,7 @@ async function render(prev) {
   const slide = await resolveSlide(S.live, ch, S);
   if (my === seq) show(mon, buildSlide(slide, ch, S, { black: S.black, clear: S.clear, logo: S.logo, preview: true }), 'cut');
   if (!prev || JSON.stringify(prev.service) !== JSON.stringify(S.service) || !control.sameItem(prev.live, S.live)) {
-    $('#service').innerHTML = S.service.length ? S.service.map((it, i) => `<li data-i="${i}" class="${control.sameItem(it, S.live) ? 'live' : ''}"><span class="n">${i + 1}</span><div><b>${esc(it.kind === 'scripture' ? formatRef(it.ref) : it.title || it.name)}</b><small>${esc(it.heading || (it.kind === 'text' ? it.body : it.kind === 'media' ? 'Media' : 'Scripture'))}</small></div></li>`).join('')
+    $('#service').innerHTML = S.service.length ? S.service.map((it, i) => `<li data-i="${i}" class="${control.sameItem(it, S.live) ? 'live' : ''}"><span class="n">${i + 1}</span><div><b>${esc(it.kind === 'scripture' ? formatRef(it.ref) : it.kind === 'song' ? `🎵 ${it.title}` : it.title || it.name)}</b><small>${esc(it.heading || (it.kind === 'text' ? it.body : it.kind === 'media' ? 'Media' : it.kind === 'song' ? `Song · ${it.slides?.length || 0} slides` : 'Scripture'))}</small></div></li>`).join('')
       : '<li class="muted">The service is empty — build it on the console.</li>';
   }
 }

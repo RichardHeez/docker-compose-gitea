@@ -47,7 +47,8 @@ export async function step(S, d) {
     await push({ live: moved });
     return moved;
   }
-  if (live.kind !== 'scripture' || serviceIndex(S, live) >= 0) return serviceStep(S, d);
+  if (serviceIndex(S, live) >= 0) return serviceStep(S, d);
+  if (live.kind !== 'scripture') return null; // end of a song/slide that isn't in the service: stay put
 
   const r = live.ref;
   const s = r.verseStart || 1; const e = r.verseEnd || s; const len = e - s + 1;

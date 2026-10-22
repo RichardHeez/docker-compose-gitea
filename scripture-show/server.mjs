@@ -59,6 +59,9 @@ async function khayaTranscribe(audio, contentType, lang) {
 }
 const PORT = Number(process.env.PORT || 4848);
 const UPSTREAM = process.env.BIBLE_API || 'https://bolls.life';
+// Online lyrics: LRCLIB (free, open, no key) with lyrics.ovh as a fallback.
+const LRCLIB = process.env.LYRICS_API || 'https://lrclib.net';
+const LYRICS_OVH = process.env.LYRICS_OVH_API || 'https://api.lyrics.ovh';
 const AI_MODEL = process.env.AI_MODEL || 'claude-opus-5-5';
 const CHANNEL_COUNT = Math.max(6, Number(process.env.CHANNELS || 8));
 
@@ -113,6 +116,8 @@ let state = {
   logoText: 'Welcome',
   stageMessage: '',
   splitChars: 240,   // split long passages into screens of ~N characters (0 = never split)
+  songLines: 4,      // lyric lines per slide
+  ccliLicense: '',   // church's CCLI licence number, shown on song slides
   customWords: {},   // church-added words per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], verse: [...] } }
   service: [],       // playlist items
   channels: Array.from({ length: CHANNEL_COUNT }, (_, i) => defaultChannel(i)),
@@ -149,7 +154,7 @@ setInterval(() => { for (const res of sseClients) res.write(': ping\n\n'); }, 25
 
 function sanitizePatch(p) {
   const out = {};
-  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords']) if (k in p) out[k] = p[k];
+  for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords', 'songLines', 'ccliLicense']) if (k in p) out[k] = p[k];
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
       const n = p.channels.find((x) => Number(x.id) === c.id) || p.channels[i];
@@ -303,6 +308,74 @@ async function search(tr, q) {
   return rows.slice(0, 100).map((r) => ({ book: r.book, chapter: r.chapter, verse: r.verse, text: cleanText(r.text) }));
 }
 
+// ---------------------------------------------------------------- songs & lyrics
+const SONGS_FILE = path.join(DATA, 'songs.json');
+let songs = [];
+try { songs = JSON.parse(readFileSync(SONGS_FILE, 'utf8')); } catch { /* none yet */ }
+let builtinSongs = [];
+try { builtinSongs = JSON.parse(readFileSync(path.join(here, 'songs', 'hymns.json'), 'utf8')); } catch { /* optional */ }
+const saveSongs = () => fs.writeFile(SONGS_FILE, JSON.stringify(songs, null, 1)).catch((e) => console.error('songs save failed', e));
+const allSongs = () => [...songs, ...builtinSongs.filter((b) => !songs.some((s) => s.id === b.id))];
+const fold = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+function searchSongs(q) {
+  const words = fold(q).split(' ').filter(Boolean);
+  const list = allSongs().map((s) => {
+    const title = fold(s.title), meta = fold(`${s.artist} ${s.ccli || ''}`), body = fold(s.lyrics);
+    let score = 0;
+    for (const w of words) {
+      if (title.includes(w)) score += 3; else if (meta.includes(w)) score += 2; else if (body.includes(w)) score += 1; else return null;
+    }
+    return { song: s, score: score + (title.startsWith(words[0] || '') ? 1 : 0) };
+  }).filter(Boolean);
+  return list.sort((a, b) => b.score - a.score || a.song.title.localeCompare(b.song.title)).slice(0, 50)
+    .map(({ song }) => ({ id: song.id, title: song.title, artist: song.artist, source: song.source || 'library', ccli: song.ccli || '' }));
+}
+
+async function getJson(url) {
+  const r = await fetch(url, { headers: { 'user-agent': 'F8ScripturePresenter/1.0 (church presentation software)' }, signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw Object.assign(new Error(`lyrics service ${r.status}`), { status: r.status === 404 ? 404 : 502 });
+  return r.json();
+}
+
+// Online search -> [{ provider, id, title, artist, album, duration, preview }]
+async function searchOnline(q) {
+  const out = [];
+  try {
+    const rows = await getJson(`${LRCLIB}/api/search?q=${encodeURIComponent(q)}`);
+    for (const r of (Array.isArray(rows) ? rows : [])) {
+      if (r.instrumental || !(r.plainLyrics || r.syncedLyrics)) continue;
+      out.push({ provider: 'lrclib', id: String(r.id), title: r.trackName || r.name, artist: r.artistName, album: r.albumName, duration: r.duration,
+        preview: String(r.plainLyrics || '').split('\n').filter(Boolean).slice(0, 2).join(' / ') });
+    }
+  } catch (e) { console.warn('lrclib search failed:', e.message); }
+  if (out.length < 5) {
+    try {
+      const r = await getJson(`${LYRICS_OVH}/suggest/${encodeURIComponent(q)}`);
+      for (const x of (r.data || []).slice(0, 15)) {
+        out.push({ provider: 'ovh', id: `${x.artist?.name}|${x.title}`, title: x.title, artist: x.artist?.name, album: x.album?.title, duration: x.duration, preview: '' });
+      }
+    } catch (e) { console.warn('lyrics.ovh search failed:', e.message); }
+  }
+  // drop duplicates (same title + artist), keep the first (LRCLIB has the lyrics inline)
+  const seen = new Set();
+  return out.filter((x) => { const k = fold(`${x.title}|${x.artist}`); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 30);
+}
+
+async function fetchOnline(provider, id) {
+  if (provider === 'lrclib') {
+    const r = await getJson(`${LRCLIB}/api/get/${encodeURIComponent(id)}`);
+    const lyrics = r.plainLyrics || String(r.syncedLyrics || '').replace(/\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]\s*/g, '');
+    return { title: r.trackName || r.name, artist: r.artistName, album: r.albumName, lyrics, source: 'LRCLIB' };
+  }
+  if (provider === 'ovh') {
+    const [artist, ...rest] = String(id).split('|'); const title = rest.join('|');
+    const r = await getJson(`${LYRICS_OVH}/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`);
+    return { title, artist, lyrics: String(r.lyrics || '').replace(/^Paroles de la chanson.*\n/i, ''), source: 'lyrics.ovh' };
+  }
+  throw Object.assign(new Error('Unknown lyrics provider'), { status: 400 });
+}
+
 // ---------------------------------------------------------------- AI (Claude)
 const aiEnabled = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
 const claude = aiEnabled ? new Anthropic() : null;
@@ -454,6 +527,7 @@ function lanUrls() {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+  let m;
   try {
     if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, x-f8-pin, x-filename', 'access-control-allow-methods': 'GET,POST' }); return res.end(); }
     if (req.method === 'POST' && CONTROL_PIN && req.headers['x-f8-pin'] !== CONTROL_PIN) return send(res, 401, { error: 'PIN required', pin: true });
@@ -473,6 +547,31 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN, khaya: !!KHAYA.key });
     if (p === '/api/pin' && req.method === 'POST') return send(res, 200, { ok: true }); // PIN already checked above
+
+    // songs library + online lyrics
+    if (p === '/api/songs' && req.method === 'GET') return send(res, 200, searchSongs(url.searchParams.get('q') || ''));
+    if ((m = p.match(/^\/api\/songs\/([^/]+)$/)) && req.method === 'GET') {
+      const song = allSongs().find((x) => x.id === decodeURIComponent(m[1]));
+      return song ? send(res, 200, song) : send(res, 404, { error: 'Song not found' });
+    }
+    if (p === '/api/songs' && req.method === 'POST') {
+      const b = await readBody(req);
+      const title = String(b.title || '').trim().slice(0, 200);
+      if (!title || !String(b.lyrics || '').trim()) return send(res, 400, { error: 'A song needs a title and lyrics' });
+      const id = b.id && !String(b.id).startsWith('pd-') ? String(b.id) : `song-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      const song = { id, title, artist: String(b.artist || '').slice(0, 200), ccli: String(b.ccli || '').slice(0, 20), lyrics: String(b.lyrics).slice(0, 50000),
+        source: String(b.source || 'library').slice(0, 40), updated: Date.now() };
+      songs = [song, ...songs.filter((x) => x.id !== id)];
+      await saveSongs();
+      return send(res, 200, song);
+    }
+    if (p === '/api/songs/delete' && req.method === 'POST') {
+      const { id } = await readBody(req);
+      songs = songs.filter((x) => x.id !== id); await saveSongs();
+      return send(res, 200, { ok: true });
+    }
+    if (p === '/api/lyrics/search') return send(res, 200, await searchOnline(url.searchParams.get('q') || ''));
+    if (p === '/api/lyrics/get') return send(res, 200, await fetchOnline(url.searchParams.get('provider'), url.searchParams.get('id')));
 
     if (p === '/api/asr' && req.method === 'POST') {
       if (!KHAYA.key) return send(res, 503, { error: 'Khaya is not set up: start the server with KHAYA_API_KEY' });
@@ -506,7 +605,6 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/translations') return send(res, 200, await getTranslations());
 
-    let m;
     if ((m = p.match(/^\/api\/books\/([^/]+)$/))) return send(res, 200, await getBooks(decodeURIComponent(m[1])));
     if ((m = p.match(/^\/api\/chapter\/([^/]+)\/(\d+)\/(\d+)$/))) return send(res, 200, await getChapter(decodeURIComponent(m[1]), Number(m[2]), Number(m[3])));
     if ((m = p.match(/^\/api\/search\/([^/]+)$/))) return send(res, 200, await search(decodeURIComponent(m[1]), url.searchParams.get('q') || ''));

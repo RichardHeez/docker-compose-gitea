@@ -85,3 +85,16 @@
 .mode-stage .box, .mode-confidence .box { text-align: left !important; align-items: flex-start !important; }
 .stage-next { font-size: calc(var(--u)*2); padding: calc(var(--u)*1) calc(var(--u)*2); border-top: 1px solid #1d2230; color: #9aa4b8; display: flex; gap: 1em; }
 .stage-next span { color: #ffd27a; font-weight: 700; letter-spacing: .1em; }
+
+/* Song lyrics: one sung line per row, never broken mid-phrase if it fits */
+.slide .lyrics { font-family: var(--font, 'Montserrat', 'Inter', sans-serif); font-weight: 600; line-height: var(--lh, 1.28); letter-spacing: -.005em;
+  font-size: calc(var(--u) * 6 * var(--scale)); text-shadow: 0 calc(var(--u)*.15) calc(var(--u)*1.2) rgba(0,0,0,calc(.9 * var(--shadow, .5))); }
+.slide .lyrics .ln { display: block; text-wrap: balance; }
+.slide .lyrics .ln + .ln { margin-top: .12em; }
+.slide.outlined .lyrics { -webkit-text-stroke: calc(var(--u) * var(--outline)) rgba(0,0,0,.85); paint-order: stroke fill; }
+.slide.upper .lyrics { text-transform: uppercase; }
+.slide .song-credit { font-size: calc(var(--u) * 1.15 * var(--scale)); opacity: .7; letter-spacing: .02em; margin-top: calc(var(--u) * 1.2); }
+.slide .song-label { font-size: calc(var(--u) * 1.8); color: var(--accent); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: calc(var(--u) * .6); }
+.mode-lower .lyrics, .mode-chroma .lyrics, .mode-alpha .lyrics { font-family: var(--font, 'Inter', sans-serif); font-weight: 600; text-shadow: none; }
+.mode-stage .lyrics, .mode-confidence .lyrics { font-family: 'Inter', sans-serif; font-weight: 500; text-shadow: none; -webkit-text-stroke: 0; }
+.slide.nowrap .lyrics .ln { white-space: nowrap; }

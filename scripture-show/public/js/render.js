@@ -125,6 +125,7 @@ export function splitWords(words, n) {
 
 // How many screens an item needs (decided once, from the main translation, so every channel stays in step).
 export async function paginate(item, state) {
+  if (item?.kind === 'song') { const pages = Math.max(1, item.slides?.length || 1); return { ...item, pages, page: Math.max(0, Math.min(item.page || 0, pages - 1)) }; }
   if (item?.kind !== 'scripture' || !state.splitChars) return { ...item, pages: 1, page: item?.page || 0 };
   try {
     const p = await passage(state.translation, item.ref);
@@ -138,6 +139,12 @@ export async function paginate(item, state) {
 export async function resolveSlide(item, channel, state) {
   if (!item) return { kind: 'blank' };
   if (item.kind === 'text') return { kind: 'text', title: item.title || '', body: item.body || '' };
+  if (item.kind === 'song') {
+    const page = Math.max(0, Math.min(item.page || 0, (item.slides?.length || 1) - 1));
+    const cur = item.slides?.[page] || { label: '', lines: [] };
+    return { kind: 'song', title: item.title || '', artist: item.artist || '', ccli: item.ccli || '', license: state.ccliLicense || '',
+      label: cur.label, lines: cur.lines, page, pages: item.slides?.length || 1, next: item.slides?.[page + 1] || null };
+  }
   if (item.kind === 'media') return { kind: 'media', url: item.url, mediaType: item.mediaType, name: item.name, fit: item.fit || 'contain', loop: item.loop !== false };
   if (item.kind !== 'scripture' || !item.ref) return { kind: 'blank' };
   const tr = channel?.translation || state.translation;
@@ -152,7 +159,8 @@ export async function resolveSlide(item, channel, state) {
   return slide;
 }
 export const slideKey = (item, channel, state) => JSON.stringify([
-  item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.fit, item?.page, item?.pages, item?.highlight,
+  item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.fit, item?.page, item?.pages, item?.highlight, item?.songId, item?.slides?.length,
+  state.ccliLicense,
   channel?.translation || state.translation, channel?.secondary,
 ]);
 
@@ -225,6 +233,17 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
         ? `<video class="live-media" src="${esc(slide.url)}" style="object-fit:${fit}" autoplay playsinline ${slide.loop ? 'loop' : ''} ${channel.mediaAudio && !opts.preview ? '' : 'muted'}></video>`
         : `<img class="live-media" src="${esc(slide.url)}" style="object-fit:${fit}" alt="">`;
     }
+  } else if (slide.kind === 'song') {
+    // Lyrics: each line kept whole, the block auto-sized to fill the frame.
+    const lines = slide.lines.map((l) => `<span class="ln">${esc(l)}</span>`).join('');
+    const credit = [slide.title, slide.artist].filter(Boolean).join(' — ')
+      + (slide.ccli ? ` · CCLI Song #${slide.ccli}` : '') + (slide.license ? ` · CCLI Licence #${slide.license}` : '');
+    const showCredit = channel.showReference !== false && (slide.page === 0 || slide.page === slide.pages - 1);
+    const footer = showCredit && credit ? `<div class="song-credit">${esc(credit)}</div>` : '';
+    body = isStage
+      ? `<div class="box"><div class="song-label">${esc(slide.label)} · ${slide.page + 1}/${slide.pages}</div><div class="lyrics fit">${lines}</div></div>`
+      : `<div class="box song"><div class="lyrics fit">${lines}</div>${overlay ? '' : footer}</div>`;
+    if (isStage && slide.next) opts = { ...opts, nextLabel: `${slide.next.label}: ${slide.next.lines[0] || ''}` };
   } else if (slide.kind === 'text') {
     body = `<div class="box"><div class="title fit">${esc(slide.title)}</div>${slide.body ? `<div class="subtitle">${esc(slide.body)}</div>` : ''}</div>`;
   } else if (slide.kind === 'scripture') {
@@ -257,17 +276,29 @@ export function fitSlide(el) {
   const box = el.querySelector('.box');
   const fit = el.querySelector('.fit');
   if (!frame || !box || !fit) return;
-  const base = el.classList.contains('mode-lower') || el.classList.contains('mode-chroma') || el.classList.contains('mode-alpha') ? 3.2 : 5.6;
+  const overlay = el.classList.contains('mode-lower') || el.classList.contains('mode-chroma') || el.classList.contains('mode-alpha');
+  const base = fit.classList.contains('lyrics') ? (overlay ? 3.6 : 7) : overlay ? 3.2 : 5.6;
   const cs = getComputedStyle(frame);
   const availH = frame.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
   const availW = frame.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-  const fits = () => box.scrollHeight <= availH * 0.98 && box.scrollWidth <= availW * 1.01;
-  let lo = 1.2, hi = base, best = lo;
-  for (let i = 0; i < 12; i++) {
-    const mid = (lo + hi) / 2;
-    fit.style.fontSize = `calc(var(--u) * ${mid} * var(--scale))`;
-    if (fits()) { best = mid; lo = mid; } else hi = mid;
-  }
+  const fits = () => box.scrollHeight <= availH * 0.98 && box.scrollWidth <= availW * 1.01 && fit.scrollWidth <= availW * (fit.classList.contains('lyrics') ? 0.97 : 1.01);
+  const largest = () => {
+    let lo = 1.2, hi = base, best = lo;
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2;
+      fit.style.fontSize = `calc(var(--u) * ${mid} * var(--scale))`;
+      if (fits()) { best = mid; lo = mid; } else hi = mid;
+    }
+    return best;
+  };
+  let best;
+  if (fit.classList.contains('lyrics')) {
+    // Keep every sung line on one row, sized to the longest line. Only if that would make the
+    // text too small to read does a long line wrap (balanced) onto two rows.
+    el.classList.add('nowrap');
+    best = largest();
+    if (best < (overlay ? 2.4 : 3.6)) { el.classList.remove('nowrap'); best = largest(); }
+  } else best = largest();
   fit.style.fontSize = `calc(var(--u) * ${best} * var(--scale))`;
 }
 

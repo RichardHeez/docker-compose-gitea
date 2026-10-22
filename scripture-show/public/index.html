@@ -84,6 +84,7 @@
     <aside class="panel side">
       <nav class="tabs" id="sideTabs">
         <button data-tab="channels" class="on">Outputs</button>
+        <button data-tab="songs">Songs</button>
         <button data-tab="ai">AI · Voice</button>
         <button data-tab="media">Media</button>
         <button data-tab="service">Service</button>
@@ -94,6 +95,39 @@
         <div class="row between"><span class="muted" id="chCount"></span>
           <div class="row"><button class="btn ghost sm" id="identifyAll">Identify</button><button class="btn ghost sm" id="openAll">Open all</button></div></div>
         <div id="channels" class="channels"></div>
+      </div>
+
+      <div class="tab-body" data-body="songs" hidden>
+        <form id="songSearchForm" class="row">
+          <input id="songQ" placeholder="Search songs: title, artist or a line of the lyrics…" autocomplete="off">
+          <button class="btn sm">Search</button>
+        </form>
+        <div class="row small song-opts">
+          <label class="check"><input type="checkbox" id="songOnline" checked> Also search online</label>
+          <span class="spacer"></span><button class="btn ghost sm" id="songNew" type="button">＋ New song</button>
+        </div>
+        <div id="songResults" class="song-results"></div>
+
+        <div id="songEditor" class="card" hidden>
+          <div class="row between"><h3 id="songEdTitle">Song</h3><button class="icon-btn" id="songClose" type="button">✕</button></div>
+          <div class="grid2">
+            <label>Title<input id="sgTitle"></label>
+            <label>Artist / author<input id="sgArtist"></label>
+            <label>CCLI song number<input id="sgCcli" inputmode="numeric" placeholder="optional"></label>
+            <label>Lines per slide: <b id="songLinesLabel"></b><input type="range" id="songLines" min="1" max="8" step="1"></label>
+          </div>
+          <label>Lyrics <span class="muted">— a blank line between sections; label them [Verse 1], [Chorus], [Bridge]…</span>
+            <textarea id="sgLyrics" rows="9" spellcheck="false"></textarea></label>
+          <div class="row">
+            <button class="btn primary sm" id="sgSave" type="button">Save to library</button>
+            <button class="btn ghost sm" id="sgTidy" type="button">Auto-label sections</button>
+            <span class="spacer"></span><button class="btn ghost sm" id="sgDelete" type="button">Delete</button>
+          </div>
+          <div class="row between"><h4 id="sgCount"></h4>
+            <div class="row"><button class="btn ghost sm" id="sgService" type="button">＋ Service</button><button class="btn live sm" id="sgLive" type="button">Go live</button></div></div>
+          <div id="sgSlides" class="song-slides" title="Click to preview · double-click to go live"></div>
+          <p id="sgSource" class="muted small"></p>
+        </div>
       </div>
 
       <div class="tab-body" data-body="ai" hidden>
@@ -182,6 +216,7 @@
         <div class="card">
           <h3>Stage &amp; logo</h3>
           <label>Logo / welcome text<input id="logoText"></label>
+          <label>CCLI licence number <span class="muted">— shown with song credits</span><input id="ccliLicense" inputmode="numeric" placeholder="e.g. 1234567"></label>
           <label>Message to stage displays<div class="row"><input id="stageMsg" placeholder="e.g. 5 minutes left"><button class="btn ghost sm" id="stageSend">Send</button><button class="btn ghost sm" id="stageClear">Clear</button></div></label>
         </div>
         <div class="card">

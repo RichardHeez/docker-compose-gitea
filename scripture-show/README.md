@@ -14,6 +14,7 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Preachers in any language** | Pick the preacher’s language and listening understands it: full support (book names, spelled-out numbers, “primera de Corintios”, “versículo siguiente”) for Spanish, Portuguese, French, German, Italian and English, and chapter/verse words for Dutch, Russian, Ukrainian, Polish, Romanian, Swahili, Yoruba, Igbo, Hausa, Afrikaans, Tagalog, Indonesian, Malay, Vietnamese, Hindi, Arabic, Persian, Hebrew, Korean, Chinese and Japanese. Book names for every language are also taken from the Bibles available in it. With AI on, Claude catches quoted verses in any language. |
 | **Akan (Twi, Fante), Ga, Ewe, Dagbani** | Browsers can’t hear these languages, so F8 sends each spoken phrase to **Khaya** by GhanaNLP (speech-to-text built for Ghanaian languages) through the server. The Akan pack knows Twi book names (Yohane, Nnwom, Romafo, “Korintofo nwoma a edi kan” …), Twi numbers (baako … dunsia … aduonu abiɛsa … ɔha) and handles English mixed in. |
 | **Custom words** | AI · Voice → *Custom words*: add book names, numbers, “chapter”/“verse”/“to” words and “next verse” phrases for any language, test them instantly, and save them for everyone. |
+| **Song lyrics** | Songs tab: one search covers your library, built-in public-domain hymns and **online lyrics** (LRCLIB, with lyrics.ovh as backup). Import a result, tidy it in the editor, save it. Sections (Verse, Chorus, Bridge…) are detected automatically, each section is split into balanced slides (choose 1–8 lines per slide), and every sung line is kept on one row at the largest size that fits the frame. CCLI song and licence numbers are shown in the credit line. |
 | **AI presentation builder** | Paste a sermon topic or notes → get a ready service of title slides + relevant scripture, shown in whatever translation each screen uses. |
 | **Voice** | Reads verses aloud with the system’s text-to-speech voices, auto-matched to the translation’s language. Optional auto-read on go-live. |
 | **8 output channels** | Each has its own layout (full screen, lower third, stage display, confidence monitor, green-screen key, transparent alpha for OBS), its own translation, a parallel second translation, theme, background image/video, text size and transition. |
@@ -87,6 +88,7 @@ All outputs stay in sync through the server, so they can be on any device on the
 ## Notes
 
 - Live listening uses the browser’s speech recognition — use **Chrome or Edge** on the operator machine.
+- Online lyrics come from community databases and can contain mistakes. Most worship songs are copyrighted: projecting them needs a licence such as CCLI’s Church Copyright Licence — enter your licence number in Settings.
 - Many modern translations are copyrighted. Make sure your church’s licence (e.g. CCLI / publisher terms) covers projecting the translations you use.
 - Importing Bibles: Settings → *Import a Bible*. Accepted JSON: `{ "books": { "43": { "3": { "16": "…" } } } }`, `[{ "book": 43, "chapter": 3, "verse": 16, "text": "…" }]`, or scrollmapper-style files.
 

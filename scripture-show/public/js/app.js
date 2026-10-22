@@ -2,6 +2,7 @@
 import { BOOKS, bookById, formatRef, parseFollowUp, parseReferences, refKey } from './books.js';
 import { FONTS, api, langCode, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
 import * as control from './control.js';
+import { lyricsToText, parseLyrics, slidesFor, songSummary } from './songs.js';
 import { PhraseRecognizer } from './khaya.js';
 import { langKey, setCustomWords } from './langs.js';
 
@@ -38,6 +39,9 @@ function connect() {
     if (!prev || JSON.stringify(prev.service) !== JSON.stringify(S.service)) renderService();
     if (!prev || JSON.stringify(prev.live) !== JSON.stringify(S.live)) onLiveChanged(prev?.live);
     if (!prev || JSON.stringify(prev.customWords) !== JSON.stringify(S.customWords)) { setCustomWords(S.customWords); loadCustomWordsForm(); }
+    if (!prev || prev.songLines !== S.songLines) { $('#songLines').value = S.songLines || 4; $('#songLinesLabel').textContent = S.songLines || 4; renderSongSlides(); }
+    if (!prev || prev.ccliLicense !== S.ccliLicense) $('#ccliLicense').value = S.ccliLicense || '';
+    if (!prev || JSON.stringify(prev.live) !== JSON.stringify(S.live)) markLiveSongSlide();
     if (!prev || prev.splitChars !== S.splitChars) { $('#splitChars').value = S.splitChars; $('#splitLabel').textContent = S.splitChars || 'off —'; }
     renderOverlayButtons();
   });
@@ -175,6 +179,7 @@ async function itemLabel(item) {
   if (!item) return '';
   if (item.kind === 'text') return item.title;
   if (item.kind === 'media') return `${item.mediaType === 'video' ? '🎬' : '🖼'} ${item.name}`;
+  if (item.kind === 'song') return `🎵 ${item.title} · ${item.slides?.[item.page || 0]?.label || ''}`;
   if (!item.ref) return '';
   return formatRef(item.ref, await bookName(S.translation, item.ref.book));
 }
@@ -402,7 +407,7 @@ function renderService() {
   $('#service').innerHTML = S.service.length ? S.service.map((it, i) => `
     <li class="svc ${control.sameItem(it, S.live) ? 'live' : ''}" data-i="${i}">
       <span class="idx">${i + 1}</span>
-      <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : it.kind === 'media' ? it.name : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : it.kind === 'media' ? (it.mediaType === 'video' ? 'Video' : 'Image') : 'Scripture')}</div></div>
+      <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : it.kind === 'media' ? it.name : it.kind === 'song' ? `🎵 ${it.title}` : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : it.kind === 'media' ? (it.mediaType === 'video' ? 'Video' : 'Image') : it.kind === 'song' ? `Song · ${it.slides?.length || 0} slides${it.artist ? ' · ' + it.artist : ''}` : 'Scripture')}</div></div>
       <button class="btn live sm" data-act="live">Live</button>
       <button class="x" data-act="up" title="Move up">↑</button>
       <button class="x" data-act="del" title="Remove">✕</button>
@@ -412,6 +417,114 @@ const setService = (service) => push({ service });
 async function serviceStep(d) {
   const item = await control.serviceStep(S, d).catch((e) => toast(e.message, true));
   if (item) { follow(item); setPreview(item); }
+}
+
+// ---------------------------------------------------------------- songs & lyrics
+let song = null;          // song open in the editor: { id?, title, artist, ccli, lyrics, source }
+let songSlides = [];      // its slides at the current lines-per-slide
+let songTimer = null;
+
+const songItem = (sg, page = 0) => ({ kind: 'song', songId: sg.id || '', title: sg.title || 'Untitled', artist: sg.artist || '', ccli: sg.ccli || '',
+  slides: slidesFor(parseLyrics(sg.lyrics), S.songLines || 4), page });
+
+function readSongForm() {
+  if (!song) return null;
+  Object.assign(song, { title: $('#sgTitle').value.trim(), artist: $('#sgArtist').value.trim(), ccli: $('#sgCcli').value.trim(), lyrics: $('#sgLyrics').value });
+  return song;
+}
+
+function openSong(sg) {
+  song = { ...sg };
+  $('#songEditor').hidden = false;
+  $('#songEdTitle').textContent = song.id ? 'Song' : 'New song';
+  $('#sgTitle').value = song.title || ''; $('#sgArtist').value = song.artist || ''; $('#sgCcli').value = song.ccli || '';
+  $('#sgLyrics').value = song.lyrics || '';
+  $('#sgDelete').hidden = !song.id || String(song.id).startsWith('pd-');
+  $('#sgSource').textContent = song.source && !['library'].includes(song.source)
+    ? `Source: ${song.source}. Check the words before projecting — online lyrics can contain mistakes. Your church needs a licence (e.g. CCLI) to project copyrighted songs.` : '';
+  renderSongSlides();
+  $('#songEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderSongSlides() {
+  if (!song || !S) return;
+  readSongForm();
+  songSlides = slidesFor(parseLyrics(song.lyrics), S.songLines || 4);
+  $('#sgCount').textContent = `${songSlides.length} slide${songSlides.length === 1 ? '' : 's'}`;
+  $('#sgSlides').innerHTML = songSlides.map((sl, i) => `<div class="song-slide" data-i="${i}"><div class="lbl">${esc(sl.label)}</div>${sl.lines.map(esc).join('<br>')}</div>`).join('')
+    || '<p class="muted small">Paste or type the lyrics above.</p>';
+  markLiveSongSlide();
+}
+
+function markLiveSongSlide() {
+  const live = S?.live;
+  $$('#sgSlides .song-slide').forEach((el) => el.classList.toggle('live',
+    !!(live?.kind === 'song' && song && live.title === (song.title || 'Untitled') && (live.songId || '') === (song.id || '') && Number(el.dataset.i) === (live.page || 0))));
+}
+
+async function searchSongs() {
+  const q = $('#songQ').value.trim();
+  const box = $('#songResults');
+  const hit = (r, online) => `<div class="song-hit" data-${online ? 'online' : 'id'}="${esc(online ? `${r.provider}::${r.id}` : r.id)}">
+      <div class="meta"><b>${esc(r.title)}</b><small>${esc([r.artist, r.album].filter(Boolean).join(' · ') || r.preview || '')}</small></div>
+      <span class="src ${online ? 'online' : ''}">${online ? 'online' : r.source === 'built-in' ? 'hymn' : 'library'}</span></div>`;
+  let local = [];
+  try { local = await api(`/api/songs?q=${encodeURIComponent(q)}`); } catch (e) { toast(e.message, true); }
+  box.innerHTML = `<h4>Your library</h4>${local.map((r) => hit(r, false)).join('') || '<p class="muted small">No saved songs match.</p>'}`
+    + (q && $('#songOnline').checked ? '<h4>Online</h4><div id="songOnlineList"><p class="muted small">Searching online lyrics…</p></div>' : '');
+  if (!q || !$('#songOnline').checked) return;
+  try {
+    const online = await api(`/api/lyrics/search?q=${encodeURIComponent(q)}`);
+    if ($('#songQ').value.trim() !== q) return;
+    $('#songOnlineList').innerHTML = online.map((r) => hit(r, true)).join('') || '<p class="muted small">Nothing found online. Try the song title plus the artist, or paste the lyrics with “＋ New song”.</p>';
+  } catch (e) { $('#songOnlineList').innerHTML = `<p class="muted small">Online lyrics are unavailable right now (${esc(e.message)}).</p>`; }
+}
+
+function wireSongs() {
+  $('#songSearchForm').onsubmit = (e) => { e.preventDefault(); searchSongs(); };
+  let t; $('#songQ').oninput = () => { clearTimeout(t); t = setTimeout(() => { // library is instant, online waits for Enter or a pause
+    if ($('#songQ').value.trim().length >= 3) searchSongs(); }, 600); };
+  $('#songNew').onclick = () => openSong({ title: '', artist: '', ccli: '', lyrics: '', source: 'library' });
+  $('#songClose').onclick = () => { $('#songEditor').hidden = true; song = null; };
+  $('#songResults').onclick = async (e) => {
+    const el = e.target.closest('.song-hit'); if (!el) return;
+    try {
+      if (el.dataset.id) return openSong(await api(`/api/songs/${encodeURIComponent(el.dataset.id)}`));
+      const [provider, ...rest] = el.dataset.online.split('::');
+      el.querySelector('small').textContent = 'Importing lyrics…';
+      const got = await api(`/api/lyrics/get?provider=${encodeURIComponent(provider)}&id=${encodeURIComponent(rest.join('::'))}`);
+      if (!String(got.lyrics || '').trim()) return toast('That result has no lyrics text — try another one', true);
+      openSong({ title: got.title, artist: got.artist, ccli: '', source: got.source, lyrics: lyricsToText(parseLyrics(got.lyrics)) });
+      toast('Lyrics imported — check them, then Save to library');
+    } catch (er) { toast(er.message, true); }
+  };
+  $('#sgLyrics').oninput = () => { clearTimeout(songTimer); songTimer = setTimeout(renderSongSlides, 250); };
+  ['#sgTitle', '#sgArtist', '#sgCcli'].forEach((id) => { $(id).oninput = () => readSongForm(); });
+  $('#songLines').oninput = (e) => { $('#songLinesLabel').textContent = e.target.value; };
+  $('#songLines').onchange = (e) => push({ songLines: Number(e.target.value) });
+  $('#sgTidy').onclick = () => { $('#sgLyrics').value = lyricsToText(parseLyrics($('#sgLyrics').value)); renderSongSlides(); };
+  $('#sgSave').onclick = async () => {
+    const sg = readSongForm();
+    try {
+      const saved = await postJson('/api/songs', sg);
+      song.id = saved.id; song.source = saved.source; $('#songEdTitle').textContent = 'Song'; $('#sgDelete').hidden = false;
+      toast(`Saved “${saved.title}”`); if ($('#songQ').value.trim()) searchSongs();
+    } catch (e) { toast(e.message, true); }
+  };
+  $('#sgDelete').onclick = async () => {
+    if (!song?.id || !confirm(`Delete “${song.title}” from the library?`)) return;
+    await postJson('/api/songs/delete', { id: song.id }).catch((e) => toast(e.message, true));
+    $('#songEditor').hidden = true; song = null; searchSongs();
+  };
+  $('#sgService').onclick = () => { const sg = readSongForm(); if (!songSlides.length) return toast('Add lyrics first', true); setService([...S.service, songItem(sg)]); toast('Song added to service'); };
+  $('#sgLive').onclick = () => { const sg = readSongForm(); if (!songSlides.length) return; const it = songItem(sg); goLive(it); setPreview(it); };
+  $('#sgSlides').onclick = (e) => { const el = e.target.closest('.song-slide'); if (el) setPreview(songItem(readSongForm(), Number(el.dataset.i))); };
+  $('#sgSlides').ondblclick = (e) => {
+    const el = e.target.closest('.song-slide'); if (!el) return;
+    const it = songItem(readSongForm(), Number(el.dataset.i));
+    control.goLive(S, it, { page: it.page }).catch((er) => toast(er.message, true)); setPreview(it);
+  };
+  searchSongs();
 }
 
 // ---------------------------------------------------------------- voice (TTS)
@@ -428,7 +541,7 @@ async function speakItem(item) {
   if (!('speechSynthesis' in window) || !item) return;
   speechSynthesis.cancel();
   let text = '', lang = '';
-  if (item.kind === 'media') return;
+  if (item.kind === 'media' || item.kind === 'song') return;
   if (item.kind === 'text') text = `${item.title}. ${item.body || ''}`;
   else {
     const p = await passage(S.translation, item.ref).catch(() => null);
@@ -833,6 +946,8 @@ function wire() {
   $('#splitChars').oninput = (e) => { $('#splitLabel').textContent = Number(e.target.value) || 'off —'; };
   $('#splitChars').onchange = (e) => push({ splitChars: Number(e.target.value) });
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
+  $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
+  wireSongs();
   $('#stageSend').onclick = () => push({ stageMessage: $('#stageMsg').value });
   $('#stageClear').onclick = () => { $('#stageMsg').value = ''; push({ stageMessage: '' }); };
   $('#impBtn').onclick = async () => {

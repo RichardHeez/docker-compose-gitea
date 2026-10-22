@@ -38,7 +38,8 @@
       "desktop/**",
       "package.json",
       "node_modules/**",
-      "scripts/**"
+      "scripts/**",
+      "songs/**"
     ],
     "asarUnpack": [
       "node_modules/@stagetimerio/grandiose/**"
