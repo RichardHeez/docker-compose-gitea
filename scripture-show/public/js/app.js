@@ -4,6 +4,7 @@ import { FONTS, api, langCode, autoScale, bookName, books, buildSlide, chapter, 
 import * as control from './control.js';
 import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, slidesFor, songSummary, splitPastedSongs } from './songs.js';
 import * as tools from './showtools.js';
+import * as triggers from './triggers.js';
 import { updateTimers } from './render.js';
 import { PhraseRecognizer } from './khaya.js';
 import { langKey, setCustomWords } from './langs.js';
@@ -48,6 +49,7 @@ function connect() {
     renderOverlayButtons();
     show.state = S;
     tools.onState(S, prev);
+    triggers.onState(S, prev);
   });
   es.onerror = () => toast('Reconnecting to server…', true);
 }
@@ -1039,7 +1041,8 @@ function wire() {
   $('#splitChars').onchange = (e) => push({ splitChars: Number(e.target.value) });
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
-  tools.initShowTools({ $, $$, esc, push, toast, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
+  tools.initShowTools({ $, $$, esc, push, toast, postJson, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
+  triggers.initTriggers({ $, $$, esc, push, toast, getS: () => S, fadeAudio: tools.fadeAudio });
   setInterval(() => updateTimers(previewHost, S), 250);
   wireSongs();
   $('#stageSend').onclick = () => push({ stageMessage: $('#stageMsg').value });

@@ -17,6 +17,8 @@ import { BOOKS, bookById } from './public/js/books.js';
 import { lyricsToText } from './public/js/songs.js';
 import { DEFAULT_TIMERS } from './public/js/timers.js';
 import { importSongFiles } from './lib/importers.mjs';
+import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
+import { parseLevels, sendLevels } from './lib/artnet.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Read keys from .env next to this file (Docker does this itself; this covers `npm start`).
@@ -130,6 +132,9 @@ let state = {
   looks: [],         // [{ id, name, channels: [...] }]
   macros: [],        // [{ id, name, color, actions: [...] }]
   clearMedia: false, // hide backgrounds & media on every screen
+  audioCmd: null,    // { id, action: 'fade' } — tells the console's audio player to fade (from triggers/macros)
+  dmx: { host: '', universe: 0 },  // Art-Net lighting node
+  midiMap: [],       // [{ msg: 'note:60' | 'cc:20', action: 'next' }]
   ccliLicense: '',   // church's CCLI licence number, shown on song slides
   customWords: {},   // church-added words per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], verse: [...] } }
   service: [],       // playlist items
@@ -180,7 +185,7 @@ setInterval(() => {
 function sanitizePatch(p) {
   const out = {};
   for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords', 'songLines', 'ccliLicense',
-    'timers', 'message', 'props', 'announcements', 'looks', 'macros', 'clearMedia']) if (k in p) out[k] = p[k];
+    'timers', 'message', 'props', 'announcements', 'looks', 'macros', 'clearMedia', 'audioCmd', 'dmx', 'midiMap']) if (k in p) out[k] = p[k];
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
       const n = p.channels.find((x) => Number(x.id) === c.id) || p.channels[i];
@@ -649,6 +654,26 @@ const server = http.createServer(async (req, res) => {
     }
     if (p === '/api/lyrics/search') return send(res, 200, await searchOnline(url.searchParams.get('q') || ''));
     if (p === '/api/lyrics/get') return send(res, 200, await fetchOnline(url.searchParams.get('provider'), url.searchParams.get('id')));
+
+    // Hardware triggers: Stream Deck / Bitfocus Companion / MIDI / any HTTP client.  e.g. POST /api/trigger/next
+    if (p.startsWith('/api/trigger')) {
+      if (req.method === 'GET' && CONTROL_PIN && url.searchParams.get('pin') !== CONTROL_PIN) return send(res, 401, { error: 'PIN required (add ?pin=…)' });
+      const action = p.slice('/api/trigger'.length).replace(/^\//, '');
+      if (!action) return send(res, 200, { actions: ACTIONS_HELP.map(([path, what]) => ({ url: `/api/trigger/${path}`, what })) });
+      const params = Object.fromEntries(url.searchParams);
+      if (req.method === 'POST') Object.assign(params, await readBody(req).catch(() => ({})));
+      const result = await runAction(state, action, params, { getChapter }).catch((e) => { throw Object.assign(e, { status: 400 }); });
+      if (result.dmx && state.dmx?.host) { try { sendLevels(state.dmx, parseLevels(result.dmx)); } catch (e) { console.warn('dmx', e.message); } }
+      const patch = { ...(result.patch || {}) };
+      if (result.audio) patch.audioCmd = { id: Date.now(), action: result.audio };
+      if (Object.keys(patch).length) { Object.assign(state, sanitizePatch(patch)); broadcast(); }
+      return send(res, 200, { ok: true, action, changed: Object.keys(patch) });
+    }
+    if (p === '/api/dmx' && req.method === 'POST') {
+      const { levels, host, universe } = await readBody(req);
+      const target = { host: host || state.dmx?.host, universe: universe ?? state.dmx?.universe ?? 0 };
+      return send(res, 200, sendLevels(target, typeof levels === 'string' ? parseLevels(levels) : levels || {}));
+    }
 
     if (p === '/api/asr' && req.method === 'POST') {
       if (!KHAYA.key) return send(res, 503, { error: 'Khaya is not set up: start the server with KHAYA_API_KEY' });

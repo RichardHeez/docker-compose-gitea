@@ -261,3 +261,9 @@ textarea { resize: vertical; }
 .audio-bar { height: 6px; background: #0e1120; border-radius: 99px; overflow: hidden; } .audio-bar span { display: block; height: 100%; width: 0; background: var(--accent); }
 .svc .notes { font-size: 11px; color: #7fb0ff; }
 .media-item .thumb.audio { display: grid; place-items: center; background: linear-gradient(135deg, #2a2050, #12304a); } .media-item .thumb .note { font-size: 34px; opacity: .8; }
+
+.midi-map { display: flex; flex-direction: column; gap: 6px; }
+.midi-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 6px; align-items: center; }
+.midi-row select { padding: 4px 6px; font-size: 12px; }
+.midi-row .x { background: none; border: 0; color: var(--muted); cursor: pointer; }
+.trig-urls div { margin: 3px 0; word-break: break-all; }

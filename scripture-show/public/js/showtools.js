@@ -156,13 +156,14 @@ function openMacro(m) {
   $('#macroEditor').hidden = false;
   $('#mcName').value = editingMacro.name; $('#mcColor').value = editingMacro.color || '#8b7bff';
   $('#mcLook').value = a.look || ''; $('#mcTimer').value = a.timer || ''; $('#mcTimerAct').value = a.timerAction || '';
-  $('#mcAnn').value = a.announcements || ''; $('#mcGo').value = a.goto || ''; $('#mcMsg').value = a.message || '';
+  $('#mcAnn').value = a.announcements || ''; $('#mcGo').value = a.goto || ''; $('#mcMsg').value = a.message || ''; $('#mcDmx').value = a.dmx || '';
   $$('.mc-clears input').forEach((c) => { c.checked = (a.clear || []).includes(c.value); });
   $('#mcDelete').hidden = !m;
 }
 export async function runMacro(m) {
   const { patch, goto, fadeAudio: fade } = macroPatch(S(), m);
   if (fade) fadeAudio();
+  if (m.actions?.dmx) ctx.postJson('/api/dmx', { levels: m.actions.dmx }).catch((e) => ctx.toast(`Lighting: ${e.message}`, true));
   if (Object.keys(patch).length) await ctx.push(patch);
   if (goto) { await ctx.goLive(goto); ctx.setPreview(goto); }
   ctx.toast(`Macro: ${m.name}`);
@@ -268,7 +269,7 @@ export function initShowTools(c0) {
   $('#mcSave').onclick = () => {
     const m = { ...editingMacro, name: $('#mcName').value.trim() || 'Macro', color: $('#mcColor').value,
       actions: { look: $('#mcLook').value, clear: $$('.mc-clears input:checked').map((x) => x.value), timer: $('#mcTimer').value, timerAction: $('#mcTimerAct').value,
-        announcements: $('#mcAnn').value, goto: $('#mcGo').value, message: $('#mcMsg').value.trim() } };
+        announcements: $('#mcAnn').value, goto: $('#mcGo').value, message: $('#mcMsg').value.trim(), dmx: $('#mcDmx').value.trim() } };
     const list = S().macros || [];
     c.push({ macros: list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m] });
     $('#macroEditor').hidden = true;

@@ -154,6 +154,7 @@
             <div class="grid2"><label>Timer<select id="mcTimer"></select></label><label>Timer action<select id="mcTimerAct"><option value="">—</option><option value="start">Start</option><option value="stop">Stop</option><option value="reset">Reset</option><option value="restart">Reset &amp; start</option></select></label></div>
             <div class="grid2"><label>Announcements<select id="mcAnn"><option value="">—</option><option value="play">Play</option><option value="stop">Stop</option></select></label><label>Go live with service item #<input id="mcGo" type="number" min="1"></label></div>
             <label>Show message<input id="mcMsg" placeholder="leave empty for none"></label>
+            <label>Lighting levels (DMX)<input id="mcDmx" placeholder="e.g. 1=255, 2=0, 5-8=50%  (leave empty for none)"></label>
             <div class="row"><button class="btn primary sm" id="mcSave" type="button">Save macro</button><button class="btn ghost sm" id="mcCancel" type="button">Cancel</button><span class="spacer"></span><button class="btn ghost sm" id="mcDelete" type="button">Delete</button></div>
           </div>
         </div>
@@ -290,6 +291,20 @@
           <label>Logo / welcome text<input id="logoText"></label>
           <label>CCLI licence number <span class="muted">— shown with song credits</span><input id="ccliLicense" inputmode="numeric" placeholder="e.g. 1234567"></label>
           <label>Message to stage displays<div class="row"><input id="stageMsg" placeholder="e.g. 5 minutes left"><button class="btn ghost sm" id="stageSend">Send</button><button class="btn ghost sm" id="stageClear">Clear</button></div></label>
+        </div>
+        <div class="card">
+          <h3>Hardware triggers (Stream Deck, Companion, MIDI)</h3>
+          <p class="muted small">Any button box or app that can send a web request can run F8 — e.g. a Stream Deck with Bitfocus Companion (“Generic HTTP” → POST). Add <code>?pin=…</code> if you set a control PIN.</p>
+          <details class="formats"><summary>Trigger addresses</summary><div id="trigUrls" class="mono small trig-urls"></div></details>
+          <div class="row between"><h4>MIDI</h4><div class="row"><button class="btn ghost sm" id="midiEnable" type="button">Turn on MIDI</button><button class="btn ghost sm" id="midiAdd" type="button">＋ Mapping</button></div></div>
+          <p class="muted small"><span id="midiDevices">Connect a MIDI pad or keyboard, turn on MIDI, then press “Learn” and hit a key.</span> <span id="midiLast"></span></p>
+          <div id="midiMap" class="midi-map"></div>
+        </div>
+        <div class="card">
+          <h3>Lighting (DMX over Art-Net)</h3>
+          <p class="muted small">Send lighting levels to an Art-Net node or lighting desk from macros or triggers.</p>
+          <div class="grid2"><label>Art-Net node IP<input id="dmxHost" placeholder="e.g. 192.168.1.50"></label><label>Universe<input id="dmxUni" type="number" min="0" max="32767"></label></div>
+          <div class="row"><input id="dmxTestLevels" placeholder="1=255, 2=128, 5-8=50%"><button class="btn ghost sm" id="dmxTest" type="button">Send</button></div>
         </div>
         <div class="card">
           <h3>Long passages</h3>
