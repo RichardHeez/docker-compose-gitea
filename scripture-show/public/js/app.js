@@ -317,6 +317,18 @@ function renderChannels() {
         <label>Tint color<input type="color" data-k="bgTint" value="${c.bgTint || '#000000'}"></label>
         <label>Tint amount ${range('bgTintAmount', c.bgTintAmount || 0, 0, 80)}</label>
 
+        <h5>Projection: span, edge blend, mask</h5>
+        <label>Span across${sel('spanCount', c.spanCount || 1, [[1, '1 screen'], [2, '2 projectors'], [3, '3 projectors'], [4, '4 projectors']])}</label>
+        <label>This is screen${sel('spanIndex', c.spanIndex || 1, [[1, '1 (left)'], [2, '2'], [3, '3'], [4, '4']])}</label>
+        <label>Overlap / blend ${range('spanOverlap', c.spanOverlap || 0, 0, 40)}</label>
+        <label>Blend curve ${range('blendGamma', c.blendGamma || 2.2, 1, 3, 0.1)}</label>
+        <label>Mask top % ${range('maskTop', c.maskTop || 0, 0, 45)}</label>
+        <label>Mask bottom % ${range('maskBottom', c.maskBottom || 0, 0, 45)}</label>
+        <label>Mask left % ${range('maskLeft', c.maskLeft || 0, 0, 45)}</label>
+        <label>Mask right % ${range('maskRight', c.maskRight || 0, 0, 45)}</label>
+        <label>Rounded corners ${range('maskRadius', c.maskRadius || 0, 0, 50)}</label>
+        ${check('testPattern', c.testPattern, 'Test pattern (line up projectors)')}
+
         <h5>Media</h5>
         ${check('showMedia', c.showMedia !== false, 'Show full-screen media')}
         ${check('mediaAudio', c.mediaAudio, 'Play video sound')}

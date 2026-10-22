@@ -141,3 +141,15 @@
 .stage-timers b.over { color: #ff6b6b; }
 .slide .cam-error { position: absolute; inset: 0; display: grid; place-items: center; font: 500 calc(var(--u)*1.6) 'Inter', sans-serif; color: #ff9b9e; background: #000; padding: 5%; text-align: center; }
 .slide .live-media.cam { background: #000; }
+
+/* Output shaping: edge blending, masks and test pattern sit above everything on that screen */
+.shaping { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+.shaping .blend { position: fixed; top: 0; bottom: 0; }
+.shaping .mask { position: fixed; box-shadow: 0 0 0 200vmax #000; }
+.test-pattern { position: fixed; inset: 0; }
+.tp-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.55) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.55) 1px, transparent 1px);
+  background-size: 10vw 10vh; outline: 3px solid #ff3b3b; outline-offset: -3px; }
+.tp-grid::before, .tp-grid::after { content: ''; position: absolute; background: #ffd27a; }
+.tp-grid::before { left: 50%; top: 0; bottom: 0; width: 2px; } .tp-grid::after { top: 50%; left: 0; right: 0; height: 2px; }
+.tp-label { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,.75); color: #fff; font: 700 4vmin 'Inter', sans-serif; padding: 1.5vmin 3vmin; border-radius: 1vmin; text-align: center; }
+.tp-label small { font-size: .5em; font-weight: 500; opacity: .8; }

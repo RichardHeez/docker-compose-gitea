@@ -35,6 +35,9 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Song arrangements** | Choose the sung order (V1, C, V2, C, B, C, C) with colour-coded groups like ProPresenter. |
 | **Stage notes** | Notes on a service item appear only on the stage display. |
 | **Transitions** | Fade, dissolve, push, zoom, blur or cut, per screen. |
+| **Hardware triggers** | Stream Deck / Bitfocus Companion over HTTP (`/api/trigger/next`, `/macro/Worship`, `/timer/Sermon/start`…), MIDI controllers with learn mode, and Art-Net DMX lighting cues from macros. |
+| **Live video (IMAG)** | Cameras and capture cards as full-screen slides or behind the lyrics, picked per screen. |
+| **Edge blending & masks** | Span one picture across 2–4 projectors with soft overlap blending (adjustable curve), mask edges and round corners for odd-shaped screens, and a test pattern for lining up. |
 | **Show control** | Preview / Live monitors, Black / Clear / Logo, ←/→ steps through screens and verses, service playlist, stage messages (“5 minutes left”), keyboard shortcuts. |
 
 ## Run it

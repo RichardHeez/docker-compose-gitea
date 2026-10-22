@@ -13,6 +13,41 @@ overlays.className = 'overlays';
 host.appendChild(overlays);
 let S = null;
 
+// ---- Output shaping: span one picture across several projectors with edge blending, masks, test pattern.
+const shaping = document.createElement('div');
+shaping.className = 'shaping';
+document.body.appendChild(shaping);
+let shapeKey = '';
+function blendGradient(dir, gamma) {
+  // Black overlay that fades from opaque at the outer edge to clear, following a gamma curve so the overlap looks even.
+  const stops = [0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1].map((t) => `rgba(0,0,0,${(1 - Math.pow(t, 1 / gamma)).toFixed(3)}) ${(t * 100).toFixed(0)}%`);
+  return `linear-gradient(${dir}, ${stops.join(', ')})`;
+}
+function applyShaping(ch) {
+  const n = Math.max(1, Math.min(4, Number(ch.spanCount) || 1));
+  const idx = Math.max(1, Math.min(n, Number(ch.spanIndex) || 1));
+  const ov = n > 1 ? Math.max(0, Math.min(40, Number(ch.spanOverlap) || 0)) / 100 : 0;
+  const m = { t: Number(ch.maskTop) || 0, r: Number(ch.maskRight) || 0, b: Number(ch.maskBottom) || 0, l: Number(ch.maskLeft) || 0, rad: Number(ch.maskRadius) || 0 };
+  const key = JSON.stringify([n, idx, ov, m, ch.blendGamma, ch.testPattern, chId]);
+  if (key === shapeKey) return;
+  shapeKey = key;
+  // Virtual canvas = all projectors side by side minus the overlaps; this screen shows its slice.
+  const width = (n - (n - 1) * ov) * 100;
+  host.style.width = n > 1 ? `${width}vw` : '';
+  host.style.left = n > 1 ? `${-(idx - 1) * (1 - ov) * 100}vw` : '';
+  host.style.right = n > 1 ? 'auto' : '';
+  const gamma = Number(ch.blendGamma) || 2.2;
+  let html = '';
+  if (ov > 0 && idx > 1) html += `<div class="blend" style="left:0;width:${ov * 100}vw;background:${blendGradient('to right', gamma)}"></div>`;
+  if (ov > 0 && idx < n) html += `<div class="blend" style="right:0;width:${ov * 100}vw;background:${blendGradient('to left', gamma)}"></div>`;
+  if (m.t || m.r || m.b || m.l || m.rad) html += `<div class="mask" style="top:${m.t}%;right:${m.r}%;bottom:${m.b}%;left:${m.l}%;border-radius:${m.rad}vmin"></div>`;
+  if (ch.testPattern) {
+    html += `<div class="test-pattern"><div class="tp-grid"></div><div class="tp-label">Channel ${chId}${n > 1 ? ` · screen ${idx} of ${n}` : ''}<br><small>${window.innerWidth}×${window.innerHeight}${ov ? ` · overlap ${Math.round(ov * 100)}%` : ''}</small></div></div>`;
+  }
+  shaping.innerHTML = html;
+}
+window.addEventListener('resize', () => { shapeKey = ''; if (S) applyShaping(S.channels.find((c) => c.id === chId) || S.channels[0]); });
+
 let lastKey = '';
 let seq = 0;
 let lastCmd = null;
@@ -85,6 +120,7 @@ async function render(state) {
   // "Clear media" hides backgrounds and media on every screen.
   const channel = state.clearMedia ? { ...channel0, background: '' } : channel0;
   renderOverlays(state, channel);
+  applyShaping(channel0);
   document.title = `${channel.name} — Ch ${chId} — F8`;
   const transparent = channel.mode === 'alpha';
   document.body.classList.toggle('transparent', transparent);
