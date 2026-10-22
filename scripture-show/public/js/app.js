@@ -480,7 +480,64 @@ async function searchSongs() {
   } catch (e) { $('#songOnlineList').innerHTML = `<p class="muted small">Online lyrics are unavailable right now (${esc(e.message)}).</p>`; }
 }
 
+// ---- import from other presentation software
+let importFound = [];
+async function importSongFilesFromUser(files) {
+  if (!files.length) return;
+  const batch = Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+  $('#importReview').hidden = true; $('#importErrors').innerHTML = '';
+  try {
+    let done = 0;
+    for (const f of files) {
+      $('#importStatus').textContent = `Uploading ${f.name} (${++done}/${files.length})…`;
+      await api(`/api/songs/upload?batch=${batch}`, { method: 'POST', headers: { 'x-filename': encodeURIComponent(f.name) }, body: f });
+    }
+    $('#importStatus').textContent = 'Reading songs…';
+    const r = await postJson(`/api/songs/import?batch=${batch}`, {});
+    importFound = r.songs;
+    $('#importErrors').innerHTML = r.errors.map((e) => `<div class="import-err">✗ ${esc(e.file.replace(/^\d+~/, ''))}: ${esc(e.error)}</div>`).join('');
+    const dups = importFound.filter((x) => x.duplicate).length;
+    $('#importStatus').textContent = importFound.length
+      ? `Found ${importFound.length} song${importFound.length === 1 ? '' : 's'}${dups ? ` (${dups} already in your library)` : ''}. Untick any you don't want, then Import.`
+      : 'No songs found in those files.';
+    $('#importList').innerHTML = importFound.map((x, i) => `<label class="import-row"><input type="checkbox" data-i="${i}" ${x.duplicate ? '' : 'checked'}>
+      <div class="meta"><b>${esc(x.title)}</b><small>${esc([x.artist, x.ccli ? `CCLI ${x.ccli}` : '', `${x.sections} section${x.sections === 1 ? "" : "s"}`, x.source].filter(Boolean).join(' · '))}</small></div>
+      ${x.duplicate ? '<span class="dup">already saved</span>' : ''}</label>`).join('');
+    $('#importReview').hidden = !importFound.length;
+    updateImportCount();
+  } catch (e) { $('#importStatus').textContent = `Import failed: ${e.message}`; }
+}
+function updateImportCount() {
+  const n = $$('#importList input:checked').length;
+  $('#importCount').textContent = `${n} selected`;
+  $('#importGo').textContent = `Import ${n} song${n === 1 ? '' : 's'}`;
+  $('#importGo').disabled = !n;
+}
+
+function wireImport() {
+  $('#songImport').onclick = () => { $('#importDialog').showModal(); };
+  $('#importClose').onclick = () => $('#importDialog').close();
+  $('#importFiles').onchange = (e) => { importSongFilesFromUser([...e.target.files]); e.target.value = ''; };
+  const dz = $('#importDrop');
+  dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('over'); };
+  dz.ondragleave = () => dz.classList.remove('over');
+  dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove('over'); importSongFilesFromUser([...e.dataTransfer.files]); };
+  $('#importList').onchange = updateImportCount;
+  $('#importAll').onchange = (e) => { $$('#importList input').forEach((c) => { c.checked = e.target.checked; }); updateImportCount(); };
+  $('#importGo').onclick = async () => {
+    const chosen = $$('#importList input:checked').map((c) => importFound[Number(c.dataset.i)]);
+    $('#importGo').disabled = true; $('#importStatus').textContent = 'Saving…';
+    try {
+      const r = await postJson('/api/songs/bulk', { songs: chosen, skipDuplicates: $('#importSkipDup').checked });
+      toast(`Imported ${r.added} song${r.added === 1 ? '' : 's'}${r.skipped ? ` · skipped ${r.skipped}` : ''}`);
+      $('#importDialog').close(); $('#importReview').hidden = true; $('#importStatus').textContent = ''; $('#importErrors').innerHTML = '';
+      searchSongs();
+    } catch (e) { $('#importStatus').textContent = e.message; $('#importGo').disabled = false; }
+  };
+}
+
 function wireSongs() {
+  wireImport();
   $('#songSearchForm').onsubmit = (e) => { e.preventDefault(); searchSongs(); };
   let t; $('#songQ').oninput = () => { clearTimeout(t); t = setTimeout(() => { // library is instant, online waits for Enter or a pause
     if ($('#songQ').value.trim().length >= 3) searchSongs(); }, 600); };

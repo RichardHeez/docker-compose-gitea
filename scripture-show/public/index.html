@@ -104,7 +104,7 @@
         </form>
         <div class="row small song-opts">
           <label class="check"><input type="checkbox" id="songOnline" checked> Also search online</label>
-          <span class="spacer"></span><button class="btn ghost sm" id="songNew" type="button">＋ New song</button>
+          <span class="spacer"></span><button class="btn ghost sm" id="songImport" type="button">⬆ Import</button><button class="btn ghost sm" id="songNew" type="button">＋ New song</button>
         </div>
         <div id="songResults" class="song-results"></div>
 
@@ -258,6 +258,31 @@
     <input id="trSearch" placeholder="Search language or translation (e.g. Spanish, NIV, 한국어)…">
     <div id="trRecent" class="chips"></div>
     <div id="trList" class="tr-list"><p class="muted">Loading translations…</p></div>
+  </dialog>
+
+  <dialog id="importDialog" class="dialog">
+    <div class="row between"><h3>Import songs from other software</h3><button class="icon-btn" id="importClose" type="button">✕</button></div>
+    <label id="importDrop" class="drop">
+      <input type="file" id="importFiles" multiple hidden>
+      <b>Drop song files or a whole export here</b><span class="muted small">or click to choose files · a .zip of many files works too</span>
+    </label>
+    <details class="formats"><summary>What can I import?</summary>
+      <ul class="small">
+        <li><b>EasyWorship 6/7</b>: <code>Songs.db</code> <i>and</i> <code>SongWords.db</code> from <code>Documents\Softouch\EasyWorship\Default\Databases\Data</code> (or zip that folder)</li>
+        <li><b>ProPresenter 4/5/6</b>: <code>.pro4 .pro5 .pro6</code> · <b>ProPresenter 7</b>: <code>.pro</code> or <code>.probundle</code> (text only, sections re-detected)</li>
+        <li><b>OpenLP</b>: OpenLyrics export (<code>.xml</code>) or its <code>songs.sqlite</code> · <b>FreeWorship, Worship Extreme, VideoPsalm…</b>: OpenLyrics export</li>
+        <li><b>OpenSong</b> song files · <b>CCLI SongSelect</b>: <code>.usr</code> or <code>.txt</code> downloads · <b>ChordPro</b> chord charts (<code>.cho .chordpro</code>, chords removed)</li>
+        <li><b>PowerPoint / Google Slides / Keynote</b> (export as <code>.pptx</code>) · <b>Word</b> (<code>.docx</code>) · plain <code>.txt</code></li>
+        <li>Anything else (MediaShout, SongShow Plus, Proclaim, Planning Center…): export the songs as text, OpenLyrics or PowerPoint, then import that.</li>
+      </ul>
+    </details>
+    <div id="importStatus" class="muted small"></div>
+    <div id="importErrors" class="small"></div>
+    <div id="importReview" hidden>
+      <div class="row between"><label class="check"><input type="checkbox" id="importAll" checked> Select all</label><span id="importCount" class="muted small"></span></div>
+      <div id="importList" class="import-list"></div>
+      <div class="row"><label class="check"><input type="checkbox" id="importSkipDup" checked> Skip songs already in the library</label><span class="spacer"></span><button class="btn primary" id="importGo" type="button">Import</button></div>
+    </div>
   </dialog>
 
   <dialog id="screenDialog" class="dialog small-dialog">

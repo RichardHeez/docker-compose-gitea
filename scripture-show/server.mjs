@@ -14,6 +14,8 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { BOOKS, bookById } from './public/js/books.js';
+import { lyricsToText } from './public/js/songs.js';
+import { importSongFiles } from './lib/importers.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Read keys from .env next to this file (Docker does this itself; this covers `npm start`).
@@ -332,6 +334,13 @@ function searchSongs(q) {
     .map(({ song }) => ({ id: song.id, title: song.title, artist: song.artist, source: song.source || 'library', ccli: song.ccli || '' }));
 }
 
+// Bulk import from other software: files are uploaded into a batch folder, then parsed together
+// (EasyWorship needs two database files at once), reviewed by the operator, then saved.
+const IMPORTS = path.join(DATA, 'import');
+await fs.rm(IMPORTS, { recursive: true, force: true }).catch(() => {});
+const songKey = (title, lyrics) => `${fold(title)}|${fold(String(lyrics || '').split('\n').find((l) => l.trim() && !/^\[.*\]$/.test(l.trim())) || '')}`;
+const batchDir = (id) => { if (!/^[a-z0-9]{6,40}$/i.test(String(id || ''))) throw Object.assign(new Error('Bad import batch'), { status: 400 }); return path.join(IMPORTS, id); };
+
 async function getJson(url) {
   const r = await fetch(url, { headers: { 'user-agent': 'F8ScripturePresenter/1.0 (church presentation software)' }, signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw Object.assign(new Error(`lyrics service ${r.status}`), { status: r.status === 404 ? 404 : 502 });
@@ -569,6 +578,47 @@ const server = http.createServer(async (req, res) => {
       const { id } = await readBody(req);
       songs = songs.filter((x) => x.id !== id); await saveSongs();
       return send(res, 200, { ok: true });
+    }
+    if (p === '/api/songs/upload' && req.method === 'POST') {
+      const dir = batchDir(url.searchParams.get('batch'));
+      await fs.mkdir(dir, { recursive: true });
+      const name = path.basename(decodeURIComponent(String(req.headers['x-filename'] || 'file'))).replace(/[^\w.\- ()]/g, '_').slice(0, 120) || 'file';
+      const n = (await fs.readdir(dir)).length;
+      await pipeline(req, createWriteStream(path.join(dir, `${String(n).padStart(4, '0')}~${name}`)));
+      return send(res, 200, { ok: true });
+    }
+    if (p === '/api/songs/import' && req.method === 'POST') {
+      const dir = batchDir(url.searchParams.get('batch'));
+      const names = await fs.readdir(dir).catch(() => []);
+      const files = await Promise.all(names.map(async (f) => ({ name: f.replace(/^\d+~/, ''), buf: await fs.readFile(path.join(dir, f)) })));
+      await fs.rm(dir, { recursive: true, force: true });
+      const { songs: found, errors } = await importSongFiles(files);
+      const existing = new Set(allSongs().map((x) => songKey(x.title, x.lyrics)));
+      const out = found.map((x) => {
+        const lyrics = lyricsToText(x.sections);
+        return { title: x.title, artist: x.artist || '', ccli: String(x.ccli || ''), copyright: x.copyright || '', source: x.source, lyrics,
+          sections: x.sections.length, duplicate: existing.has(songKey(x.title, lyrics)) };
+      });
+      return send(res, 200, { songs: out, errors });
+    }
+    if (p === '/api/songs/bulk' && req.method === 'POST') {
+      const { songs: incoming = [], skipDuplicates = true } = await readBody(req, 200e6);
+      const existing = new Set(allSongs().map((x) => songKey(x.title, x.lyrics)));
+      let added = 0, skipped = 0; const now = Date.now();
+      const fresh = [];
+      for (const [i, x] of incoming.entries()) {
+        const title = String(x.title || '').trim().slice(0, 200); const lyrics = String(x.lyrics || '').slice(0, 50000);
+        if (!title || !lyrics.trim()) { skipped++; continue; }
+        const key = songKey(title, lyrics);
+        if (skipDuplicates && existing.has(key)) { skipped++; continue; }
+        existing.add(key);
+        fresh.push({ id: `song-${now.toString(36)}${i.toString(36)}${Math.random().toString(36).slice(2, 5)}`, title, artist: String(x.artist || '').slice(0, 200),
+          ccli: String(x.ccli || '').slice(0, 20), copyright: String(x.copyright || '').slice(0, 300), lyrics, source: String(x.source || 'import').slice(0, 40), updated: now });
+        added++;
+      }
+      songs = [...fresh, ...songs];
+      await saveSongs();
+      return send(res, 200, { added, skipped });
     }
     if (p === '/api/lyrics/search') return send(res, 200, await searchOnline(url.searchParams.get('q') || ''));
     if (p === '/api/lyrics/get') return send(res, 200, await fetchOnline(url.searchParams.get('provider'), url.searchParams.get('id')));
