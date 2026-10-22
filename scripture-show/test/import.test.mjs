@@ -153,3 +153,72 @@ test('zip of mixed files, plain text, and unknown files', async () => {
   const bin = await one('weird.bin', Buffer.from([0, 1, 2, 3, 4, 5, 6, 7, 8]));
   assert.equal(bin.songs.length, 0); assert.equal(bin.errors.length, 1);
 });
+
+// ---- EasyWorship 2009 (Paradox .DB + .MB), built to the Paradox layout
+function paradox(rows) {
+  const fields = [{ name: 'Title', type: 1, size: 60 }, { name: 'Author', type: 1, size: 40 }, { name: 'Song Number', type: 1, size: 12 }, { name: 'Words', type: 0x0c, size: 20 }];
+  const recordSize = fields.reduce((n, f) => n + f.size, 0), headerSize = 2048;
+  const head = Buffer.alloc(headerSize);
+  head.writeUInt16LE(recordSize, 0); head.writeUInt16LE(headerSize, 2); head.writeUInt8(1, 5); head.writeUInt16LE(1, 14); head.writeUInt16LE(fields.length, 33);
+  fields.forEach((f, i) => { head.writeUInt8(f.type, 120 + i * 2); head.writeUInt8(f.size, 121 + i * 2); });
+  Buffer.from(`\0\0${fields.map((f) => f.name).join('\0')}\0`, 'latin1').copy(head, 385 + 6 * fields.length);
+  const block = Buffer.alloc(1024); block.writeUInt16LE(0, 0); block.writeInt16LE((rows.length - 1) * recordSize, 4);
+  // memo file: block 1 holds a sub-allocated (type 3) memo, later blocks are whole (type 2)
+  const mb = Buffer.alloc(256 * (rows.length + 8));
+  rows.forEach((r, i) => {
+    let p = 6 + i * recordSize;
+    for (const f of fields) {
+      if (f.type === 1) Buffer.from(r[f.name] || '', 'latin1').copy(block, p);
+      else {
+        const words = Buffer.from(r.Words, 'latin1');
+        let offset;
+        if (i === 0) { // sub-allocated: index entry 2 points at 16-byte unit 4
+          const at = 256; mb.writeUInt8(3, at); mb.writeUInt8(4, at + 12 + 5 * 2); words.copy(mb, at + 4 * 16); offset = at | 2;
+        } else { const at = 256 * (i + 4); mb.writeUInt8(2, at); words.copy(mb, at + 9); offset = at; }
+        block.writeUInt32LE(offset, p + f.size - 10); block.writeUInt32LE(words.length, p + f.size - 6);
+      }
+      p += f.size;
+    }
+  });
+  return { db: Buffer.concat([head, block]), mb };
+}
+
+test('EasyWorship 2009 (Songs.DB + Songs.MB)', async () => {
+  const { db, mb } = paradox([
+    { Title: 'Morning Light', Author: 'Test Writer', 'Song Number': '1234567', Words: rtf(['Verse 1', ...V1, '', 'Chorus', ...CH]) },
+    { Title: 'River Song', Author: '', 'Song Number': '', Words: rtf(V2) },
+  ]);
+  const { songs, errors } = await importSongFiles([{ name: 'Songs.DB', buf: db }, { name: 'Songs.MB', buf: mb }]);
+  assert.deepEqual(errors, []);
+  assert.equal(songs.length, 2);
+  assert.equal(songs[0].title, 'Morning Light'); assert.equal(songs[0].ccli, '1234567'); assert.equal(songs[0].source, 'EasyWorship 2009');
+  assert.deepEqual(songs[0].sections.map((s) => [s.label, s.lines]), [['Verse 1', V1], ['Chorus', CH]]);
+  assert.deepEqual(songs[1].sections[0].lines, V2);
+  const half = await importSongFiles([{ name: 'Songs.DB', buf: db }]);
+  assert.match(half.errors[0].error, /Songs\.MB/);
+});
+
+// ---- SongShow Plus (.sbsong)
+function ssp(blocks) {
+  const parts = [];
+  for (const b of blocks) {
+    const key = Buffer.alloc(4); key.writeUInt32LE(b.key); parts.push(key);
+    if (b.num !== undefined) parts.push(Buffer.from([0, b.num]));
+    if (b.name !== undefined) parts.push(Buffer.from([0, b.name.length]), Buffer.from(b.name, 'latin1'));
+    const data = Buffer.from(b.data, 'latin1');
+    if (data.length > 200) { const l = Buffer.alloc(5); l.writeUInt8(12, 0); l.writeUInt32LE(data.length, 1); parts.push(l); }
+    else parts.push(Buffer.from([1, data.length]));
+    parts.push(data);
+  }
+  return Buffer.concat(parts);
+}
+
+test('SongShow Plus (.sbsong)', async () => {
+  const buf = ssp([
+    { key: 1, data: 'Morning Light' }, { key: 2, data: 'Test Writer/Other Writer' }, { key: 5, data: '1234567' },
+    { key: 12, num: 1, data: V1.join('\r\n') }, { key: 20, num: 1, data: CH.join('\r\n') }, { key: 37, name: 'Tag', data: 'Every promise ever stands' },
+  ]);
+  const { songs } = await one('Morning Light.sbsong', buf);
+  assert.equal(songs[0].title, 'Morning Light'); assert.equal(songs[0].artist, 'Test Writer, Other Writer'); assert.equal(songs[0].ccli, '1234567');
+  assert.deepEqual(songs[0].sections.map((s) => [s.label, s.lines]), [['Verse 1', V1], ['Chorus 1', CH], ['Tag', ['Every promise ever stands']]]);
+});

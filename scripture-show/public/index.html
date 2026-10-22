@@ -266,14 +266,21 @@
       <input type="file" id="importFiles" multiple hidden>
       <b>Drop song files or a whole export here</b><span class="muted small">or click to choose files · a .zip of many files works too</span>
     </label>
+    <details class="formats" id="pasteBox"><summary>Or paste songs copied from any program or website</summary>
+      <p class="muted small">Copy the lyrics out of MediaShout, Proclaim, Planning Center, a website or a document and paste them here — as many songs as you like.
+        Start each song with <code># Song title</code> (or put a line of <code>---</code> between songs). Optional lines under the title: <code>Artist:</code>, <code>CCLI:</code>, <code>Copyright:</code>.</p>
+      <textarea id="pasteSongs" rows="8" placeholder="# Song title&#10;Artist: Writer name&#10;CCLI: 1234567&#10;&#10;First verse line&#10;Second verse line&#10;&#10;Chorus line…&#10;&#10;# Next song title&#10;…"></textarea>
+      <div class="row"><button class="btn sm" id="pasteRead" type="button">Find songs in pasted text</button></div>
+    </details>
     <details class="formats"><summary>What can I import?</summary>
       <ul class="small">
+        <li><b>EasyWorship 2009</b>: <code>Songs.DB</code> <i>and</i> <code>Songs.MB</code> from its Data folder · <b>SongShow Plus</b>: <code>.sbsong</code> files</li>
         <li><b>EasyWorship 6/7</b>: <code>Songs.db</code> <i>and</i> <code>SongWords.db</code> from <code>Documents\Softouch\EasyWorship\Default\Databases\Data</code> (or zip that folder)</li>
         <li><b>ProPresenter 4/5/6</b>: <code>.pro4 .pro5 .pro6</code> · <b>ProPresenter 7</b>: <code>.pro</code> or <code>.probundle</code> (text only, sections re-detected)</li>
         <li><b>OpenLP</b>: OpenLyrics export (<code>.xml</code>) or its <code>songs.sqlite</code> · <b>FreeWorship, Worship Extreme, VideoPsalm…</b>: OpenLyrics export</li>
         <li><b>OpenSong</b> song files · <b>CCLI SongSelect</b>: <code>.usr</code> or <code>.txt</code> downloads · <b>ChordPro</b> chord charts (<code>.cho .chordpro</code>, chords removed)</li>
         <li><b>PowerPoint / Google Slides / Keynote</b> (export as <code>.pptx</code>) · <b>Word</b> (<code>.docx</code>) · plain <code>.txt</code></li>
-        <li>Anything else (MediaShout, SongShow Plus, Proclaim, Planning Center…): export the songs as text, OpenLyrics or PowerPoint, then import that.</li>
+        <li><b>Anything else</b> (MediaShout, Proclaim, Planning Center…): paste the lyrics above, or use the free program <b>OpenLP</b> as a bridge — import your songs into OpenLP, export them as OpenLyrics, then import that file here.</li>
       </ul>
     </details>
     <div id="importStatus" class="muted small"></div>

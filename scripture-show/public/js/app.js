@@ -2,7 +2,7 @@
 import { BOOKS, bookById, formatRef, parseFollowUp, parseReferences, refKey } from './books.js';
 import { FONTS, api, langCode, autoScale, bookName, books, buildSlide, chapter, normWord, paginate, passage, postJson, resolveSlide, show, splitWords, translationInfo, translations } from './render.js';
 import * as control from './control.js';
-import { lyricsToText, parseLyrics, slidesFor, songSummary } from './songs.js';
+import { lyricsToText, parseLyrics, slidesFor, songSummary, splitPastedSongs } from './songs.js';
 import { PhraseRecognizer } from './khaya.js';
 import { langKey, setCustomWords } from './langs.js';
 
@@ -494,8 +494,13 @@ async function importSongFilesFromUser(files) {
     }
     $('#importStatus').textContent = 'Reading songs…';
     const r = await postJson(`/api/songs/import?batch=${batch}`, {});
-    importFound = r.songs;
-    $('#importErrors').innerHTML = r.errors.map((e) => `<div class="import-err">✗ ${esc(e.file.replace(/^\d+~/, ''))}: ${esc(e.error)}</div>`).join('');
+    showImportReview(r.songs, r.errors);
+  } catch (e) { $('#importStatus').textContent = `Import failed: ${e.message}`; }
+}
+
+function showImportReview(found, errors = []) {
+    importFound = found;
+    $('#importErrors').innerHTML = errors.map((e) => `<div class="import-err">✗ ${esc(e.file.replace(/^\d+~/, ''))}: ${esc(e.error)}</div>`).join('');
     const dups = importFound.filter((x) => x.duplicate).length;
     $('#importStatus').textContent = importFound.length
       ? `Found ${importFound.length} song${importFound.length === 1 ? '' : 's'}${dups ? ` (${dups} already in your library)` : ''}. Untick any you don't want, then Import.`
@@ -505,7 +510,6 @@ async function importSongFilesFromUser(files) {
       ${x.duplicate ? '<span class="dup">already saved</span>' : ''}</label>`).join('');
     $('#importReview').hidden = !importFound.length;
     updateImportCount();
-  } catch (e) { $('#importStatus').textContent = `Import failed: ${e.message}`; }
 }
 function updateImportCount() {
   const n = $$('#importList input:checked').length;
@@ -523,6 +527,10 @@ function wireImport() {
   dz.ondragleave = () => dz.classList.remove('over');
   dz.ondrop = (e) => { e.preventDefault(); dz.classList.remove('over'); importSongFilesFromUser([...e.dataTransfer.files]); };
   $('#importList').onchange = updateImportCount;
+  $('#pasteRead').onclick = () => {
+    const found = splitPastedSongs($('#pasteSongs').value);
+    showImportReview(found, found.length ? [] : [{ file: 'Pasted text', error: 'No songs found — start each song with “# Title” or separate songs with a line of ---' }]);
+  };
   $('#importAll').onchange = (e) => { $$('#importList input').forEach((c) => { c.checked = e.target.checked; }); updateImportCount(); };
   $('#importGo').onclick = async () => {
     const chosen = $$('#importList input:checked').map((c) => importFound[Number(c.dataset.i)]);

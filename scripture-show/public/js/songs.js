@@ -71,3 +71,38 @@ export function slidesFor(sections, maxLines = 4) {
 }
 
 export const songSummary = (song) => [song.artist, song.ccli ? `CCLI ${song.ccli}` : ''].filter(Boolean).join(' · ');
+
+// Many songs pasted at once (copied from any program, website or document).
+// Songs start with "# Title" or "Title: …", or are separated by a line of --- / ===.
+// Optional lines right after the title: "Artist: …", "Author: …", "CCLI: 1234567", "Copyright: …".
+const META_RE = /^\s*(artist|author|authors|by|writer|writers|words|music|ccli(?:\s*song)?(?:\s*(?:#|no\.?|number))?|copyright|©)\s*[:#]?\s*(.*)$/i;
+export function splitPastedSongs(text) {
+  const lines = String(text || '').replace(/\r/g, '').split('\n');
+  const blocks = []; let cur = null;
+  const start = (title) => { cur = { title: title || '', body: [] }; blocks.push(cur); };
+  for (const line of lines) {
+    const hash = /^\s*#{1,3}\s+(.+)$/.exec(line) || /^\s*title\s*:\s*(.+)$/i.exec(line);
+    if (hash) { start(hash[1].trim()); continue; }
+    if (/^\s*([-=_*])\1{2,}\s*$/.test(line)) { start(''); continue; }
+    if (!cur) start('');
+    cur.body.push(line);
+  }
+  return blocks.map((b) => {
+    let body = b.body; let title = b.title;
+    while (body.length && !body[0].trim()) body = body.slice(1);
+    if (!title && body.length) { title = body[0].trim(); body = body.slice(1); }
+    const meta = { artist: '', ccli: '', copyright: '' };
+    while (body.length) {
+      const m = META_RE.exec(body[0]);
+      if (!body[0].trim()) { body = body.slice(1); continue; }
+      if (!m) break;
+      const key = m[1].toLowerCase(), val = m[2].trim();
+      if (key.startsWith('ccli')) meta.ccli = val.replace(/\D/g, '');
+      else if (key === 'copyright' || key === '©') meta.copyright = val;
+      else meta.artist = meta.artist ? `${meta.artist}, ${val}` : val;
+      body = body.slice(1);
+    }
+    const sections = parseLyrics(body.join('\n'));
+    return { title: title.replace(/^["“]|["”]$/g, '').trim(), ...meta, lyrics: lyricsToText(sections), sections: sections.length, source: 'Pasted' };
+  }).filter((s) => s.title && s.sections);
+}

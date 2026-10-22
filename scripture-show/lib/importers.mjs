@@ -283,6 +283,106 @@ export function parsePlainText(text, file) {
   return [{ title: baseName(file), artist: '', ccli: '', copyright: '', sections: textToSections(text), source: 'Text file' }];
 }
 
+// ---------------------------------------------------------------- EasyWorship 2009 (Paradox Songs.DB + Songs.MB)
+// Paradox tables keep fixed-size records in blocks; long text (the song words, RTF) lives in the .MB memo file.
+const latin = (b) => [...b].map((c) => (c < 0x80 ? String.fromCharCode(c) : cp1252(c))).join('');
+export function readParadox(db, mb) {
+  const recordSize = db.readUInt16LE(0), headerSize = db.readUInt16LE(2), blockSize = db.readUInt8(5) * 1024;
+  const firstBlock = db.readUInt16LE(14), numFields = db.readUInt16LE(33);
+  if (!recordSize || !headerSize || !blockSize || !numFields || numFields > 255 || headerSize > db.length) throw new Error('Not a Paradox table');
+  const fields = [];
+  for (let i = 0; i < numFields; i++) fields.push({ type: db.readUInt8(120 + i * 2), size: db.readUInt8(121 + i * 2) });
+  // Field names are a run of NUL-separated strings near the end of the header; find the run of the right length.
+  const tokens = db.subarray(120 + numFields * 2, headerSize).toString('latin1').split('\0');
+  let names = null;
+  for (let i = 0; i + numFields <= tokens.length && !names; i++) {
+    const win = tokens.slice(i, i + numFields);
+    if (win.every((t) => /^[\x20-\x7e]{1,40}$/.test(t)) && win.some((t) => /^title$/i.test(t))) names = win;
+  }
+  if (!names) throw new Error('Could not read the table columns');
+  fields.forEach((f, i) => { f.name = names[i]; });
+
+  const memo = (bytes) => {
+    if (!mb || bytes.length < 10) return '';
+    const tail = bytes.subarray(bytes.length - 10);
+    let offset = tail.readUInt32LE(0); const length = tail.readUInt32LE(4);
+    if (!offset || !length) return latin(bytes.subarray(0, bytes.length - 10)).replace(/\0+$/, '');
+    const sub = offset & 0xff; offset &= ~0xff;
+    if (offset >= mb.length) return '';
+    const kind = mb.readUInt8(offset);
+    let start;
+    if (kind === 2) start = offset + 9;
+    else if (kind === 3) { if (sub > 63) return ''; start = offset + mb.readUInt8(offset + 12 + 5 * sub) * 16; }
+    else return '';
+    return latin(mb.subarray(start, start + length));
+  };
+  const rows = [];
+  const visited = new Set();
+  for (let block = firstBlock; block && !visited.has(block); ) {
+    visited.add(block);
+    const at = headerSize + (block - 1) * blockSize;
+    if (at + 6 > db.length) break;
+    const next = db.readUInt16LE(at), addSize = db.readInt16LE(at + 4);
+    const count = addSize < 0 ? 0 : Math.floor(addSize / recordSize) + 1;
+    for (let r = 0; r < count; r++) {
+      let p = at + 6 + r * recordSize; const row = {};
+      for (const f of fields) {
+        const bytes = db.subarray(p, p + f.size); p += f.size;
+        if (f.type === 0x01) row[f.name] = latin(bytes).replace(/\0[\s\S]*$/, '').trim();
+        else if ([0x0c, 0x0d, 0x0e].includes(f.type)) row[f.name] = memo(bytes);
+      }
+      rows.push(row);
+    }
+    block = next;
+  }
+  return rows;
+}
+
+export function parseEasyWorship2009(dbBuf, mbBuf) {
+  const rows = readParadox(dbBuf, mbBuf);
+  const get = (row, ...names) => { for (const n of names) { const k = Object.keys(row).find((x) => x.toLowerCase() === n); if (k && row[k]) return row[k]; } return ''; };
+  return rows.map((r) => ({
+    title: clean(get(r, 'title')) || 'Untitled', artist: clean(get(r, 'author')), copyright: clean(get(r, 'copyright')),
+    ccli: clean(get(r, 'song number', 'ccli', 'ccli number')).replace(/\D/g, ''),
+    sections: textToSections(rtfToText(get(r, 'words'))), source: 'EasyWorship 2009',
+  })).filter((s) => s.sections.length);
+}
+
+// ---------------------------------------------------------------- SongShow Plus (.sbsong)
+// A sequence of blocks: 4-byte key, then (for verses) a verse number or custom name, a length descriptor, then data.
+const SSP = { TITLE: 1, AUTHOR: 2, COPYRIGHT: 3, CCLI: 5, VERSE: 12, CHORUS: 20, BRIDGE: 24, CUSTOM: 37 };
+export function parseSongShowPlus(buf, file) {
+  const song = { title: '', artist: '', ccli: '', copyright: '', sections: [], source: 'SongShow Plus' };
+  let p = 0;
+  while (p + 5 <= buf.length) {
+    const key = buf.readUInt32LE(p); p += 4;
+    let label = null;
+    if (key === SSP.VERSE || key === SSP.CHORUS || key === SSP.BRIDGE) {
+      const n = buf.readUInt8(p + 1); p += 2;
+      label = `${key === SSP.VERSE ? 'Verse' : key === SSP.CHORUS ? 'Chorus' : 'Bridge'}${n ? ` ${n}` : key === SSP.VERSE ? ' 1' : ''}`;
+    } else if (key === SSP.CUSTOM) {
+      const len = buf.readUInt8(p + 1); p += 2;
+      label = latin(buf.subarray(p, p + len)).trim() || 'Verse'; p += len;
+    }
+    if (p >= buf.length) break;
+    const lenSize = buf.readUInt8(p); p += 1;
+    let len;
+    if (lenSize === 12 || lenSize === 20) { len = buf.readUInt32LE(p); p += 4; }
+    else if (lenSize === 2) len = 1;
+    else if (lenSize === 9) len = 0;
+    else { len = buf.readUInt8(p); p += 1; }
+    const data = latin(buf.subarray(p, p + len)); p += len;
+    if (key === SSP.TITLE) song.title = clean(data);
+    else if (key === SSP.AUTHOR) song.artist = clean(data.replace(/\s*[/;]\s*/g, ', '));
+    else if (key === SSP.COPYRIGHT) song.copyright = clean(data);
+    else if (key === SSP.CCLI) song.ccli = clean(data).replace(/\D/g, '');
+    else if (label) { const lines = linesOf(data); if (lines.length) song.sections.push({ label, lines }); }
+  }
+  if (!song.sections.length) throw new Error('No lyrics found in this SongShow Plus file');
+  song.title ||= baseName(file);
+  return [song];
+}
+
 // ---------------------------------------------------------------- SQLite databases (EasyWorship, OpenLP)
 async function withDb(buf, fn) {
   const { DatabaseSync } = await import('node:sqlite');
@@ -358,6 +458,21 @@ export async function importSongFiles(input) {
     } else files.push(f);
   }
 
+  // EasyWorship 2009: Paradox Songs.DB with its Songs.MB memo file.
+  const paradox = files.filter((x) => /\.db$/i.test(x.name) && !isSqlite(x.buf) && x.buf.length > 128 && x.buf.readUInt16LE(2) >= 2048 && x.buf.readUInt8(5) > 0 && x.buf.readUInt8(5) <= 32);
+  for (const f of paradox) {
+    const stem = f.name.replace(/\.db$/i, '').toLowerCase();
+    const mbFile = files.find((x) => x.name.toLowerCase() === `${stem}.mb`);
+    try {
+      if (!/songs$/i.test(stem)) continue; // only the song table
+      if (!mbFile) { errors.push({ file: f.name, error: 'EasyWorship 2009 needs Songs.MB as well as Songs.DB — add both files' }); continue; }
+      songs.push(...parseEasyWorship2009(f.buf, mbFile.buf));
+    } catch (e) { errors.push({ file: f.name, error: `EasyWorship 2009: ${e.message}` }); }
+  }
+  const handled = new Set(paradox.flatMap((f) => [f.name.toLowerCase(), f.name.replace(/\.db$/i, '.mb').toLowerCase()]));
+  const otherEw2009 = files.filter((x) => !handled.has(x.name.toLowerCase()) && /\.(mb|px|db)$/i.test(x.name) && !isSqlite(x.buf));
+  otherEw2009.forEach((x) => handled.add(x.name.toLowerCase()));
+
   // SQLite databases: pair EasyWorship Songs.db with SongWords.db.
   const dbs = { songs: [], words: [] };
   for (const f of files.filter((x) => isSqlite(x.buf))) {
@@ -377,12 +492,13 @@ export async function importSongFiles(input) {
     }
   }
 
-  for (const f of files.filter((x) => !isSqlite(x.buf))) {
+  for (const f of files.filter((x) => !isSqlite(x.buf) && !handled.has(x.name.toLowerCase()))) {
     const ext = path.extname(f.name).toLowerCase();
     try {
+      if (ext === '.sbsong') { songs.push(...parseSongShowPlus(f.buf, f.name)); continue; }
       if (ext === '.pptx' || ext === '.ppsx') { songs.push(...parsePptx(unzip(f.buf), f.name)); continue; }
       if (ext === '.docx') { songs.push(...parseDocx(unzip(f.buf), f.name)); continue; }
-      if (/\.(mb|px|ews|ewsx)$/i.test(ext)) { errors.push({ file: f.name, error: 'This EasyWorship file type is not supported: use Songs.db + SongWords.db from the EasyWorship Data folder' }); continue; }
+      if (/\.(ews|ewsx)$/i.test(ext)) { errors.push({ file: f.name, error: 'EasyWorship schedule files are not supported: import the song database (Songs.db + SongWords.db, or Songs.DB + Songs.MB for EasyWorship 2009)' }); continue; }
       const head = f.buf.subarray(0, 4000).toString('utf8');
       if (ext === '.pro' && !/<RVPresentationDocument/i.test(head) && !/^\s*\{/.test(head)) { songs.push(...parseProPresenter7(f.buf, f.name)); continue; }
       const text = decodeText(f.buf);

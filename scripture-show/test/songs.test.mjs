@@ -42,3 +42,12 @@ test('round trip to editable text', () => {
   const text = lyricsToText(parseLyrics('[Verse 1]\nA\nB\n\n[Chorus]\nC'));
   assert.equal(text, '[Verse 1]\nA\nB\n\n[Chorus]\nC');
 });
+
+test('many pasted songs are split into separate songs', async () => {
+  const { splitPastedSongs } = await import('../public/js/songs.js');
+  const text = '# Morning Light\nArtist: Test Worship\nCCLI Song # 1234567\n\nline a\nline b\n\nchorus c\nchorus d\n\n# River Song\nriver line\n---\nGentle Rain\nAuthor: Test Writer\n\nVerse 1\nrain line';
+  const songs = splitPastedSongs(text);
+  assert.deepEqual(songs.map((s) => [s.title, s.artist, s.ccli, s.sections]), [
+    ['Morning Light', 'Test Worship', '1234567', 2], ['River Song', '', '', 1], ['Gentle Rain', 'Test Writer', '', 1]]);
+  assert.match(songs[2].lyrics, /^\[Verse 1\]\nrain line$/);
+});
