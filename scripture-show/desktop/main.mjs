@@ -1,6 +1,6 @@
 // F8 desktop app: runs the server in-process, opens the console, puts output channels
 // full screen on chosen displays (remembered between runs) and can send channels as NDI sources.
-import { app, BrowserWindow, Menu, dialog, ipcMain, screen, shell } from 'electron';
+import { app, BrowserWindow, Menu, dialog, ipcMain, screen, session, shell } from 'electron';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -100,6 +100,9 @@ function lanRemote() {
 }
 
 app.whenReady().then(async () => {
+  // Cameras/capture cards for live video, and the microphone for listening: allow without prompts.
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, done) => done(['media', 'midi', 'midiSysex', 'fullscreen', 'window-management'].includes(permission)));
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => ['media', 'midi', 'window-management'].includes(permission));
   const server = await import(path.join(here, '..', 'server.mjs'));
   const port = await server.ready;
   base = `http://localhost:${port}`;

@@ -5,7 +5,7 @@ import * as control from './control.js';
 import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, slidesFor, songSummary, splitPastedSongs } from './songs.js';
 import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
-import { updateTimers } from './render.js';
+import { listCameras, updateTimers } from './render.js';
 import { PhraseRecognizer } from './khaya.js';
 import { langKey, setCustomWords } from './langs.js';
 
@@ -186,6 +186,7 @@ async function itemLabel(item) {
   if (item.kind === 'text') return item.title;
   if (item.kind === 'media') return `${item.mediaType === 'video' ? '🎬' : '🖼'} ${item.name}`;
   if (item.kind === 'song') return `🎵 ${item.title} · ${item.slides?.[item.page || 0]?.label || ''}`;
+  if (item.kind === 'camera') return `🎥 ${item.name}`;
   if (!item.ref) return '';
   return formatRef(item.ref, await bookName(S.translation, item.ref.book));
 }
@@ -275,9 +276,9 @@ function renderChannels() {
   $('#chCount').textContent = `${S.channels.length} output channels`;
   const focused = document.activeElement?.closest?.('.ch');
   if (focused && $('#channels').contains(focused) && document.activeElement.matches('input[type=text],input:not([type]),input[type=url]')) return; // don't clobber typing
-  const bgOptions = [['', 'Theme only'], ...mediaList.map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`])];
+  const bgOptions = [['', 'Theme only'], ...mediaList.filter((m) => m.type !== 'audio').map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`]), ...cameras.map((cam) => [`camera:${cam.label}`, `🎥 Live: ${cam.label}`])];
   $('#channels').innerHTML = S.channels.map((c) => {
-    const custom = c.background && !mediaList.some((m) => m.url === c.background);
+    const custom = c.background && !mediaList.some((m) => m.url === c.background) && !(c.background.startsWith('camera:') && cameras.some((cam) => `camera:${cam.label}` === c.background));
     return `
     <div class="ch ${c.enabled ? '' : 'off'} ${openCh.has(c.id) ? 'open' : ''}" data-id="${c.id}">
       <div class="ch-head" data-toggle>
@@ -397,6 +398,20 @@ async function loadMedia() {
     </div>`).join('') : '<p class="muted small">No media yet.</p>';
   if (S) renderChannels();
   tools.refreshProps();
+}
+
+// ---- live video input
+let cameras = [];
+const cameraItem = (cam) => ({ kind: 'camera', name: cam.label, device: cam.label, fit: 'cover', mirror: $('#camMirror').checked });
+async function findCameras() {
+  $('#camList').innerHTML = '<p class="muted small">Looking for cameras…</p>';
+  try { cameras = await listCameras(); }
+  catch (e) { cameras = []; toast(`Cameras: ${e.message}`, true); }
+  const chOpts = S.channels.map((c) => `<option value="${c.id}">Ch ${c.id} · ${esc(c.name)}</option>`).join('');
+  $('#camList').innerHTML = cameras.map((c, i) => `<div class="cam-row" data-i="${i}"><b>🎥 ${esc(c.label)}</b>
+      <button class="btn live sm" data-act="live">Live</button><button class="btn ghost sm" data-act="preview">Preview</button><button class="btn ghost sm" data-act="service">＋</button>
+      <select data-act="bg"><option value="">Use as background…</option><option value="all">All full-screen channels</option>${chOpts}</select></div>`).join('')
+    || '<p class="muted small">No cameras found. Plug in a camera or capture card and allow camera access.</p>';
 }
 
 const mediaItem = (m) => ({ kind: 'media', url: m.url, mediaType: m.type, name: m.name, fit: $('#mediaFit').value, loop: true });
@@ -1012,6 +1027,20 @@ function wire() {
   $('#wordStrip').onclick = (e) => { const w = e.target.closest('[data-w]'); if (w) control.toggleHighlight(S, w.dataset.w); };
 
   // media
+  $('#camFind').onclick = findCameras;
+  $('#camList').addEventListener('click', (e) => {
+    const row = e.target.closest('.cam-row'); const act = e.target.closest('button[data-act]')?.dataset.act; if (!row || !act) return;
+    const item = cameraItem(cameras[Number(row.dataset.i)]);
+    if (act === 'live') { goLive(item); setPreview(item); }
+    if (act === 'preview') setPreview(item);
+    if (act === 'service') { setService([...S.service, item]); toast('Camera added to service'); }
+  });
+  $('#camList').addEventListener('change', (e) => {
+    if (e.target.dataset.act !== 'bg' || !e.target.value) return;
+    const cam = cameras[Number(e.target.closest('.cam-row').dataset.i)]; const target = e.target.value;
+    push({ channels: S.channels.map((c) => ((target === 'all' ? c.mode === 'full' : c.id === Number(target)) ? { ...c, background: `camera:${cam.label}` } : c)) });
+    toast('Live video set as background'); e.target.value = '';
+  });
   $('#mediaFile').onchange = (e) => { uploadFiles([...e.target.files]); e.target.value = ''; };
   const dz = $('#dropZone');
   dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('over'); };

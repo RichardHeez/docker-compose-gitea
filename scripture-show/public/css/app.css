@@ -267,3 +267,8 @@ textarea { resize: vertical; }
 .midi-row select { padding: 4px 6px; font-size: 12px; }
 .midi-row .x { background: none; border: 0; color: var(--muted); cursor: pointer; }
 .trig-urls div { margin: 3px 0; word-break: break-all; }
+
+.cam-list { display: flex; flex-direction: column; gap: 6px; }
+.cam-row { border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: #0f1222; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cam-row b { flex: 1 1 100%; font-size: 13px; }
+.cam-row select { flex: 1; padding: 4px 6px; font-size: 12px; }

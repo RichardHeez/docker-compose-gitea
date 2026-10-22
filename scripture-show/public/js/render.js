@@ -147,6 +147,7 @@ export async function resolveSlide(item, channel, state) {
     return { kind: 'song', title: item.title || '', artist: item.artist || '', ccli: item.ccli || '', license: state.ccliLicense || '',
       label: cur.label, lines: cur.lines, page, pages: item.slides?.length || 1, next: item.slides?.[page + 1] || null };
   }
+  if (item.kind === 'camera') return { kind: 'camera', name: item.name || 'Camera', device: item.device || '', fit: item.fit || 'cover', mirror: !!item.mirror };
   if (item.kind === 'media') return { kind: 'media', url: item.url, mediaType: item.mediaType, name: item.name, fit: item.fit || 'contain', loop: item.loop !== false };
   if (item.kind !== 'scripture' || !item.ref) return { kind: 'blank' };
   const tr = channel?.translation || state.translation;
@@ -161,7 +162,7 @@ export async function resolveSlide(item, channel, state) {
   return slide;
 }
 export const slideKey = (item, channel, state) => JSON.stringify([
-  item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.fit, item?.page, item?.pages, item?.highlight, item?.songId, item?.slides?.length,
+  item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.device, item?.mirror, item?.fit, item?.page, item?.pages, item?.highlight, item?.songId, item?.slides?.length,
   state.ccliLicense,
   channel?.translation || state.translation, channel?.secondary,
 ]);
@@ -186,6 +187,7 @@ function backgroundHtml(channel, mode) {
   const b = channel.background;
   if (!b) return '';
   const fit = channel.bgFit === 'contain' ? 'contain' : 'cover';
+  if (b.startsWith('camera:')) return `<video class="bg-media" data-cam="${esc(b.slice(7))}" style="object-fit:${fit}" autoplay muted playsinline></video>`;
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(b)
     ? `<video class="bg-media" src="${esc(b)}" style="object-fit:${fit}" autoplay muted loop playsinline></video>`
     : `<div class="bg-media" style="background-image:url('${esc(b)}');background-size:${fit}"></div>`;
@@ -227,6 +229,11 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
     body = `<div class="logo"><div class="logo-mark">✦</div><div class="logo-text">${esc(state.logoText || '')}</div></div>`;
   } else if (opts.clear || slide.kind === 'blank') {
     body = '';
+  } else if (slide.kind === 'camera') {
+    if (isStage) body = `<div class="box"><div class="title fit">🎥 ${esc(slide.name)}</div></div>`;
+    else if (!overlay && channel.showMedia !== false) {
+      media = `<video class="live-media cam" data-cam="${esc(slide.device)}" style="object-fit:${slide.fit === 'contain' ? 'contain' : 'cover'};${slide.mirror ? 'transform:scaleX(-1)' : ''}" autoplay muted playsinline></video>`;
+    }
   } else if (slide.kind === 'media') {
     if (isStage) body = `<div class="box"><div class="title fit">🎬 ${esc(slide.name || 'Media')}</div></div>`;
     else if (!overlay && channel.showMedia !== false) {
@@ -321,6 +328,7 @@ export function show(host, el, transition = 'fade') {
   el.classList.add('entering', `tr-${tr}`);
   host.appendChild(el);
   updateTimers(el, show.state);
+  attachCameras(el);
   fitSlide(el);
   document.fonts?.ready.then(() => el.isConnected && fitSlide(el)); // re-fit once web fonts arrive
   el.querySelectorAll('[data-clock]').forEach(tickClock);
@@ -345,5 +353,42 @@ export function updateTimers(root, state) {
     const t = (state.timers || []).find((x) => x.id === el.dataset.timer);
     el.textContent = t ? timerText(t) : '';
     el.classList.toggle('over', !!t && timerOver(t));
+  });
+}
+
+// ---------------------------------------------------------------- live video input (cameras / capture cards)
+// Each screen opens the camera connected to its own computer. Streams are shared and reused.
+const camStreams = new Map();
+async function findCamera(label) {
+  const list = async () => (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+  let cams = await list();
+  if (label && cams.every((d) => !d.label)) { // labels stay hidden until camera permission is granted once
+    const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach((t) => t.stop());
+    cams = await list();
+  }
+  return cams.find((d) => d.label === label) || cams.find((d) => label && d.label.toLowerCase().includes(label.toLowerCase())) || null;
+}
+export function cameraStream(label = '') {
+  if (camStreams.has(label)) return camStreams.get(label);
+  const p = (async () => {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser cannot open cameras');
+    const dev = label ? await findCamera(label) : null;
+    return navigator.mediaDevices.getUserMedia({ audio: false, video: { ...(dev ? { deviceId: { exact: dev.deviceId } } : {}), width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } });
+  })().catch((e) => { camStreams.delete(label); throw e; });
+  camStreams.set(label, p);
+  return p;
+}
+export async function listCameras() {
+  try { await findCamera('__unlock__'); } catch { /* permission refused */ }
+  return (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput').map((d, i) => ({ label: d.label || `Camera ${i + 1}`, id: d.deviceId }));
+}
+export function attachCameras(root) {
+  root.querySelectorAll('video[data-cam]').forEach(async (v) => {
+    if (v.srcObject) return;
+    try { v.srcObject = await cameraStream(v.dataset.cam || ''); v.play().catch(() => {}); }
+    catch (e) {
+      const note = document.createElement('div'); note.className = 'cam-error';
+      note.textContent = `Camera unavailable on this computer: ${e.message}`; v.replaceWith(note);
+    }
   });
 }

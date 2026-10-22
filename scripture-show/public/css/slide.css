@@ -139,3 +139,5 @@
 .stage-timers small { display: block; font: 600 calc(var(--u)*1) 'Inter', sans-serif; color: #8a93ad; letter-spacing: .08em; text-transform: uppercase; }
 .stage-timers b { font: 700 calc(var(--u)*3) 'Inter', sans-serif; font-variant-numeric: tabular-nums; color: #fff; }
 .stage-timers b.over { color: #ff6b6b; }
+.slide .cam-error { position: absolute; inset: 0; display: grid; place-items: center; font: 500 calc(var(--u)*1.6) 'Inter', sans-serif; color: #ff9b9e; background: #000; padding: 5%; text-align: center; }
+.slide .live-media.cam { background: #000; }
