@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin — F8</title><meta name="theme-color" content="#0b0d17">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="wrap"><nav class="top"></nav>
+<div class="layout">
+  <h1 style="margin:0;font-size:24px">Admin</h1>
+  <div class="stats" id="stats"></div>
+  <section class="card">
+    <div class="row between"><h2>Churches</h2><input id="q" placeholder="Search church or email" style="max-width:280px"></div>
+    <table id="orgs"></table>
+  </section>
+  <section class="card">
+    <h2>Give a plan by hand</h2>
+    <p class="muted small">For bank transfers, cash, partners or gifts. Ends by itself on the date you pick.</p>
+    <form id="grant" class="row"><input name="org" placeholder="Church id (click a row above)" required style="flex:2;min-width:240px">
+      <select name="plan" style="width:auto"><option value="pro">Pro</option><option value="ministry">Ministry</option><option value="free">Free (remove)</option></select>
+      <input name="until" type="date" style="width:auto"><button class="btn">Save</button></form>
+  </section>
+</div>
+<footer></footer></div>
+<script type="module" src="/assets/admin.js"></script>
+</body>
+</html>

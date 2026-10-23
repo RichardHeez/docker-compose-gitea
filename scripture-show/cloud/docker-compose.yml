@@ -1,0 +1,32 @@
+# F8 Cloud + its PostgreSQL database. Put it behind HTTPS (e.g. Caddy, Traefik or your host's proxy).
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: f8
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: f8cloud
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U f8"]
+      interval: 5s
+      retries: 10
+
+  cloud:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://f8:${DB_PASSWORD}@db:5432/f8cloud
+    volumes:
+      - clouddata:/data   # holds the licence signing key — back it up
+
+volumes:
+  pgdata:
+  clouddata:

@@ -1,0 +1,18 @@
+{
+  "name": "f8-cloud",
+  "version": "1.0.0",
+  "description": "F8 Cloud: accounts, churches, subscriptions (Stripe + Paystack MoMo) and licences for F8 Scripture Presenter",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.mjs",
+    "migrate": "node src/migrate.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "nodemailer": "^7.0.0",
+    "pg": "^8.13.0",
+    "stripe": "^18.0.0"
+  }
+}
