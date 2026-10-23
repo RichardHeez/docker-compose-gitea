@@ -68,6 +68,7 @@ const safeUrl = (u) => (/^(https?:|\/|data:image\/)/i.test(u) && !/["'()\\]/.tes
 function backgroundHtml(bg) {
   if (!bg) return '';
   if (/^#[0-9a-f]{3,8}$/i.test(bg)) return `<div class="dz-bg" style="background:${bg}"></div>`;
+  if (/^motion:[a-z]+(:[a-z]+(:[\d.]+)?)?$/.test(bg)) return `<canvas class="dz-bg" data-motion="${esc(bg)}"></canvas>`;
   const u = safeUrl(bg); if (!u) return '';
   return isVideo(u) ? `<video class="dz-bg" src="${esc(u)}" autoplay muted loop playsinline></video>` : `<div class="dz-bg" style="background-image:url('${esc(u)}')"></div>`;
 }

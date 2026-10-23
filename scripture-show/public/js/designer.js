@@ -1,6 +1,7 @@
 // Slide editor (console): design custom slides and templates on a 16:9 canvas.
 import { FONTS, autoScale, buildSlide, fitSlide } from './render.js';
 import { ROLES, hasRole, newDesign, newElement } from './design.js';
+import { MOTIONS, attachMotion, motionValue, parseMotion, motionLabel } from './motion.js';
 
 let D; // deps from app.js
 let cur = null;      // the design being edited (working copy)
@@ -44,6 +45,7 @@ function draw() {
   el.classList.add('dz-slide');
   host.querySelectorAll('.slide').forEach((o) => o.remove());
   host.appendChild(el);
+  attachMotion(el);
   fitSlide(el);
   decorate();
 }
@@ -289,7 +291,8 @@ function fillPickers() {
   const media = D.media().filter((m) => m.type === 'image' || m.type === 'video');
   const bg = cur?.background || '';
   const isColor = /^#/.test(bg);
-  D.$('#dzBg').innerHTML = opts([['', 'Output’s background'], ['color', 'Solid colour'], ...media.map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`])], isColor ? 'color' : bg);
+  const motions = MOTIONS.map(([id]) => { const v = parseMotion(bg)?.effect === id ? bg : motionValue(id); return [v, motionLabel(v)]; });
+  D.$('#dzBg').innerHTML = opts([['', 'Output’s background'], ['color', 'Solid colour'], ...motions, ...media.map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`])], isColor ? 'color' : bg);
   D.$('#dzBgColor').hidden = !isColor;
   if (isColor) D.$('#dzBgColor').value = bg.length === 7 ? bg : '#000000';
 }
@@ -323,7 +326,7 @@ function renderList() {
     const d = list.find((x) => x.id === card.dataset.id); const host = card.querySelector('[data-pv]');
     autoScale(host);
     const el = buildSlide({ kind: 'design', name: d.name, design: d }, ch, s, { preview: true });
-    host.appendChild(el); requestAnimationFrame(() => fitSlide(el));
+    host.appendChild(el); attachMotion(el); requestAnimationFrame(() => fitSlide(el));
   });
 }
 

@@ -305,6 +305,13 @@
           <div id="camList" class="cam-list"></div>
           <label class="check"><input type="checkbox" id="camMirror"> Mirror (for a front-facing camera)</label>
         </div>
+        <div class="card motion-card">
+          <h3>Motion backgrounds</h3>
+          <p class="muted small">Animated backgrounds drawn live — no video files needed, smooth even in 4K, and in step on every screen.</p>
+          <div class="grid2"><label>Colours<select id="mbPalette"></select></label>
+            <label>Speed<select id="mbSpeed"><option value="0.5">Slow</option><option value="1" selected>Normal</option><option value="1.6">Lively</option></select></label></div>
+          <div id="mbGrid" class="mb-grid"></div>
+        </div>
         <label id="dropZone" class="drop">
           <input type="file" id="mediaFile" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden>
           <b>Drop images or videos here</b><span class="muted small">or click to upload · use them as backgrounds or show them full screen</span>

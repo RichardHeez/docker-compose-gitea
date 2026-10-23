@@ -6,6 +6,7 @@ import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, s
 import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
 import * as designer from './designer.js';
+import { MOTIONS, PALETTES, PALETTE_NAMES, motionValue, parseMotion, motionLabel, attachMotion } from './motion.js';
 import * as songtl from './songtimeline.js';
 import * as recorder from './recorder.js';
 import { hasRole } from './design.js';
@@ -286,8 +287,9 @@ function renderChannels() {
   const focused = document.activeElement?.closest?.('.ch');
   if (focused && $('#channels').contains(focused) && document.activeElement.matches('input[type=text],input:not([type]),input[type=url]')) return; // don't clobber typing
   const bgOptions = [['', 'Theme only'], ...mediaList.filter((m) => m.type !== 'audio').map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`]), ...cameras.map((cam) => [`camera:${cam.label}`, `🎥 Live: ${cam.label}`])];
+  const motionOpts = (cur) => MOTIONS.map(([id]) => { const v = parseMotion(cur)?.effect === id ? cur : motionValue(id); return [v, motionLabel(v)]; });
   $('#channels').innerHTML = S.channels.map((c) => {
-    const custom = c.background && !mediaList.some((m) => m.url === c.background) && !(c.background.startsWith('camera:') && cameras.some((cam) => `camera:${cam.label}` === c.background));
+    const custom = c.background && !parseMotion(c.background) && !mediaList.some((m) => m.url === c.background) && !(c.background.startsWith('camera:') && cameras.some((cam) => `camera:${cam.label}` === c.background));
     return `
     <div class="ch ${c.enabled ? '' : 'off'} ${openCh.has(c.id) ? 'open' : ''}" data-id="${c.id}">
       <div class="ch-head" data-toggle>
@@ -318,8 +320,10 @@ function renderChannels() {
         ${check('uppercase', c.uppercase, 'UPPERCASE')}
 
         <h5>Background</h5>
-        <label class="full">Image / video<select data-k="background">${bgOptions.map(([v, l]) => `<option value="${esc(v)}" ${v === c.background ? 'selected' : ''}>${esc(l)}</option>`).join('')}${custom ? `<option value="${esc(c.background)}" selected>URL: ${esc(c.background)}</option>` : ''}</select></label>
+        <label class="full">Image / video<select data-k="background">${[...bgOptions, ...motionOpts(c.background)].map(([v, l]) => `<option value="${esc(v)}" ${v === c.background ? 'selected' : ''}>${esc(l)}</option>`).join('')}${custom ? `<option value="${esc(c.background)}" selected>URL: ${esc(c.background)}</option>` : ''}</select></label>
         <label class="full">…or a URL<input type="url" data-k="background" value="${custom ? esc(c.background) : ''}" placeholder="https://…/background.mp4"></label>
+        ${parseMotion(c.background) ? `<label>Motion colours<select data-act="motion-palette">${Object.entries(PALETTE_NAMES).map(([k, n]) => `<option value="${k}" ${parseMotion(c.background).palette === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+        <label>Motion speed<select data-act="motion-speed">${[[0.5, 'Slow'], [1, 'Normal'], [1.6, 'Lively']].map(([v, n]) => `<option value="${v}" ${parseMotion(c.background).speed === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>` : ''}
         <label>Fit${sel('bgFit', c.bgFit || 'cover', [['cover', 'fill screen'], ['contain', 'fit whole image']])}</label>
         <label>Blur ${range('bgBlur', c.bgBlur || 0, 0, 30)}</label>
         <label>Brightness ${range('bgBrightness', c.bgBrightness || 100, 30, 150)}</label>
@@ -1001,6 +1005,13 @@ function wire() {
       desktop.ndi(id, e.target.checked).then((r) => r?.error && (toast(r.error, true), ndiOn.delete(id), renderChannels()));
       return;
     }
+    if (e.target.dataset.act === 'motion-palette' || e.target.dataset.act === 'motion-speed') {
+      const ch = S.channels.find((c) => c.id === id); const m = parseMotion(ch?.background); if (!m) return;
+      const pal = e.target.dataset.act === 'motion-palette' ? e.target.value : m.palette; const sp = e.target.dataset.act === 'motion-speed' ? Number(e.target.value) : m.speed;
+      updateChannel(id, { background: motionValue(m.effect, pal, sp) });
+      if (Number($('#liveMonitorCh').value) === id && preview) setPreview(preview);
+      return;
+    }
     const k = e.target.dataset.k; if (!k) return;
     const v = e.target.type === 'checkbox' ? e.target.checked : e.target.type === 'range' ? Number(e.target.value) : e.target.value;
     updateChannel(id, { [k]: v });
@@ -1090,6 +1101,26 @@ function wire() {
     const channels = S.channels.map((c) => (target === 'all' ? c.mode === 'full' : c.id === Number(target)) ? { ...c, background: m.url } : c);
     push({ channels }); toast('Background set'); e.target.value = '';
   });
+
+  // motion backgrounds gallery
+  $('#mbPalette').innerHTML = '<option value="">Each effect’s own colours</option>' + Object.entries(PALETTE_NAMES).map(([k, n]) => `<option value="${k}">${n}</option>`).join('');
+  const renderMotionGrid = () => {
+    const chOpts = S ? S.channels.map((c) => `<option value="${c.id}">Ch ${c.id} · ${esc(c.name)}</option>`).join('') : '';
+    $('#mbGrid').innerHTML = MOTIONS.map(([id, name]) => {
+      const v = motionValue(id, $('#mbPalette').value || undefined, Number($('#mbSpeed').value));
+      return `<div class="mb" data-v="${esc(v)}"><div class="mb-prev"><canvas data-motion="${esc(v)}"></canvas></div><b>${esc(name)}</b>
+        <select data-act="mbg"><option value="">Use as background…</option><option value="all">All full-screen channels</option>${chOpts}</select></div>`;
+    }).join('');
+    attachMotion($('#mbGrid'));
+  };
+  $('#mbPalette').onchange = renderMotionGrid; $('#mbSpeed').onchange = renderMotionGrid;
+  $('#mbGrid').addEventListener('change', (e) => {
+    if (e.target.dataset.act !== 'mbg' || !e.target.value) return;
+    const v = e.target.closest('.mb').dataset.v; const target = e.target.value;
+    push({ channels: S.channels.map((c) => ((target === 'all' ? c.mode === 'full' : c.id === Number(target)) ? { ...c, background: v } : c)) });
+    toast(`${motionLabel(v)} set as background`); e.target.value = '';
+  });
+  document.querySelector('#sideTabs [data-tab=media]')?.addEventListener('click', () => { if (!$('#mbGrid').children.length) renderMotionGrid(); });
 
   // settings
   $('#splitChars').oninput = (e) => { $('#splitLabel').textContent = Number(e.target.value) || 'off —'; };

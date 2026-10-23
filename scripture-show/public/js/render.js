@@ -5,6 +5,7 @@ import { timerOver, timerText } from './timers.js';
 // ---------------------------------------------------------------- API (with optional control PIN)
 const PIN_KEY = 'f8.pin';
 import { designHtml, findDesign, hasRole } from './design.js';
+import { attachMotion } from './motion.js';
 export const getPin = () => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } };
 export const setPin = (v) => { try { localStorage.setItem(PIN_KEY, v); } catch {} };
 
@@ -190,6 +191,7 @@ function backgroundHtml(channel, mode) {
   const b = channel.background;
   if (!b) return '';
   const fit = channel.bgFit === 'contain' ? 'contain' : 'cover';
+  if (b.startsWith('motion:')) return `<canvas class="bg-media motion" data-motion="${esc(b)}"></canvas>`;
   if (b.startsWith('camera:')) return `<video class="bg-media" data-cam="${esc(b.slice(7))}" style="object-fit:${fit}" autoplay muted playsinline></video>`;
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(b)
     ? `<video class="bg-media" src="${esc(b)}" style="object-fit:${fit}" autoplay muted loop playsinline></video>`
@@ -380,6 +382,7 @@ export function show(host, el, transition = 'fade') {
   host.appendChild(el);
   updateTimers(el, show.state);
   attachCameras(el);
+  attachMotion(el);
   fitSlide(el);
   document.fonts?.ready.then(() => el.isConnected && fitSlide(el)); // re-fit once web fonts arrive
   el.querySelectorAll('[data-clock]').forEach(tickClock);
