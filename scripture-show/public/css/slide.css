@@ -169,3 +169,8 @@
 .dz-t .pg { font-size: .6em; opacity: .7; margin-left: .4em; }
 .dz.dz-image img, .dz.dz-image video { width: 100%; height: 100%; display: block; }
 .dz-empty { position: absolute; inset: 0; display: grid; place-items: center; border: 2px dashed rgba(255,255,255,.4); color: rgba(255,255,255,.6); font: 600 calc(var(--u) * 1.6) 'Inter', sans-serif; }
+
+/* Plan limits on output screens */
+.plan-lock { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #05060c; color: #e8ebf5; text-align: center; font-family: 'Inter', sans-serif; }
+.plan-lock b { display: block; font-size: 4vw; margin-bottom: .5em; } .plan-lock span { font-size: 1.8vw; color: #8a93ad; line-height: 1.5; }
+.plan-mark { position: fixed; right: 1.6vw; bottom: 1.4vw; z-index: 40; font: 600 1.1vw 'Inter', sans-serif; color: rgba(255,255,255,.55); background: rgba(0,0,0,.35); padding: .3em .7em; border-radius: .4em; pointer-events: none; }

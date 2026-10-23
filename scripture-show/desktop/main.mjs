@@ -10,6 +10,14 @@ import { startCapture, stopCapture, captureStatus, stopAllCaptures } from './cap
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 process.env.DATA_DIR ||= path.join(app.getPath('userData'), 'data');
+// Keys and settings: a .env file in the app's data folder (Help → Open data folder), and the F8 Cloud
+// address + licence public key baked into this build (desktop/cloud.json).
+try { process.loadEnvFile(path.join(process.env.DATA_DIR, '.env')); } catch { /* none */ }
+try {
+  const cloud = JSON.parse(fs.readFileSync(path.join(here, 'cloud.json'), 'utf8'));
+  process.env.F8_CLOUD_URL ||= cloud.cloudUrl || '';
+  process.env.F8_LICENSE_PUBLIC_KEY ||= cloud.publicKey || '';
+} catch { /* not a cloud build: everything unlocked */ }
 process.env.PORT ||= '4848';
 
 // Video backgrounds should play with sound on outputs without a click.
@@ -53,8 +61,14 @@ function restoreOutputs() {
   }
 }
 
+// Ask the local F8 server whether the church's plan includes a feature.
+async function allowed(feature) {
+  try { return await (await fetch(`${base}/api/account/can?f=${feature}`)).json(); } catch { return { ok: true }; }
+}
+
 async function setNdi(ch, on) {
   try {
+    if (on) { const a = await allowed('ndi'); if (!a.ok) return { error: a.error }; }
     if (on) await startNdi(ch, `${base}/output.html?ch=${ch}&embed&ndi`);
     else await stopNdi(ch);
     settings.ndi = ndiActive();
@@ -71,6 +85,7 @@ ipcMain.handle('close-output', (_e, ch) => { outputs.get(ch)?.destroy(); delete 
 ipcMain.handle('ndi', (_e, ch, on) => setNdi(ch, on));
 ipcMain.handle('ndi-status', () => ndiActive());
 ipcMain.handle('rec-start', async (_e, ch, opts = {}) => {
+  for (const f of [opts.record !== false ? 'record' : '', opts.rtmp ? 'stream' : ''].filter(Boolean)) { const a = await allowed(f); if (!a.ok) return { error: a.error }; }
   try { return await startCapture(ch, `${base}/output.html?ch=${ch}&embed`, { ...opts, mediaDir: path.join(process.env.DATA_DIR, 'media') }); }
   catch (e) { return { error: e.message }; }
 });

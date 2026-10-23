@@ -366,6 +366,13 @@
       </div>
 
       <div class="tab-body" data-body="settings" hidden>
+        <div class="card account-card" id="acctCard" hidden>
+          <div class="row between"><h3>F8 account</h3><span class="plan-tag" id="acctPlan"></span></div>
+          <p class="small" id="acctText"></p>
+          <div id="acctCode" class="acct-code" hidden></div>
+          <div class="row"><button class="btn primary sm" id="acctSignIn" type="button">Sign in</button><button class="btn sm" id="acctUpgrade" type="button">Upgrade</button>
+            <span class="spacer"></span><button class="btn ghost sm" id="acctRefresh" type="button" title="Check the plan now">⟳</button><button class="btn ghost sm" id="acctSignOut" type="button">Sign out</button></div>
+        </div>
         <div class="card">
           <h3>Stage &amp; logo</h3>
           <label>Logo / welcome text<input id="logoText"></label>

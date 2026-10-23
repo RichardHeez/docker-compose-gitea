@@ -7,6 +7,7 @@ import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
 import * as designer from './designer.js';
 import * as motionui from './motionui.js';
+import * as accountui from './accountui.js';
 import { MOTIONS, PALETTES, PALETTE_NAMES, motionValue, parseMotion, motionLabel, attachMotion } from './motion.js';
 import * as songtl from './songtimeline.js';
 import * as recorder from './recorder.js';
@@ -60,6 +61,7 @@ function connect() {
     triggers.onState(S, prev);
     designer.onState(S, prev);
     motionui.onState(S, prev);
+    accountui.onState(S);
     recorder.onState(S);
   });
   es.onerror = () => toast('Reconnecting to server…', true);
@@ -296,7 +298,7 @@ function renderChannels() {
     return `
     <div class="ch ${c.enabled ? '' : 'off'} ${openCh.has(c.id) ? 'open' : ''}" data-id="${c.id}">
       <div class="ch-head" data-toggle>
-        <span class="ch-num">${c.id}</span>
+        <span class="ch-num">${c.id}</span>${S.account?.mode === 'licensed' && c.id > (S.account.limits?.outputs || 2) ? '<span class="lock" title="Not in your plan — upgrade under Settings → F8 account">🔒</span>' : ''}
         <span class="ch-name"><b>${esc(c.name)}</b><span>${MODE_LABELS[c.mode] || c.mode} · ${esc(c.translation || S.translation)}${c.secondary ? ' + ' + esc(c.secondary) : ''}${ndiOn.has(c.id) ? ' · NDI' : ''}</span></span>
         <button class="btn ghost sm" data-act="open" title="Open output window">Open</button>
         <label class="switch" title="Enabled" onclick="event.stopPropagation()"><input type="checkbox" data-k="enabled" ${c.enabled ? 'checked' : ''}><span></span></label>
@@ -1135,6 +1137,7 @@ function wire() {
   songtl.init({ $, $$, esc, toast, push, getS: () => S, getSong: () => song, getSlides: () => songSlides, songItem, media: () => mediaList,
     goLive: (item) => control.goLive(S, item), audio: tools.getAudio, playAudio: tools.playAudio, fadeAudio: tools.fadeAudio,
     nextServiceItem: () => serviceStep(1), onChange: () => renderSongSlides() });
+  accountui.init({ $, esc, toast, postJson, getS: () => S });
   motionui.init({ $, $$, esc, toast, push, api, postJson, getS: () => S, reloadMedia: () => loadMedia() });
   designer.initDesigner({ $, $$, esc, push, toast, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList, addToService: (item) => setService([...S.service, item]) });
   triggers.initTriggers({ $, $$, esc, push, toast, getS: () => S, fadeAudio: tools.fadeAudio });

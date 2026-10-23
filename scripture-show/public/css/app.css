@@ -363,3 +363,11 @@ textarea { resize: vertical; }
 .stock-site .tag { align-self: flex-start; font-size: 9px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; background: var(--panel2); color: var(--accent2); }
 .stock-site .tag.free { color: #4ee0a0; }
 @media (max-width: 900px) { .aim-result { grid-template-columns: 1fr; } }
+
+/* F8 account */
+.account-card .plan-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); }
+.account-card .plan-tag.pro { color: #c9c0ff; background: rgba(139,123,255,.18); } .account-card .plan-tag.ministry { color: var(--accent2); background: rgba(255,210,122,.15); }
+.account-card .warn { color: #f5b94a; }
+.acct-code { padding: 10px; border: 1px dashed var(--line2); border-radius: 10px; text-align: center; font-size: 13px; }
+.acct-code .code { font: 700 26px ui-monospace, monospace; letter-spacing: .12em; margin: 6px 0; color: var(--accent2); }
+.ch .lock { font-size: 12px; margin-left: -4px; }

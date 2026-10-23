@@ -20,6 +20,7 @@ import { STARTER_DESIGNS, cleanDesign } from './public/js/design.js';
 import { cleanTimeline } from './public/js/timeline.js';
 import { MOTIONS, cleanSpec, suggestMotion } from './public/js/motion.js';
 import { stockImport, stockSearch, stockStatus } from './lib/stock.mjs';
+import { createAccount, FEATURE_NAMES } from './lib/account.mjs';
 import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
@@ -184,6 +185,13 @@ function broadcast() {
   persist();
 }
 setInterval(() => { for (const res of sseClients) res.write(': ping\n\n'); }, 25000);
+
+// F8 account & plan (only enforced when F8_CLOUD_URL is set — see lib/account.mjs).
+const account = createAccount({ cloudUrl: process.env.F8_CLOUD_URL, publicKey: process.env.F8_LICENSE_PUBLIC_KEY, dataDir: DATA,
+  onChange: (st) => { state.account = st; broadcast(); } });
+state.account = account.status();
+const upgradeMsg = (f) => `${FEATURE_NAMES[f] || 'This'} is part of F8 Pro — upgrade under Settings → F8 account`;
+const GATES = [[/^\/api\/ai\/(detect|generate)$/, 'ai'], [/^\/api\/ai\/motion$/, 'aiMotion'], [/^\/api\/asr$/, 'khaya'], [/^\/api\/pco\//, 'pco'], [/^\/api\/stock\/(search|import)$/, 'stock']];
 
 // Announcements loop: advance on the server so lobby screens keep cycling even if no console is open.
 setInterval(() => {
@@ -635,6 +643,15 @@ const server = http.createServer(async (req, res) => {
       broadcast();
       return send(res, 200, { ok: true, version: state.version });
     }
+    // Plan check for paid features (402 = upgrade needed)
+    for (const [re, f] of GATES) if (re.test(p) && !account.can(f)) return send(res, 402, { error: upgradeMsg(f), upgrade: true });
+    if (p === '/api/account' && req.method === 'GET') return send(res, 200, account.status());
+    if (p === '/api/account/can') return send(res, 200, { ok: account.can(String(url.searchParams.get('f') || '')), error: upgradeMsg(String(url.searchParams.get('f') || '')) });
+    if (p === '/api/account/signin' && req.method === 'POST') {
+      try { return send(res, 200, await account.signIn({ name: `F8 on ${os.hostname()}`.slice(0, 80) })); } catch (e) { return send(res, e.status || 502, { error: e.message }); }
+    }
+    if (p === '/api/account/refresh' && req.method === 'POST') return send(res, 200, await account.refresh());
+    if (p === '/api/account/signout' && req.method === 'POST') return send(res, 200, account.signOut());
     if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN, khaya: !!KHAYA.key, pco: !!pco() });
     if (p === '/api/pin' && req.method === 'POST') return send(res, 200, { ok: true }); // PIN already checked above
 
@@ -728,6 +745,8 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       const q = QUALITY[b.quality] || QUALITY['1080p'];
       const record = b.record !== false; const rtmp = String(b.rtmp || '').trim();
+      if (record && !account.can('record')) return send(res, 402, { error: upgradeMsg('record'), upgrade: true });
+      if (rtmp && !account.can('stream')) return send(res, 402, { error: upgradeMsg('stream'), upgrade: true });
       if (!record && !rtmp) return send(res, 400, { error: 'Choose recording, streaming or both' });
       const ff = await hasFfmpeg();
       if (rtmp && !ff) return send(res, 400, { error: 'Streaming needs ffmpeg on the server (it is included in the Docker image and the desktop app)' });

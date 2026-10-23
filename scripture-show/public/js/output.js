@@ -113,6 +113,19 @@ function tick() {
 }
 setInterval(tick, 250);
 
+// Screens beyond the plan show an upgrade note; the Free plan shows a small F8 mark.
+function planMarks(locked, mark, acct) {
+  let lock = document.getElementById('planLock'), wm = document.getElementById('planMark');
+  if (locked && !lock) {
+    lock = document.createElement('div'); lock.id = 'planLock'; lock.className = 'plan-lock';
+    lock.innerHTML = `<div><b>Screen ${chId}</b><span>The ${acct.plan === 'free' ? 'Free' : acct.plan} plan includes ${acct.limits?.outputs || 2} screens.<br>Upgrade in F8 → Settings → F8 account to use this one.</span></div>`;
+    document.body.append(lock);
+  }
+  if (!locked && lock) lock.remove();
+  if (mark && !wm) { wm = document.createElement('div'); wm.id = 'planMark'; wm.className = 'plan-mark'; wm.textContent = '✦ F8 Free'; document.body.append(wm); }
+  if (!mark && wm) wm.remove();
+}
+
 async function render(state) {
   S = state; show.state = state;
   syncClock(state.serverNow);
@@ -120,7 +133,12 @@ async function render(state) {
   // "Clear media" hides backgrounds and media on every screen.
   const channel = state.clearMedia ? { ...channel0, background: '' } : channel0;
   renderOverlays(state, channel);
-  applyShaping(channel0);
+  const acct = state.account;
+  const licensed = acct?.mode === 'licensed';
+  const has = (f) => !licensed || acct.features?.includes(f);
+  // Edge blending & masks are a paid feature.
+  applyShaping(has('edgeBlend') ? channel0 : { ...channel0, spanCount: 1, maskTop: 0, maskBottom: 0, maskLeft: 0, maskRight: 0, maskRadius: 0 });
+  planMarks(licensed && chId > (acct.limits?.outputs || 2), licensed && acct.watermark && channel.mode !== 'stage' && channel.mode !== 'confidence', acct);
   document.title = `${channel.name} — Ch ${chId} — F8`;
   const transparent = channel.mode === 'alpha';
   document.body.classList.toggle('transparent', transparent);

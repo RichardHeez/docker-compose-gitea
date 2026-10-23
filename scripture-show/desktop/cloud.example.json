@@ -1,0 +1,4 @@
+{
+  "cloudUrl": "https://account.example.com",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nPASTE THE KEY FROM https://account.example.com/api/license/public-key\n-----END PUBLIC KEY-----\n"
+}
