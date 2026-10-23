@@ -7,4 +7,7 @@ contextBridge.exposeInMainWorld('f8Desktop', {
   closeOutput: (ch) => ipcRenderer.invoke('close-output', ch),
   ndi: (ch, on) => ipcRenderer.invoke('ndi', ch, on),
   ndiStatus: () => ipcRenderer.invoke('ndi-status'),
+  recStart: (ch, opts) => ipcRenderer.invoke('rec-start', ch, opts),
+  recStop: (ch) => ipcRenderer.invoke('rec-stop', ch),
+  recStatus: () => ipcRenderer.invoke('rec-status'),
 });

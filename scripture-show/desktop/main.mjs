@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startNdi, stopNdi, ndiActive, stopAllNdi } from './ndi.mjs';
+import { startCapture, stopCapture, captureStatus, stopAllCaptures } from './capture.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 process.env.DATA_DIR ||= path.join(app.getPath('userData'), 'data');
@@ -69,6 +70,12 @@ ipcMain.handle('open-output', (_e, ch, displayId) => openOutput(ch, displayId));
 ipcMain.handle('close-output', (_e, ch) => { outputs.get(ch)?.destroy(); delete settings.outputs[ch]; saveSettings(); });
 ipcMain.handle('ndi', (_e, ch, on) => setNdi(ch, on));
 ipcMain.handle('ndi-status', () => ndiActive());
+ipcMain.handle('rec-start', async (_e, ch, opts = {}) => {
+  try { return await startCapture(ch, `${base}/output.html?ch=${ch}&embed`, { ...opts, mediaDir: path.join(process.env.DATA_DIR, 'media') }); }
+  catch (e) { return { error: e.message }; }
+});
+ipcMain.handle('rec-stop', (_e, ch) => stopCapture(ch));
+ipcMain.handle('rec-status', () => captureStatus());
 
 function buildMenu(channels) {
   const outputMenu = Array.from({ length: channels }, (_, i) => ({
@@ -127,5 +134,5 @@ app.whenReady().then(async () => {
   for (const ch of settings.ndi || []) await setNdi(ch, true);
 });
 
-app.on('before-quit', () => stopAllNdi());
+app.on('before-quit', () => { stopAllNdi(); stopAllCaptures(); });
 app.on('window-all-closed', () => app.quit());

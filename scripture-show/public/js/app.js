@@ -7,6 +7,7 @@ import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
 import * as designer from './designer.js';
 import * as songtl from './songtimeline.js';
+import * as recorder from './recorder.js';
 import { hasRole } from './design.js';
 import { listCameras, updateTimers } from './render.js';
 import { PhraseRecognizer } from './khaya.js';
@@ -56,6 +57,7 @@ function connect() {
     tools.onState(S, prev);
     triggers.onState(S, prev);
     designer.onState(S, prev);
+    recorder.onState(S);
   });
   es.onerror = () => toast('Reconnecting to server…', true);
 }
@@ -1095,6 +1097,7 @@ function wire() {
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
   tools.initShowTools({ $, $$, esc, push, toast, postJson, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
+  recorder.init({ $, esc, toast, postJson, reloadMedia: () => loadMedia() });
   songtl.init({ $, $$, esc, toast, push, getS: () => S, getSong: () => song, getSlides: () => songSlides, songItem, media: () => mediaList,
     goLive: (item) => control.goLive(S, item), audio: tools.getAudio, playAudio: tools.playAudio, fadeAudio: tools.fadeAudio,
     nextServiceItem: () => serviceStep(1), onChange: () => renderSongSlides() });

@@ -21,7 +21,8 @@
     "@anthropic-ai/sdk": "^0.135.0"
   },
   "optionalDependencies": {
-    "@stagetimerio/grandiose": "^0.2.1"
+    "@stagetimerio/grandiose": "^0.2.1",
+    "ffmpeg-static": "^5.3.0"
   },
   "devDependencies": {
     "electron": "^44.9.0",
@@ -43,7 +44,8 @@
       "lib/**"
     ],
     "asarUnpack": [
-      "node_modules/@stagetimerio/grandiose/**"
+      "node_modules/@stagetimerio/grandiose/**",
+      "node_modules/ffmpeg-static/**"
     ],
     "win": {
       "target": "nsis"

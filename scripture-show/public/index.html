@@ -113,6 +113,23 @@
           <div id="dzList" class="dz-list"></div>
         </div>
 
+        <div class="card rec-card">
+          <h3>Record &amp; stream</h3>
+          <p class="muted small" id="recHow"></p>
+          <div class="grid2">
+            <label>Channel<select id="recCh"></select></label>
+            <label>Quality<select id="recQuality"><option value="1080p">1080p · 6 Mbps</option><option value="720p">720p · 3 Mbps (slow internet)</option></select></label>
+          </div>
+          <label class="check"><input type="checkbox" id="recRecord" checked> Record (saved to the Media library as MP4)</label>
+          <label class="check"><input type="checkbox" id="recStream"> Stream live (YouTube, Facebook, Restream…)</label>
+          <div id="recStreamBox" class="rec-stream">
+            <label>Stream server (RTMP)<input id="recUrl" placeholder="rtmp://a.rtmp.youtube.com/live2" spellcheck="false"></label>
+            <label>Stream key<input id="recKey" type="password" autocomplete="off" spellcheck="false"></label>
+            <label class="check"><input type="checkbox" id="recSaveKey"> Remember the key on this computer</label>
+          </div>
+          <div class="row"><button class="btn live sm" id="recStart" type="button">● Start</button><button class="btn sm" id="recStop" type="button" hidden>■ Stop</button><span id="recStatus" class="rec-status small"></span></div>
+        </div>
+
         <div class="card">
           <div class="row between"><h3>Timers &amp; clocks</h3><button class="btn ghost sm" id="timerAdd" type="button">＋ Timer</button></div>
           <div id="timerList" class="timer-list"></div>

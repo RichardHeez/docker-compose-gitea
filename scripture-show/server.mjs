@@ -22,6 +22,7 @@ import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
 import { pcoClient, planToService } from './lib/pco.mjs';
+import { QUALITY, hasFfmpeg, recordingName, startEncoder, startPassthrough } from './lib/encoder.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Read keys from .env next to this file (Docker does this itself; this covers `npm start`).
@@ -562,6 +563,18 @@ const send = (res, code, body, type = 'application/json') => {
   res.end(type === 'application/json' ? JSON.stringify(body) : body);
 };
 
+// Recording sessions fed by browser screen capture; stop any that go quiet (tab closed, network gone).
+const recSessions = new Map();
+const pickInfo = (i) => ({ started: i.started, bytes: i.bytes, error: i.error, file: i.file ? path.basename(i.file) : '', streaming: i.streaming, ended: i.ended });
+setInterval(() => {
+  for (const [id, r] of recSessions) if (Date.now() - r.last > 20000) { recSessions.delete(id); r.enc.stop(); console.log(`recording ${id} stopped: no data for 20 s`); }
+}, 5000);
+async function readRaw(req, limit) {
+  const chunks = []; let n = 0;
+  for await (const c of req) { n += c.length; if (n > limit) throw new Error('Too large'); chunks.push(c); }
+  return Buffer.concat(chunks);
+}
+
 async function readBody(req, limit = 60e6) {
   const chunks = []; let size = 0;
   for await (const c of req) { size += c.length; if (size > limit) throw Object.assign(new Error('Body too large'), { status: 413 }); chunks.push(c); }
@@ -680,6 +693,47 @@ const server = http.createServer(async (req, res) => {
       if (Object.keys(patch).length) { Object.assign(state, sanitizePatch(patch)); broadcast(); }
       return send(res, 200, { ok: true, action, changed: Object.keys(patch) });
     }
+    // Recording & streaming from a browser screen capture (WebM chunks → ffmpeg → MP4 file and/or RTMP)
+    if (p === '/api/rec/status' && req.method === 'GET') {
+      return send(res, 200, { ffmpeg: await hasFfmpeg(), sessions: [...recSessions.entries()].map(([id, r]) => ({ id, label: r.label, record: r.record, stream: r.stream, ...pickInfo(r.enc.info()) })) });
+    }
+    if (p === '/api/rec/start' && req.method === 'POST') {
+      const b = await readBody(req);
+      const q = QUALITY[b.quality] || QUALITY['1080p'];
+      const record = b.record !== false; const rtmp = String(b.rtmp || '').trim();
+      if (!record && !rtmp) return send(res, 400, { error: 'Choose recording, streaming or both' });
+      const ff = await hasFfmpeg();
+      if (rtmp && !ff) return send(res, 400, { error: 'Streaming needs ffmpeg on the server (it is included in the Docker image and the desktop app)' });
+      await fs.mkdir(MEDIA, { recursive: true });
+      const label = String(b.label || 'F8').slice(0, 40);
+      const file = record ? path.join(MEDIA, recordingName(label, ff ? 'mp4' : 'webm')) : '';
+      let enc;
+      try {
+        enc = ff ? startEncoder({ input: 'webm', ...q, bitrate: Number(b.bitrate) || q.bitrate, hasAudio: !!b.hasAudio, file, rtmp })
+          : startPassthrough(file);
+      } catch (e) { return send(res, 400, { error: e.message }); }
+      const id = Math.random().toString(36).slice(2, 10);
+      recSessions.set(id, { enc, label, record, stream: !!rtmp, last: Date.now() });
+      return send(res, 200, { id, file: file ? path.basename(file) : '', ffmpeg: ff });
+    }
+    if (p === '/api/rec/chunk' && req.method === 'POST') {
+      const r = recSessions.get(url.searchParams.get('id') || '');
+      if (!r) return send(res, 404, { error: 'Recording not found — it may have stopped' });
+      const buf = await readRaw(req, 50e6);
+      r.last = Date.now();
+      const info = r.enc.info();
+      if (info.error) return send(res, 500, { error: info.error });
+      if (buf.length && !r.enc.write(buf) && r.enc.proc) await new Promise((ok) => { r.enc.proc.stdin.once('drain', ok); setTimeout(ok, 2000); }); // let ffmpeg catch up
+      return send(res, 200, pickInfo(r.enc.info()));
+    }
+    if (p === '/api/rec/stop' && req.method === 'POST') {
+      const { id } = await readBody(req);
+      const r = recSessions.get(id); if (!r) return send(res, 200, { ok: true });
+      recSessions.delete(id);
+      const info = await r.enc.stop();
+      return send(res, 200, { ok: true, ...pickInfo(info) });
+    }
+
     // Planning Center Online
     if (p === '/api/pco/plans' && req.method === 'GET') {
       const c = pco(); if (!c) return send(res, 400, { error: 'Planning Center is not set up: add PCO_APP_ID and PCO_SECRET to .env' });
