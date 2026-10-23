@@ -22,7 +22,7 @@ import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
 import { pcoClient, planToService } from './lib/pco.mjs';
-import { QUALITY, hasFfmpeg, recordingName, startEncoder, startPassthrough } from './lib/encoder.mjs';
+import { QUALITY, hasFfmpeg, recordingName, startEncoder, startPassthrough, toList } from './lib/encoder.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Read keys from .env next to this file (Docker does this itself; this covers `npm start`).
@@ -700,20 +700,20 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/rec/start' && req.method === 'POST') {
       const b = await readBody(req);
       const q = QUALITY[b.quality] || QUALITY['1080p'];
-      const record = b.record !== false; const rtmp = String(b.rtmp || '').trim();
-      if (!record && !rtmp) return send(res, 400, { error: 'Choose recording, streaming or both' });
+      const record = b.record !== false; const rtmp = toList(b.rtmp).slice(0, 6);
+      if (!record && !rtmp.length) return send(res, 400, { error: 'Choose recording, streaming or both' });
       const ff = await hasFfmpeg();
-      if (rtmp && !ff) return send(res, 400, { error: 'Streaming needs ffmpeg on the server (it is included in the Docker image and the desktop app)' });
+      if (rtmp.length && !ff) return send(res, 400, { error: 'Streaming needs ffmpeg on the server (it is included in the Docker image and the desktop app)' });
       await fs.mkdir(MEDIA, { recursive: true });
       const label = String(b.label || 'F8').slice(0, 40);
       const file = record ? path.join(MEDIA, recordingName(label, ff ? 'mp4' : 'webm')) : '';
       let enc;
       try {
-        enc = ff ? await startEncoder({ input: 'webm', ...q, bitrate: Number(b.bitrate) || q.bitrate, hasAudio: !!b.hasAudio, file, rtmp })
+        enc = ff ? await startEncoder({ input: 'webm', ...q, bitrate: Number(b.bitrate) || q.bitrate, hasAudio: !!b.hasAudio, audioDelay: Number(b.audioDelay) || 0, file, rtmp })
           : startPassthrough(file);
       } catch (e) { return send(res, 400, { error: e.message }); }
       const id = Math.random().toString(36).slice(2, 10);
-      recSessions.set(id, { enc, label, record, stream: !!rtmp, last: Date.now() });
+      recSessions.set(id, { enc, label, record, stream: rtmp.length > 0, last: Date.now() });
       return send(res, 200, { id, file: file ? path.basename(file) : '', ffmpeg: ff });
     }
     if (p === '/api/rec/chunk' && req.method === 'POST') {

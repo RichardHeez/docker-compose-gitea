@@ -53,3 +53,31 @@ test('4K frames encode to a 3840x2160 MP4', { skip: !(await hasFfmpeg()) && 'ffm
   assert.equal(out, '3840,2160');
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('multistream and sound-input arguments', () => {
+  const a = encoderArgs({ input: 'raw', file: '/m/a.mp4', rtmp: ['rtmp://yt/live2/K1', 'rtmps://fb:443/rtmp/K2'], audio: 'pcm', audioDelay: 120 });
+  const tee = a.at(-1);
+  assert.equal(tee.split('|').length, 3);
+  assert.ok(tee.includes('rtmps://fb:443/rtmp/K2'));
+  assert.ok(a.includes('pipe:3') && a.includes('s16le'));
+  assert.ok(a.includes('adelay=delays=120:all=1'));
+  assert.ok(!a.includes('anullsrc=channel_layout=stereo:sample_rate=48000'));
+  assert.throws(() => encoderArgs({ rtmp: ['rtmp://a/x', 'rtmp://b/y|[f=mp4]/etc/x'] }), /rtmp/);
+  assert.throws(() => encoderArgs({ rtmp: Array(7).fill('rtmp://a/b') }), /Up to 6/);
+});
+
+test('sound from the mixer is recorded with the picture', { skip: !(await hasFfmpeg()) && 'ffmpeg not installed' }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'f8pcm-'));
+  const file = path.join(dir, 'out.mp4');
+  const enc = await startEncoder({ input: 'raw', width: 320, height: 180, fps: 10, bitrate: 500, file, audio: 'pcm' });
+  const frame = Buffer.alloc(320 * 180 * 4, 0x30);
+  const pcm = Buffer.alloc(4800 * 4); // 100 ms of a 440 Hz tone, stereo s16le
+  for (let i = 0; i < 4800; i++) { const v = Math.round(Math.sin((i / 48000) * 2 * Math.PI * 440) * 12000); pcm.writeInt16LE(v, i * 4); pcm.writeInt16LE(v, i * 4 + 2); }
+  for (let i = 0; i < 20; i++) { enc.write(frame); enc.writeAudio(pcm); }
+  const info = await enc.stop();
+  assert.equal(info.error, '');
+  const out = execFileSync('sh', ['-c', `ffmpeg -hide_banner -i "${file}" -af volumedetect -vn -f null - 2>&1 | grep mean_volume`]).toString();
+  const mean = Number(out.match(/mean_volume: (-?[\d.]+)/)[1]);
+  assert.ok(mean > -20, `mean volume ${mean} dB`);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
