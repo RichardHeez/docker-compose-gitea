@@ -14,8 +14,9 @@ export const PLANS = {
 export const PAID = ['pro', 'ministry'];
 
 const DEFAULT_PRICES = {
-  // Stripe (EUR) — display only; Stripe charges what the Price IDs say.
-  eur: { pro: { month: 1900, year: 19000 }, ministry: { month: 4900, year: 49000 } },
+  // Stripe (EUR and USD) — display only; Stripe charges what the Price IDs say.
+  eur: { pro: { month: 1900, year: 19000 }, ministry: { month: 3500, year: 35000 } },
+  usd: { pro: { month: 1900, year: 19000 }, ministry: { month: 3500, year: 35000 } },
   // Paystack Mobile Money / card in Ghana cedis (pesewas) — this IS the amount charged.
   ghs: { pro: { month: 15000, year: 150000 }, ministry: { month: 40000, year: 400000 } },
 };

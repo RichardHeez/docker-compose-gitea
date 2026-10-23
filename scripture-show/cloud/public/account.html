@@ -19,9 +19,10 @@
     <div id="upgrade">
       <div class="row" style="margin:6px 0 12px">
         <div class="switch" id="cycle"><button data-v="month" class="on">Monthly</button><button data-v="year">Yearly (2 months free)</button></div>
+        <div class="switch" id="cardCur" hidden><button data-v="eur" class="on">€ EUR</button><button data-v="usd">$ USD</button></div>
       </div>
       <div class="plans" id="buyPlans"></div>
-      <p class="muted small">Card, Bancontact and SEPA Direct Debit renew automatically (cancel any time under “Manage card billing”). Mobile Money is prepaid: pay for a month or a year and we’ll remind you before it ends.</p>
+      <p class="muted small">Card payments (and Bancontact / SEPA in euros) renew automatically (cancel any time under “Manage card billing”). Mobile Money is prepaid: pay for a month or a year and we’ll remind you before it ends.</p>
     </div>
     <details id="paymentsBox" hidden><summary class="muted small">Payment history</summary><table id="payments"></table></details>
   </section>

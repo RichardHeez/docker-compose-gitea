@@ -10,17 +10,19 @@ export function createStripe(cfg) {
   return new Stripe(cfg.secretKey, opts);
 }
 
-export const priceFor = (cfg, plan, interval) => cfg.prices[`${plan}:${interval}`] || '';
+// Card prices come in euros (keys "pro:month") and US dollars ("pro:month:usd").
+export const priceFor = (cfg, plan, interval, currency = 'eur') => cfg.prices[currency === 'usd' ? `${plan}:${interval}:usd` : `${plan}:${interval}`] || '';
+export const stripeCurrencies = (cfg) => ['eur', 'usd'].filter((c) => ['pro', 'ministry'].some((p) => ['month', 'year'].some((i) => priceFor(cfg, p, i, c))));
 export function planForPrice(cfg, priceId) {
   const hit = Object.entries(cfg.prices).find(([, id]) => id && id === priceId);
   if (!hit) return null;
-  const [plan, interval] = hit[0].split(':');
-  return { plan, interval };
+  const [plan, interval, currency = 'eur'] = hit[0].split(':');
+  return { plan, interval, currency };
 }
 
-export async function stripeCheckout({ stripe, cfg, db, org, user, plan, interval, publicUrl, trialDays }) {
-  const price = priceFor(cfg, plan, interval);
-  if (!price) throw Object.assign(new Error('This plan is not set up for card payments yet'), { status: 400 });
+export async function stripeCheckout({ stripe, cfg, db, org, user, plan, interval, currency = 'eur', publicUrl, trialDays }) {
+  const price = priceFor(cfg, plan, interval, currency);
+  if (!price) throw Object.assign(new Error(`This plan is not set up for card payments in ${currency.toUpperCase()} yet`), { status: 400 });
   let customer = org.stripe_customer_id;
   if (!customer) {
     const c = await stripe.customers.create({ email: user.email, name: org.name, metadata: { org_id: org.id } });
@@ -58,13 +60,13 @@ export async function syncStripeSubscription({ db, cfg, sub }) {
   if (!orgId || !mapped) return null;
   const end = item?.current_period_end ?? sub.current_period_end; // newer API versions keep it on the item
   const status = sub.status === 'unpaid' || sub.status === 'incomplete_expired' ? 'canceled' : sub.status;
-  await db.query(`INSERT INTO subscriptions (org_id, provider, provider_ref, plan, interval, status, trial_end, current_period_end, cancel_at_period_end, updated_at)
-      VALUES ($1, 'stripe', $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, now())
-    ON CONFLICT (org_id) DO UPDATE SET provider = 'stripe', provider_ref = EXCLUDED.provider_ref, plan = EXCLUDED.plan, interval = EXCLUDED.interval,
+  await db.query(`INSERT INTO subscriptions (org_id, provider, provider_ref, plan, interval, status, trial_end, current_period_end, cancel_at_period_end, currency, updated_at)
+      VALUES ($1, 'stripe', $2, $3, $4, $5, to_timestamp($6), to_timestamp($7), $8, $9, now())
+    ON CONFLICT (org_id) DO UPDATE SET provider = 'stripe', provider_ref = EXCLUDED.provider_ref, plan = EXCLUDED.plan, interval = EXCLUDED.interval, currency = EXCLUDED.currency,
       status = EXCLUDED.status, trial_end = EXCLUDED.trial_end, current_period_end = EXCLUDED.current_period_end,
       cancel_at_period_end = EXCLUDED.cancel_at_period_end, updated_at = now()
     WHERE subscriptions.provider = 'stripe' OR EXCLUDED.status IN ('active', 'trialing')`,
-  [orgId, sub.id, mapped.plan, mapped.interval, status, sub.trial_end || null, end || null, !!sub.cancel_at_period_end]);
+  [orgId, sub.id, mapped.plan, mapped.interval, status, sub.trial_end || null, end || null, !!sub.cancel_at_period_end, String(sub.currency || mapped.currency).toLowerCase()]);
   if (sub.trial_end) await db.query('UPDATE orgs SET trial_used = true WHERE id = $1', [orgId]);
   return { orgId, ...mapped, status };
 }

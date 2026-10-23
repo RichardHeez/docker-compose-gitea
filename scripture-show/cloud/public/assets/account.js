@@ -6,6 +6,8 @@ nav(M.user);
 const plans = await api('/api/plans');
 let orgId = qs('org') && M.orgs.some((o) => o.id === qs('org')) ? qs('org') : M.orgs[0]?.id;
 let cycle = 'month'; let O = null;
+const EURO = ['BE', 'NL', 'FR', 'DE', 'LU', 'IE', 'ES', 'IT', 'PT', 'AT', 'FI', 'GR', 'SK', 'SI', 'EE', 'LV', 'LT', 'MT', 'CY', 'HR'];
+let cardCur = 'eur'; let curPicked = false;
 
 function banner() {
   const b = $('#banner'); let html = '';
@@ -36,11 +38,15 @@ function renderBuy() {
   $('#portal').hidden = !(manager && O.org.hasStripe);
   $('#upgrade').hidden = !manager || card;
   if (!manager || card) return;
+  const curs = plans.stripeCurrencies || [];
+  if (!curPicked) { const want = !O.org.country || EURO.includes(O.org.country) ? 'eur' : 'usd'; cardCur = curs.includes(want) ? want : curs[0] || 'eur'; } // euros in the euro area, dollars elsewhere
+  $('#cardCur').hidden = curs.length < 2;
+  $$('#cardCur button').forEach((x) => x.classList.toggle('on', x.dataset.v === cardCur));
   $('#buyPlans').innerHTML = ['pro', 'ministry'].map((id) => {
-    const p = plans.plans[id]; const eur = plans.prices.eur[id][cycle]; const ghs = plans.prices.ghs[id][cycle];
+    const p = plans.plans[id]; const card = plans.prices[cardCur][id][cycle]; const ghs = plans.prices.ghs[id][cycle];
     return `<div class="card plan ${id === 'pro' ? 'best' : ''}"><div class="row between"><h3>${p.name}</h3><span class="muted small">${p.outputs} screens · ${p.devices} computers · ${p.seats} people</span></div>
       <span class="muted small">${esc(p.blurb)}</span>
-      ${plans.providers.stripe ? `<button class="btn primary" data-buy="${id}" data-p="stripe">${O.org.trialUsed ? '' : `Try ${plans.trialDays} days free · then `}${money(eur, 'EUR')}/${cycle} — Card / Bancontact / SEPA</button>` : ''}
+      ${plans.providers.stripe ? `<button class="btn primary" data-buy="${id}" data-p="stripe">${O.org.trialUsed ? '' : `Try ${plans.trialDays} days free · then `}${money(card, cardCur.toUpperCase())}/${cycle} — ${cardCur === 'eur' ? 'Card / Bancontact / SEPA' : 'Card'}</button>` : ''}
       ${plans.providers.paystack ? `<button class="btn momo" data-buy="${id}" data-p="paystack">📱 Pay ${money(ghs, plans.paystackCurrency)} for a ${cycle} — Mobile Money</button>` : ''}
       ${!plans.providers.stripe && !plans.providers.paystack ? '<span class="muted small">Online payment is not switched on yet.</span>' : ''}</div>`;
   }).join('');
@@ -75,10 +81,11 @@ async function load() {
 const act = async (fn, okText) => { try { await fn(); if (okText) toast(okText); await load(); } catch (e) { toast(e.message, true); } };
 $('#orgPick').onchange = () => { orgId = $('#orgPick').value; load(); };
 $('#addOrg').onclick = async () => { const name = prompt('Name of the church'); if (!name) return; const r = await api('/api/orgs', { name, country: O?.org.country || '' }).catch((e) => toast(e.message, true)); if (r) { M = await me(); orgId = r.id; load(); } };
+$$('#cardCur button').forEach((b) => { b.onclick = () => { cardCur = b.dataset.v; curPicked = true; renderBuy(); }; });
 $$('#cycle button').forEach((b) => { b.onclick = () => { cycle = b.dataset.v; $$('#cycle button').forEach((x) => x.classList.toggle('on', x === b)); renderBuy(); }; });
 $('#buyPlans').addEventListener('click', async (e) => {
   const b = e.target.closest('[data-buy]'); if (!b) return; b.disabled = true;
-  try { const r = await api(`/api/orgs/${orgId}/checkout`, { plan: b.dataset.buy, interval: cycle, provider: b.dataset.p }); location.href = r.url; }
+  try { const r = await api(`/api/orgs/${orgId}/checkout`, { plan: b.dataset.buy, interval: cycle, provider: b.dataset.p, currency: cardCur }); location.href = r.url; }
   catch (err) { toast(err.message, true); b.disabled = false; }
 });
 $('#portal').onclick = async () => { try { location.href = (await api(`/api/orgs/${orgId}/portal`, {})).url; } catch (e) { toast(e.message, true); } };

@@ -3,7 +3,7 @@ const m = await me(); nav(m.user);
 if (!m.user?.admin) { document.querySelector('.layout').innerHTML = '<p class="msg err">Admins only.</p>'; throw new Error('not admin'); }
 const s = await api('/api/admin/stats');
 $('#stats').innerHTML = [['Churches', s.churches], ['Users', s.users], ['Pro', s.byPlan.pro], ['Ministry', s.byPlan.ministry], ['On trial', s.trialing],
-  ['Computers', s.devices], ['New users (30 days)', s.signups30], ['Monthly income (card)', money(s.mrr.eur, 'EUR')], ['Monthly income (MoMo)', money(s.mrr.ghs, 'GHS')]]
+  ['Computers', s.devices], ['New users (30 days)', s.signups30], ['Monthly income (€)', money(s.mrr.eur, 'EUR')], ['Monthly income ($)', money(s.mrr.usd, 'USD')], ['Monthly income (MoMo)', money(s.mrr.ghs, 'GHS')]]
   .map(([k, v]) => `<div class="card"><b>${esc(v)}</b><span class="muted small">${k}</span></div>`).join('');
 async function search() {
   const r = await api(`/api/admin/orgs?q=${encodeURIComponent($('#q').value)}`);

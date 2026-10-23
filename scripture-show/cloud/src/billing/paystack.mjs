@@ -57,11 +57,11 @@ export async function applyPaystackPayment({ db, cfg, tx }) {
     // Paying again before the end adds time on top; otherwise it starts today.
     const base = cur && cur.provider !== 'stripe' && cur.status === 'active' && cur.plan === plan && new Date(cur.current_period_end) > new Date() ? cur.current_period_end : new Date();
     const end = addPeriod(base, interval);
-    await t.query(`INSERT INTO subscriptions (org_id, provider, provider_ref, plan, interval, status, current_period_end, cancel_at_period_end, reminded_at, updated_at)
-        VALUES ($1, 'paystack', $2, $3, $4, 'active', $5, true, NULL, now())
-      ON CONFLICT (org_id) DO UPDATE SET provider = 'paystack', provider_ref = EXCLUDED.provider_ref, plan = EXCLUDED.plan, interval = EXCLUDED.interval,
+    await t.query(`INSERT INTO subscriptions (org_id, provider, provider_ref, plan, interval, status, current_period_end, cancel_at_period_end, reminded_at, currency, updated_at)
+        VALUES ($1, 'paystack', $2, $3, $4, 'active', $5, true, NULL, $6, now())
+      ON CONFLICT (org_id) DO UPDATE SET provider = 'paystack', provider_ref = EXCLUDED.provider_ref, plan = EXCLUDED.plan, interval = EXCLUDED.interval, currency = EXCLUDED.currency,
         status = 'active', current_period_end = EXCLUDED.current_period_end, cancel_at_period_end = true, reminded_at = NULL, updated_at = now()`,
-    [orgId, tx.reference, plan, interval, end]);
+    [orgId, tx.reference, plan, interval, end, String(tx.currency).toLowerCase()]);
     await t.query(`INSERT INTO audit_log (org_id, action, detail) VALUES ($1, 'payment', $2)`, [orgId, { provider: 'paystack', reference: tx.reference, plan, interval, until: end }]);
     return { orgId, plan, interval, until: end };
   });

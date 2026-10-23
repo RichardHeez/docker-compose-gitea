@@ -55,7 +55,8 @@ test('F8 Cloud', { skip: !pgOk && 'no Postgres' }, async (t) => {
     port: 0, publicUrl: 'http://localhost:9', databaseUrl: ADMIN.replace(/\/[^/]*$/, `/${DB_NAME}`), adminEmails: ['boss@f8.test'],
     trialDays: 14, licenseDays: 14, licensePrivateKey: '', dataDir, smtpUrl: '', mailFrom: 'F8 <x@f8.test>', secureCookies: false,
     stripe: { secretKey: 'sk_test_x', webhookSecret: 'whsec_test', automaticTax: false, host: `http://127.0.0.1:${sPort}`,
-      prices: { 'pro:month': 'price_pro_m', 'pro:year': 'price_pro_y', 'ministry:month': 'price_min_m', 'ministry:year': 'price_min_y' } },
+      prices: { 'pro:month': 'price_pro_m', 'pro:year': 'price_pro_y', 'ministry:month': 'price_min_m', 'ministry:year': 'price_min_y',
+      'pro:month:usd': 'price_pro_m_usd', 'pro:year:usd': 'price_pro_y_usd', 'ministry:month:usd': 'price_min_m_usd', 'ministry:year:usd': 'price_min_y_usd' } },
     paystack: { secretKey: 'sk_test_paystack', currency: 'GHS', base: `http://127.0.0.1:${pPort}` },
   };
   const app = await createApp(cfg);
@@ -140,7 +141,9 @@ test('F8 Cloud', { skip: !pgOk && 'no Postgres' }, async (t) => {
     assert.equal(lic.plan, 'free'); assert.equal(lic.orgName, 'Grace Chapel'); assert.equal(lic.limits.outputs, 2); assert.equal(lic.watermark, true);
     assert.ok(!lic.features.includes('ndi'));
     assert.equal((await app1.post('/api/device/poll', { device_code: dc })).status, 410); // used up
-    assert.equal(verifyLicense(r.body.license.replace(/.$/, (c) => (c === 'A' ? 'B' : 'A')), pub), null); // tampered
+    const [tag, body, sig] = r.body.license.split('.');
+    const forged = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, 'base64url')), plan: 'ministry' })).toString('base64url');
+    assert.equal(verifyLicense(`${tag}.${forged}.${sig}`, pub), null); // someone edits the plan → rejected
     assert.equal(verifyLicense(r.body.license, pub, Date.now() + 15 * 864e5), null); // expired offline
     // Free allows 1 computer
     const app2 = browser(); const s2 = (await app2.post('/api/device/start', { name: 'Laptop' })).body;
@@ -189,6 +192,16 @@ test('F8 Cloud', { skip: !pgOk && 'no Postgres' }, async (t) => {
     await alice.post(`/api/orgs/${orgId}/checkout`, { plan: 'pro', interval: 'year' });
     const cs2 = stripeCalls.filter((c) => c.url === '/v1/checkout/sessions').at(-1).params;
     assert.equal(cs2['subscription_data[trial_period_days]'], undefined);
+    // US dollars
+    await alice.post(`/api/orgs/${orgId}/checkout`, { plan: 'ministry', interval: 'month', currency: 'usd' });
+    assert.equal(stripeCalls.filter((c) => c.url === '/v1/checkout/sessions').at(-1).params['line_items[0][price]'], 'price_min_m_usd');
+    await postStripe({ id: 'evt_4', type: 'customer.subscription.created', data: { object: subObj('sub_2', 'active', 'price_min_m_usd', { currency: 'usd' }) } });
+    let o = (await alice.get(`/api/orgs/${orgId}`)).body; assert.equal(o.plan, 'ministry');
+    const plansInfo = (await alice.get('/api/plans')).body;
+    assert.deepEqual(plansInfo.stripeCurrencies, ['eur', 'usd']); assert.equal(plansInfo.prices.usd.ministry.month, 3500); assert.equal(plansInfo.prices.eur.ministry.month, 3500);
+    const subRow = await app.db.one('SELECT currency FROM subscriptions WHERE org_id = $1', [orgId]); assert.equal(subRow.currency, 'usd');
+    await postStripe({ id: 'evt_5', type: 'customer.subscription.deleted', data: { object: subObj('sub_2', 'canceled', 'price_min_m_usd', { currency: 'usd' }) } });
+    o = (await alice.get(`/api/orgs/${orgId}`)).body; assert.equal(o.plan, 'free');
   });
 
   await t.test('Mobile Money through Paystack (prepaid, verified, no double counting)', async () => {

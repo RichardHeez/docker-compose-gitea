@@ -9,7 +9,7 @@ import { hashPassword, newToken, normEmail, passwordProblem, sha256, userCode, v
 import { loadSigningKey, signLicense } from './license.mjs';
 import { createMailer } from './mail.mjs';
 import { PLANS, PRICES, effectivePlan, isPaid, planOf } from './plans.mjs';
-import { createStripe, handleStripeEvent, stripeCheckout, stripePortal } from './billing/stripe.mjs';
+import { createStripe, handleStripeEvent, stripeCheckout, stripeCurrencies, stripePortal } from './billing/stripe.mjs';
 import { amountFor, applyPaystackPayment, paystackCheckout, paystackEnabled, validWebhook, verifyTransaction } from './billing/paystack.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -309,7 +309,8 @@ export async function createApp(cfg = config) {
   // Billing
   route('GET', '/api/plans', async (req, res) => send(res, 200, {
     plans: PLANS, prices: PRICES, trialDays: cfg.trialDays,
-    providers: { stripe: !!stripe && Object.values(cfg.stripe.prices).some(Boolean), paystack: paystackEnabled(cfg.paystack) },
+    providers: { stripe: !!stripe && stripeCurrencies(cfg.stripe).length > 0, paystack: paystackEnabled(cfg.paystack) },
+    stripeCurrencies: stripe ? stripeCurrencies(cfg.stripe) : [],
     paystackCurrency: cfg.paystack.currency,
   }));
   route('POST', '/api/orgs/:id/checkout', async (req, res, { id }) => {
@@ -324,7 +325,8 @@ export async function createApp(cfg = config) {
     }
     if (!stripe) fail(400, 'Card payments are not set up');
     if (sub?.provider === 'stripe' && ['active', 'trialing', 'past_due'].includes(sub.status)) fail(409, 'Already subscribed — use Manage billing to change plan');
-    send(res, 200, { url: await stripeCheckout({ stripe, cfg: cfg.stripe, db, org, user: u, plan: b.plan, interval: b.interval, publicUrl: cfg.publicUrl, trialDays: cfg.trialDays }) });
+    const currency = b.currency === 'usd' ? 'usd' : 'eur';
+    send(res, 200, { url: await stripeCheckout({ stripe, cfg: cfg.stripe, db, org, user: u, plan: b.plan, interval: b.interval, currency, publicUrl: cfg.publicUrl, trialDays: cfg.trialDays }) });
   });
   route('POST', '/api/orgs/:id/portal', async (req, res, { id }) => {
     const u = await requireUser(req); const org = await membership(id, u, ['owner', 'admin']);
@@ -439,20 +441,20 @@ export async function createApp(cfg = config) {
   route('GET', '/api/admin/stats', async (req, res) => {
     await requireAdmin(req);
     const subs = await db.all('SELECT * FROM subscriptions');
-    const byPlan = { free: 0, pro: 0, ministry: 0 }; let mrrEur = 0, mrrGhs = 0;
+    const byPlan = { free: 0, pro: 0, ministry: 0 }; const mrr = { eur: 0, usd: 0, ghs: 0 };
     const orgCount = Number((await db.one('SELECT count(*) AS n FROM orgs')).n);
     for (const s of subs) {
       const p = effectivePlan(s); if (p === 'free') continue; byPlan[p]++;
       if (s.status === 'trialing') continue;
-      if (s.provider === 'stripe') mrrEur += s.interval === 'year' ? PRICES.eur[p].year / 12 : PRICES.eur[p].month;
-      if (s.provider === 'paystack') mrrGhs += s.interval === 'year' ? PRICES.ghs[p].year / 12 : PRICES.ghs[p].month;
+      const cur = s.currency || (s.provider === 'paystack' ? 'ghs' : 'eur');
+      if (s.provider !== 'manual' && PRICES[cur]?.[p]) mrr[cur] += s.interval === 'year' ? PRICES[cur][p].year / 12 : PRICES[cur][p].month;
     }
     byPlan.free = orgCount - byPlan.pro - byPlan.ministry;
     send(res, 200, {
       users: Number((await db.one('SELECT count(*) AS n FROM users WHERE deleted_at IS NULL')).n), churches: orgCount, byPlan,
       trialing: subs.filter((s) => s.status === 'trialing').length,
       devices: Number((await db.one('SELECT count(*) AS n FROM devices WHERE revoked_at IS NULL')).n),
-      mrr: { eur: Math.round(mrrEur), ghs: Math.round(mrrGhs) },
+      mrr: { eur: Math.round(mrr.eur), usd: Math.round(mrr.usd), ghs: Math.round(mrr.ghs) },
       signups30: Number((await db.one(`SELECT count(*) AS n FROM users WHERE created_at > now() - interval '30 days' AND deleted_at IS NULL`)).n),
     });
   });

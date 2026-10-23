@@ -26,6 +26,9 @@ export const config = {
     prices: {
       'pro:month': e.STRIPE_PRICE_PRO_MONTHLY || '', 'pro:year': e.STRIPE_PRICE_PRO_YEARLY || '',
       'ministry:month': e.STRIPE_PRICE_MINISTRY_MONTHLY || '', 'ministry:year': e.STRIPE_PRICE_MINISTRY_YEARLY || '',
+      // US dollars (separate Stripe prices in USD)
+      'pro:month:usd': e.STRIPE_PRICE_PRO_MONTHLY_USD || '', 'pro:year:usd': e.STRIPE_PRICE_PRO_YEARLY_USD || '',
+      'ministry:month:usd': e.STRIPE_PRICE_MINISTRY_MONTHLY_USD || '', 'ministry:year:usd': e.STRIPE_PRICE_MINISTRY_YEARLY_USD || '',
     },
   },
   paystack: {
