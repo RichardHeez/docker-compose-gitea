@@ -153,3 +153,19 @@
 .tp-grid::before { left: 50%; top: 0; bottom: 0; width: 2px; } .tp-grid::after { top: 50%; left: 0; right: 0; height: 2px; }
 .tp-label { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,.75); color: #fff; font: 700 4vmin 'Inter', sans-serif; padding: 1.5vmin 3vmin; border-radius: 1vmin; text-align: center; }
 .tp-label small { font-size: .5em; font-weight: 500; opacity: .8; }
+
+/* Designed slides & templates (slide editor). Boxes are positioned in % of the screen. */
+.slide .design-layer { position: absolute; inset: 0; overflow: hidden; font-family: var(--font, 'Inter', system-ui, sans-serif); }
+.slide .dz-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background-size: cover; background-position: center; }
+.slide.mode-alpha .dz-bg, .slide.mode-chroma .dz-bg { display: none; }
+.dz { position: absolute; box-sizing: border-box; }
+.dz.dz-text { display: flex; flex-direction: column; overflow: hidden; }
+.dz-t { width: 100%; overflow-wrap: break-word; text-wrap: pretty; }
+.dz-t .ln { display: block; }
+.dz-t .dz-sec { font-size: .72em; opacity: .85; margin-top: .5em; }
+.dz-t sup { font-size: .45em; font-weight: 600; color: var(--accent); margin: 0 .25em 0 .4em; vertical-align: .9em; }
+.dz-t mark.hl { background: none; color: var(--accent); box-shadow: inset 0 -.12em 0 currentColor; }
+.dz-t .tr { font-size: .7em; opacity: .75; margin-left: .3em; }
+.dz-t .pg { font-size: .6em; opacity: .7; margin-left: .4em; }
+.dz.dz-image img, .dz.dz-image video { width: 100%; height: 100%; display: block; }
+.dz-empty { position: absolute; inset: 0; display: grid; place-items: center; border: 2px dashed rgba(255,255,255,.4); color: rgba(255,255,255,.6); font: 600 calc(var(--u) * 1.6) 'Inter', sans-serif; }

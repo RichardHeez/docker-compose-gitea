@@ -4,6 +4,7 @@ import { timerOver, timerText } from './timers.js';
 
 // ---------------------------------------------------------------- API (with optional control PIN)
 const PIN_KEY = 'f8.pin';
+import { designHtml, findDesign, hasRole } from './design.js';
 export const getPin = () => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } };
 export const setPin = (v) => { try { localStorage.setItem(PIN_KEY, v); } catch {} };
 
@@ -147,6 +148,7 @@ export async function resolveSlide(item, channel, state) {
     return { kind: 'song', title: item.title || '', artist: item.artist || '', ccli: item.ccli || '', license: state.ccliLicense || '',
       label: cur.label, lines: cur.lines, page, pages: item.slides?.length || 1, next: item.slides?.[page + 1] || null };
   }
+  if (item.kind === 'design') { const design = findDesign(state, item.designId) || item.design || null; return design ? { kind: 'design', name: item.name || design.name, design } : { kind: 'blank' }; }
   if (item.kind === 'camera') return { kind: 'camera', name: item.name || 'Camera', device: item.device || '', fit: item.fit || 'cover', mirror: !!item.mirror };
   if (item.kind === 'media') return { kind: 'media', url: item.url, mediaType: item.mediaType, name: item.name, fit: item.fit || 'contain', loop: item.loop !== false };
   if (item.kind !== 'scripture' || !item.ref) return { kind: 'blank' };
@@ -165,6 +167,7 @@ export const slideKey = (item, channel, state) => JSON.stringify([
   item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.device, item?.mirror, item?.fit, item?.page, item?.pages, item?.highlight, item?.songId, item?.slides?.length,
   state.ccliLicense,
   channel?.translation || state.translation, channel?.secondary,
+  item?.kind === 'design' ? findDesign(state, item.designId) : null, findDesign(state, channel?.template),
 ]);
 
 // ---------------------------------------------------------------- rendering
@@ -208,6 +211,25 @@ function styleVars(el, channel) {
   set('--bg-tint-amt', `${(Number(channel.bgTintAmount) || 0) / 100}`);
 }
 
+// What goes into a template's role boxes for each kind of slide.
+export function templateContent(slide, channel, tpl) {
+  const showRef = channel.showReference !== false;
+  if (slide.kind === 'scripture') {
+    const p = slide.primary, s = slide.secondary;
+    const pageTag = slide.pages > 1 ? ` <span class="pg">${slide.page + 1}/${slide.pages}</span>` : '';
+    const ref = `${esc(p.reference)} <span class="tr">${esc(p.translation)}</span>${pageTag}`;
+    const sec = s ? `<div class="dz-sec" dir="${s.dir || 'auto'}" lang="${esc(s.lang)}">${wordsHtml(s, channel.showVerseNumbers, slide.highlight)}</div>` : '';
+    return { body: `<div dir="${p.dir || 'auto'}" lang="${esc(p.lang)}">${wordsHtml(p, channel.showVerseNumbers, slide.highlight)}</div>${sec}`, reference: showRef ? ref : '', title: esc(slide.heading || p.reference) };
+  }
+  if (slide.kind === 'song') {
+    const credit = [slide.title, slide.artist].filter(Boolean).join(' — ') + (slide.ccli ? ` · CCLI Song #${slide.ccli}` : '') + (slide.license ? ` · CCLI Licence #${slide.license}` : '');
+    const showCredit = showRef && (slide.page === 0 || slide.page === slide.pages - 1);
+    return { body: slide.lines.map((l) => `<span class="ln">${esc(l)}</span>`).join(''), reference: showCredit ? esc(credit) : '', title: esc(slide.title) };
+  }
+  const own = hasRole(tpl, 'title');
+  return { body: own ? esc(slide.body || '') : [slide.title, slide.body].filter(Boolean).map(esc).join('<br>'), reference: '', title: esc(slide.title) };
+}
+
 // Builds the DOM for a slide. `opts` = { black, clear, logo, nextLabel, preview }.
 export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
   const mode = channel.mode === 'announce' ? 'full' : channel.mode || 'full';
@@ -225,10 +247,17 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
 
   let body = '';
   let media = '';
+  let layer = ''; // a designed slide or template replaces the standard frame
+  const tpl = !isStage && !opts.logo && !opts.clear ? findDesign(state, channel.template) : null;
   if (opts.logo && !isStage) {
     body = `<div class="logo"><div class="logo-mark">✦</div><div class="logo-text">${esc(state.logoText || '')}</div></div>`;
   } else if (opts.clear || slide.kind === 'blank') {
     body = '';
+  } else if (slide.kind === 'design') {
+    if (isStage) body = `<div class="box"><div class="title fit">${esc(slide.name)}</div></div>`;
+    else layer = designHtml(slide.design, null, { editing: !!opts.editing });
+  } else if (tpl && hasRole(tpl, 'body') && ['scripture', 'song', 'text'].includes(slide.kind)) {
+    layer = designHtml(tpl, templateContent(slide, channel, tpl));
   } else if (slide.kind === 'camera') {
     if (isStage) body = `<div class="box"><div class="title fit">🎥 ${esc(slide.name)}</div></div>`;
     else if (!overlay && channel.showMedia !== false) {
@@ -277,13 +306,35 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
       ${msg}${notes}<div class="stage-body">${body}</div>${next}`;
   } else {
     el.innerHTML = `<div class="bg"><div class="bg-layer">${backgroundHtml(channel, mode)}</div><div class="bg-tint"></div><div class="bg-dim"></div></div>`
-      + (media ? `<div class="media-layer">${media}</div>` : `<div class="frame">${body}</div>`);
+      + (media ? `<div class="media-layer">${media}</div>` : layer || `<div class="frame">${body}</div>`);
   }
   return el;
 }
 
 // Shrinks `.fit` text until the slide content fits its frame.
+function fitDesign(el) {
+  el.querySelectorAll('.dz-fit').forEach((t) => {
+    const box = t.parentElement; const size = Number(box.dataset.size) || 80;
+    const cs = getComputedStyle(box);
+    const availH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const availW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const set = (f) => { t.style.fontSize = `calc(var(--u) * ${(size * f / 19.2).toFixed(3)})`; };
+    const fits = () => t.scrollHeight <= availH + 1 && t.scrollWidth <= availW + 1;
+    const largest = () => {
+      set(1); if (fits()) return 1;
+      let lo = 0.08, hi = 1;
+      for (let i = 0; i < 10; i++) { const mid = (lo + hi) / 2; set(mid); if (fits()) lo = mid; else hi = mid; }
+      set(lo); return lo;
+    };
+    // Sung lines stay whole unless that makes them too small to read.
+    const lyrics = !!t.querySelector('.ln');
+    t.style.whiteSpace = lyrics ? 'nowrap' : '';
+    if (largest() < 0.45 && lyrics) { t.style.whiteSpace = ''; largest(); }
+  });
+}
+
 export function fitSlide(el) {
+  fitDesign(el);
   const frame = el.querySelector('.frame, .stage-body');
   const box = el.querySelector('.box');
   const fit = el.querySelector('.fit');

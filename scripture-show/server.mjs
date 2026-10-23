@@ -16,6 +16,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { BOOKS, bookById } from './public/js/books.js';
 import { lyricsToText } from './public/js/songs.js';
 import { DEFAULT_TIMERS } from './public/js/timers.js';
+import { STARTER_DESIGNS, cleanDesign } from './public/js/design.js';
 import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
@@ -135,6 +136,7 @@ let state = {
   audioCmd: null,    // { id, action: 'fade' } — tells the console's audio player to fade (from triggers/macros)
   dmx: { host: '', universe: 0 },  // Art-Net lighting node
   midiMap: [],       // [{ msg: 'note:60' | 'cc:20', action: 'next' }]
+  designs: STARTER_DESIGNS, // slide editor: custom slides & templates (see public/js/design.js)
   ccliLicense: '',   // church's CCLI licence number, shown on song slides
   customWords: {},   // church-added words per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], verse: [...] } }
   service: [],       // playlist items
@@ -146,6 +148,7 @@ try {
   const saved = JSON.parse(readFileSync(STATE_FILE, 'utf8'));
   state = { ...state, ...saved, version: 0 };
   if (!Array.isArray(state.timers) || !state.timers.length) state.timers = DEFAULT_TIMERS;
+  if (!Array.isArray(state.designs)) state.designs = STARTER_DESIGNS;
   // keep at least CHANNEL_COUNT channels, fill in any new fields
   state.channels = Array.from({ length: Math.max(CHANNEL_COUNT, saved.channels?.length || 0) },
     (_, i) => ({ ...defaultChannel(i), ...(saved.channels?.[i] || {}), id: i + 1 }));
@@ -186,6 +189,7 @@ function sanitizePatch(p) {
   const out = {};
   for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords', 'songLines', 'ccliLicense',
     'timers', 'message', 'props', 'announcements', 'looks', 'macros', 'clearMedia', 'audioCmd', 'dmx', 'midiMap']) if (k in p) out[k] = p[k];
+  if (Array.isArray(p.designs)) out.designs = p.designs.slice(0, 300).map(cleanDesign).filter(Boolean);
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
       const n = p.channels.find((x) => Number(x.id) === c.id) || p.channels[i];

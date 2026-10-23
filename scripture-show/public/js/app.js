@@ -5,6 +5,8 @@ import * as control from './control.js';
 import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, slidesFor, songSummary, splitPastedSongs } from './songs.js';
 import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
+import * as designer from './designer.js';
+import { hasRole } from './design.js';
 import { listCameras, updateTimers } from './render.js';
 import { PhraseRecognizer } from './khaya.js';
 import { langKey, setCustomWords } from './langs.js';
@@ -38,7 +40,9 @@ function connect() {
     const prev = S; S = JSON.parse(e.data);
     if (!prev) firstState();
     if (!prev || prev.translation !== S.translation) onTranslationChanged();
-    if (!prev || JSON.stringify(prev.channels) !== JSON.stringify(S.channels)) renderChannels();
+    const designsChanged = !prev || JSON.stringify(prev.designs) !== JSON.stringify(S.designs);
+    if (designsChanged || JSON.stringify(prev.channels) !== JSON.stringify(S.channels)) renderChannels();
+    if (prev && designsChanged && preview) setPreview(preview); // designs/templates may change the preview
     if (!prev || JSON.stringify(prev.service) !== JSON.stringify(S.service)) renderService();
     if (!prev || JSON.stringify(prev.live) !== JSON.stringify(S.live)) onLiveChanged(prev?.live);
     if (!prev || JSON.stringify(prev.customWords) !== JSON.stringify(S.customWords)) { setCustomWords(S.customWords); loadCustomWordsForm(); }
@@ -50,6 +54,7 @@ function connect() {
     show.state = S;
     tools.onState(S, prev);
     triggers.onState(S, prev);
+    designer.onState(S, prev);
   });
   es.onerror = () => toast('Reconnecting to server…', true);
 }
@@ -187,6 +192,7 @@ async function itemLabel(item) {
   if (item.kind === 'media') return `${item.mediaType === 'video' ? '🎬' : '🖼'} ${item.name}`;
   if (item.kind === 'song') return `🎵 ${item.title} · ${item.slides?.[item.page || 0]?.label || ''}`;
   if (item.kind === 'camera') return `🎥 ${item.name}`;
+  if (item.kind === 'design') return `✦ ${item.name}`;
   if (!item.ref) return '';
   return formatRef(item.ref, await bookName(S.translation, item.ref.book));
 }
@@ -301,6 +307,7 @@ function renderChannels() {
         <label>Line spacing ${range('lineHeight', c.lineHeight || 1.28, 1, 1.8, 0.02)}</label>
         <label>Outline ${range('outline', c.outline || 0, 0, 10)}</label>
         <label>Shadow ${range('shadow', c.shadow ?? 5, 0, 10)}</label>
+        <label class="full">Template${sel('template', c.template || '', [['', 'Standard layout'], ...(S.designs || []).filter((d) => hasRole(d, 'body')).map((d) => [d.id, d.name])])}</label>
         <label>Align${sel('align', c.align, [['center', 'center'], ['left', 'left']])}</label>
         <label>Transition${sel('transition', c.transition, [['fade', 'Fade'], ['dissolve', 'Dissolve'], ['push', 'Push'], ['zoom', 'Zoom'], ['blur', 'Blur'], ['cut', 'Cut']])}</label>
         ${check('showReference', c.showReference !== false, 'Show reference')}
@@ -1083,6 +1090,7 @@ function wire() {
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
   tools.initShowTools({ $, $$, esc, push, toast, postJson, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
+  designer.initDesigner({ $, $$, esc, push, toast, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList, addToService: (item) => setService([...S.service, item]) });
   triggers.initTriggers({ $, $$, esc, push, toast, getS: () => S, fadeAudio: tools.fadeAudio });
   setInterval(() => updateTimers(previewHost, S), 250);
   wireSongs();

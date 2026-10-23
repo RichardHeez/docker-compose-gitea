@@ -272,3 +272,40 @@ textarea { resize: vertical; }
 .cam-row { border: 1px solid var(--line); border-radius: 10px; padding: 8px; background: #0f1222; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .cam-row b { flex: 1 1 100%; font-size: 13px; }
 .cam-row select { flex: 1; padding: 4px 6px; font-size: 12px; }
+
+/* Slide editor */
+.dz-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.dz-card { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #0e1120; display: flex; flex-direction: column; }
+.dz-card .stage-host { aspect-ratio: 16/9; cursor: pointer; }
+.dz-card .dz-card-foot { display: flex; align-items: center; gap: 4px; padding: 4px 6px; font-size: 11px; }
+.dz-card .dz-card-foot b { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.dz-card .tag { position: absolute; z-index: 30; top: 4px; left: 4px; font-size: 9px; font-weight: 700; letter-spacing: .06em; color: #1a1300; background: var(--accent2); padding: 1px 5px; border-radius: 4px; }
+.dz-card button { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.dz-card button:hover { color: var(--text); background: var(--panel2); }
+.designer { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--bg); color: var(--text); }
+.designer[open] { display: flex; flex-direction: column; }
+.designer::backdrop { background: #000; }
+.dz-top { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.dz-top #dzName { width: 220px; } .dz-top #dzPick { width: 220px; }
+.dz-main { flex: 1; display: grid; grid-template-columns: 170px 1fr 280px; min-height: 0; }
+.dz-tools, .dz-props { padding: 12px; display: flex; flex-direction: column; gap: 6px; overflow: auto; border-right: 1px solid var(--line); }
+.dz-props { border-right: 0; border-left: 1px solid var(--line); }
+.dz-tools h5, .dz-props h5 { margin: 8px 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.dz-tools .btn { text-align: left; }
+.dz-props .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dz-props .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.dz-props .seg2 { display: flex; gap: 2px; } .dz-props .seg2 button { flex: 1; padding: 5px 0; border: 1px solid var(--line2); background: var(--panel2); border-radius: 6px; cursor: pointer; }
+.dz-props .seg2 button.on { background: var(--accent); border-color: var(--accent); }
+.dz-canvas-wrap { display: grid; place-items: center; padding: 20px; min-width: 0; min-height: 0; background: repeating-conic-gradient(#0d1020 0 25%, #10142a 0 50%) 0 0/24px 24px; }
+.dz-canvas { width: 100%; max-height: 100%; aspect-ratio: 16/9; box-shadow: 0 10px 60px rgba(0,0,0,.6); user-select: none; }
+.dz-canvas .dz-edit { cursor: move; outline: 1px dashed rgba(255,255,255,.25); overflow: visible !important; }
+.dz-canvas .dz-edit.sel { outline: 2px solid var(--accent); z-index: 50; }
+.dz-canvas .dz-edit .dz-t[contenteditable=true] { cursor: text; outline: none; user-select: text; }
+.dz-canvas .dz-role-tag { position: absolute; top: -18px; left: 0; font: 600 10px var(--font); background: var(--accent); color: #fff; padding: 1px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.dz-handle { position: absolute; width: 12px; height: 12px; background: #fff; border: 2px solid var(--accent); border-radius: 3px; z-index: 60; }
+.dz-handle[data-h=nw] { left: -7px; top: -7px; cursor: nwse-resize; } .dz-handle[data-h=ne] { right: -7px; top: -7px; cursor: nesw-resize; }
+.dz-handle[data-h=sw] { left: -7px; bottom: -7px; cursor: nesw-resize; } .dz-handle[data-h=se] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.dz-handle[data-h=e] { right: -7px; top: calc(50% - 6px); cursor: ew-resize; } .dz-handle[data-h=s] { bottom: -7px; left: calc(50% - 6px); cursor: ns-resize; }
+.dz-guide { position: absolute; background: #ff4fd8; pointer-events: none; z-index: 70; }
+.dz-guide.v { width: 1px; top: 0; bottom: 0; } .dz-guide.h { height: 1px; left: 0; right: 0; }
+@media (max-width: 900px) { .dz-main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow: auto; } .dz-tools { flex-direction: row; flex-wrap: wrap; border: 0; } .dz-top { flex-wrap: wrap; } }

@@ -108,6 +108,12 @@
 
       <div class="tab-body" data-body="show" hidden>
         <div class="card">
+          <div class="row between"><h3>Slides &amp; templates</h3><button class="btn ghost sm" id="dzNew" type="button">＋ New slide</button></div>
+          <p class="muted small">Design your own slides with text boxes, images and shapes. A <b>template</b> has a “Main text” box: pick it for an output under <i>Outputs → Template</i> and every verse and song on that screen uses your layout.</p>
+          <div id="dzList" class="dz-list"></div>
+        </div>
+
+        <div class="card">
           <div class="row between"><h3>Timers &amp; clocks</h3><button class="btn ghost sm" id="timerAdd" type="button">＋ Timer</button></div>
           <div id="timerList" class="timer-list"></div>
         </div>
@@ -391,6 +397,41 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
+  <dialog id="designer" class="designer">
+    <div class="dz-top">
+      <select id="dzPick" class="mini-select" title="Design"></select>
+      <input id="dzName" placeholder="Slide name">
+      <button class="btn ghost sm" id="dzDup" type="button" title="Duplicate this design">Duplicate</button>
+      <button class="btn ghost sm" id="dzDel" type="button">Delete</button>
+      <span class="spacer"></span>
+      <span class="muted small" id="dzSaved"></span>
+      <button class="btn sm" id="dzPreview" type="button">Preview</button>
+      <button class="btn ghost sm" id="dzService" type="button">＋ Service</button>
+      <button class="btn live sm" id="dzLive" type="button">Go Live</button>
+      <button class="btn ghost sm" id="dzClose" type="button">Done</button>
+    </div>
+    <div class="dz-main">
+      <div class="dz-tools">
+        <h5>Add</h5>
+        <button class="btn ghost sm" data-add="text">T&nbsp; Text box</button>
+        <button class="btn ghost sm" data-add="body" title="Filled with the verse or lyrics when used as a template">¶&nbsp; Main text</button>
+        <button class="btn ghost sm" data-add="reference">#&nbsp; Reference</button>
+        <button class="btn ghost sm" data-add="title">H&nbsp; Title</button>
+        <button class="btn ghost sm" data-add="image">▣&nbsp; Image</button>
+        <button class="btn ghost sm" data-add="shape">■&nbsp; Shape</button>
+        <h5>Background</h5>
+        <select id="dzBg"></select>
+        <input type="color" id="dzBgColor" value="#000000" title="Background colour">
+        <h5>Preview on</h5>
+        <select id="dzCh" title="Use this output’s look behind the design"></select>
+        <label class="check"><input type="checkbox" id="dzGrid" checked> Snap &amp; guides</label>
+        <p class="muted small">Drag to move, corners to resize. Double-click text to type. Arrows nudge (Shift = more), Delete removes, Ctrl+D duplicates.</p>
+      </div>
+      <div class="dz-canvas-wrap"><div class="stage-host dz-canvas" id="dzCanvas"></div></div>
+      <div class="dz-props" id="dzProps"></div>
+    </div>
+  </dialog>
+
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>
