@@ -21,6 +21,7 @@ import { cleanTimeline } from './public/js/timeline.js';
 import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
+import { pcoClient, planToService } from './lib/pco.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Read keys from .env next to this file (Docker does this itself; this covers `npm start`).
@@ -35,6 +36,10 @@ const CONTROL_PIN = process.env.CONTROL_PIN || '';
 
 // Khaya (GhanaNLP) speech-to-text for Akan/Twi, Fante, Ga, Ewe, Dagbani … Every setting can be overridden
 // in case GhanaNLP changes its API: endpoint, key header and the language codes it expects.
+// Planning Center Online — a Personal Access Token (Application ID + Secret).
+const PCO = { appId: process.env.PCO_APP_ID || '', secret: process.env.PCO_SECRET || '', base: process.env.PCO_API_BASE || 'https://api.planningcenteronline.com' };
+const pco = () => (PCO.appId && PCO.secret ? pcoClient(PCO) : null);
+
 const KHAYA = {
   key: process.env.KHAYA_API_KEY || '',
   url: process.env.KHAYA_ASR_URL || 'https://translation-api.ghananlp.org/asr/v1/transcribe',
@@ -590,7 +595,7 @@ const server = http.createServer(async (req, res) => {
       broadcast();
       return send(res, 200, { ok: true, version: state.version });
     }
-    if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN, khaya: !!KHAYA.key });
+    if (p === '/api/info') return send(res, 200, { ai: aiEnabled, model: aiEnabled ? AI_MODEL : null, lan: lanUrls(), port: listenPort, channels: state.channels.length, themes: THEMES, modes: MODES, pinRequired: !!CONTROL_PIN, khaya: !!KHAYA.key, pco: !!pco() });
     if (p === '/api/pin' && req.method === 'POST') return send(res, 200, { ok: true }); // PIN already checked above
 
     // songs library + online lyrics
@@ -675,6 +680,34 @@ const server = http.createServer(async (req, res) => {
       if (Object.keys(patch).length) { Object.assign(state, sanitizePatch(patch)); broadcast(); }
       return send(res, 200, { ok: true, action, changed: Object.keys(patch) });
     }
+    // Planning Center Online
+    if (p === '/api/pco/plans' && req.method === 'GET') {
+      const c = pco(); if (!c) return send(res, 400, { error: 'Planning Center is not set up: add PCO_APP_ID and PCO_SECRET to .env' });
+      try { return send(res, 200, { plans: await c.plans() }); } catch (e) { return send(res, 502, { error: e.message }); }
+    }
+    if (p === '/api/pco/import' && req.method === 'POST') {
+      const c = pco(); if (!c) return send(res, 400, { error: 'Planning Center is not set up: add PCO_APP_ID and PCO_SECRET to .env' });
+      const b = await readBody(req);
+      let plan;
+      try { plan = await c.plan(String(b.serviceTypeId || ''), String(b.planId || '')); } catch (e) { return send(res, 502, { error: e.message }); }
+      const { service, songs: found, skipped } = planToService(plan, { songLines: state.songLines || 4 });
+      // keep the plan's songs in the library (update the copy from an earlier import)
+      for (const sg of found) {
+        const old = songs.find((x) => (sg.pcoSongId && x.pcoSongId === sg.pcoSongId) || (x.title.toLowerCase() === sg.title.toLowerCase() && (x.ccli || '') === sg.ccli));
+        const id = old?.id || `song-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const saved = { ...(old || {}), ...sg, id, updated: Date.now(), ...(old?.timeline ? { timeline: old.timeline } : {}) };
+        songs = [saved, ...songs.filter((x) => x.id !== id)];
+        for (const it of service) if (it.kind === 'song' && it.title === sg.title && it.pcoSongId === sg.pcoSongId && !it.songId) {
+          it.songId = id; if (saved.timeline?.audio) it.timeline = saved.timeline;
+        }
+      }
+      if (found.length) await saveSongs();
+      state.service = b.mode === 'append' ? [...state.service, ...service] : service;
+      broadcast();
+      const a = plan.plan?.attributes || {};
+      return send(res, 200, { title: [a.dates, a.title].filter(Boolean).join(' · '), items: service.length, songs: found.length, skipped });
+    }
+
     if (p === '/api/dmx' && req.method === 'POST') {
       const { levels, host, universe } = await readBody(req);
       const target = { host: host || state.dmx?.host, universe: universe ?? state.dmx?.universe ?? 0 };

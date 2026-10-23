@@ -1115,6 +1115,28 @@ function wire() {
     } catch (e) { $('#impStatus').textContent = e.message; }
   };
 
+  // Planning Center
+  $('#pcoLoad').onclick = async () => {
+    $('#pcoPlans').innerHTML = '<p class="muted small">Loading…</p>';
+    try {
+      const { plans } = await api('/api/pco/plans');
+      $('#pcoPlans').innerHTML = plans.length ? plans.map((pl) => `<div class="pco-plan"><div class="meta"><b>${esc(pl.dates || pl.sortDate)}</b><small>${esc([pl.serviceType, pl.title].filter(Boolean).join(' · '))}${pl.items != null ? ` · ${pl.items} items` : ''}</small></div>
+        <button class="btn sm" data-st="${esc(pl.serviceTypeId)}" data-plan="${esc(pl.planId)}">Import</button></div>`).join('') : '<p class="muted small">No upcoming plans found.</p>';
+    } catch (e) { $('#pcoPlans').innerHTML = `<p class="muted small">${esc(e.message)}</p>`; }
+  };
+  $('#pcoPlans').onclick = async (e) => {
+    const b = e.target.closest('button[data-plan]'); if (!b) return;
+    const append = $('#pcoAppend').checked;
+    if (!append && S.service.length && !confirm('Replace the current service with this plan?')) return;
+    b.disabled = true; b.textContent = 'Importing…';
+    try {
+      const r = await postJson('/api/pco/import', { serviceTypeId: b.dataset.st, planId: b.dataset.plan, mode: append ? 'append' : 'replace' });
+      toast(`Imported ${r.title || 'plan'}: ${r.items} item${r.items === 1 ? '' : 's'}, ${r.songs} song${r.songs === 1 ? '' : 's'}${r.skipped.length ? ` · check: ${r.skipped.join(', ')}` : ''}`);
+      b.textContent = 'Imported ✓';
+    } catch (err) { toast(err.message, true); b.textContent = 'Import'; }
+    b.disabled = false;
+  };
+
   // keyboard
   document.addEventListener('keydown', (e) => {
     if (e.target.closest('input, textarea, select, dialog')) {
@@ -1150,6 +1172,7 @@ function wire() {
 (async function boot() {
   wire();
   info = await api('/api/info').catch(() => info);
+  $('#pcoSetup').hidden = !!info?.pco; $('#pcoReady').hidden = !info?.pco;
   $('#aiStatus').textContent = info.ai ? 'AI on' : 'AI off';
   $('#aiStatus').classList.toggle('on', !!info.ai);
   $('#aiStatus').title = info.ai ? `Model: ${info.model}` : 'Set ANTHROPIC_API_KEY on the server to enable AI';

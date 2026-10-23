@@ -323,3 +323,11 @@ textarea { resize: vertical; }
 .tl-cue input { width: 82px; padding: 4px 6px; font-family: ui-monospace, monospace; font-size: 12px; }
 .tl-cue.on { background: rgba(229,72,77,.18); }
 .cue-badge { float: right; font: 600 10px ui-monospace, monospace; color: var(--accent2); }
+
+/* Planning Center */
+.pco summary { cursor: pointer; }
+.pco[open] { gap: 8px; }
+.pco-plans { display: flex; flex-direction: column; gap: 6px; }
+.pco-plan { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; }
+.pco-plan .meta { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pco-plan small { color: var(--muted); }

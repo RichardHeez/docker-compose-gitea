@@ -304,6 +304,17 @@
           <input id="textSlideInput" placeholder="Add a text slide (announcement, point…)"><button class="btn ghost sm">Add</button>
         </form>
         <ol id="service" class="service"></ol>
+        <details class="card pco" id="pcoBox">
+          <summary><b>Planning Center</b> <span class="muted small">— import a service plan</span></summary>
+          <div id="pcoSetup" class="muted small" hidden>Add a Planning Center <b>Personal Access Token</b> to the server’s <code>.env</code> file:
+            <code>PCO_APP_ID=…</code> and <code>PCO_SECRET=…</code> (create one at api.planningcenteronline.com/oauth/applications), then restart F8.</div>
+          <div id="pcoReady" hidden>
+            <div class="row"><button class="btn sm" id="pcoLoad" type="button">Load upcoming plans</button>
+              <label class="check"><input type="checkbox" id="pcoAppend"> Add to the end instead of replacing</label></div>
+            <div id="pcoPlans" class="pco-plans"></div>
+            <p class="muted small">Songs come in with their lyrics and arrangement (and are saved to your song library), scripture readings become verse slides, other items become text slides with their notes.</p>
+          </div>
+        </details>
       </div>
 
       <div class="tab-body" data-body="settings" hidden>
