@@ -31,7 +31,10 @@
     "esbuild": "^0.28.2",
     "javascript-obfuscator": "^5.9.0"
   },
-  "author": "F8",
+  "author": {
+    "name": "F8 Scripture Presenter",
+    "email": "support@example.com"
+  },
   "build": {
     "appId": "app.f8.scripturepresenter",
     "productName": "F8 Scripture Presenter",
@@ -48,14 +51,45 @@
       "node_modules/ffmpeg-static/**"
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build-resources/icon.png",
+      "artifactName": "F8-Scripture-Presenter-Setup-${version}.${ext}"
     },
     "mac": {
-      "target": "dmg",
-      "category": "public.app-category.productivity"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build-resources/icon.png",
+      "artifactName": "F8-Scripture-Presenter-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "NSCameraUsageDescription": "F8 shows cameras and capture cards on the screens.",
+        "NSMicrophoneUsageDescription": "F8 listens to the preacher to put scripture on screen."
+      }
     },
     "linux": {
-      "target": "AppImage"
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "build-resources/icon.png",
+      "maintainer": "F8 Scripture Presenter",
+      "artifactName": "F8-Scripture-Presenter-${version}-${arch}.${ext}",
+      "syncDesktopName": true
     },
     "extraMetadata": {
       "main": "build/app/desktop/main.mjs"
@@ -68,8 +102,27 @@
       "enableNodeCliInspectArguments": false,
       "enableEmbeddedAsarIntegrityValidation": true,
       "onlyLoadAppFromAsar": true
-    }
+    },
+    "directories": {
+      "buildResources": "build-resources",
+      "output": "dist"
+    },
+    "icon": "build-resources/icon.png",
+    "copyright": "\u00a9 2026 F8 Scripture Presenter. All rights reserved.",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "F8 Scripture Presenter",
+      "license": "LICENSE",
+      "runAfterFinish": true
+    },
+    "publish": null
   },
   "license": "UNLICENSED",
-  "private": true
+  "private": true,
+  "homepage": "https://example.com",
+  "desktopName": "f8-scripture-presenter.desktop"
 }

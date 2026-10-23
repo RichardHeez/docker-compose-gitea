@@ -131,3 +131,13 @@ F8 is proprietary software — see `LICENSE`. No app that runs on customers’ c
 4. **Licences only you can make.** Paid features need a licence signed with F8 Cloud’s private key, which never leaves your server. A copied or edited app can’t create one, and F8 Cloud — accounts, payments, the AI motion maker’s server side — is not shipped at all.
 5. **Sign the installers** with a code-signing certificate (Windows) and an Apple Developer ID (Mac), so only your builds look trusted.
 6. **Legal protection:** copyright is automatic; register the **F8** name and logo as a trademark (Benelux: BOIP, EU: EUIPO); keep the anti-copying clauses in the terms; act on copies (GitHub DMCA, app stores, hosting providers).
+
+## Installers (Windows, Mac, Linux)
+
+The installers are built from the protected build, with the F8 icon, Start-menu and desktop shortcuts.
+
+- **Easiest:** on GitHub open **Actions → F8 installers → Run workflow**. After about 10 minutes download the installers under *Artifacts*: `F8-Scripture-Presenter-Setup-1.0.0.exe` (Windows), `.dmg` (Mac Intel and Apple Silicon), `.AppImage` / `.deb` (Linux). Pushing a tag such as `f8-v1.0.0` also publishes them as a GitHub Release.
+- **On your own computer:** `npm ci` then `npm run dist:win` (on Windows), `npm run dist:mac` (on a Mac) or `npm run dist:linux`. The files appear in `dist/`.
+- **Connect to F8 Cloud:** put `F8_CLOUD_URL` and `F8_LICENSE_PUBLIC_KEY` in the repository’s Actions secrets (or in `desktop/cloud.json` for local builds). Without them the app is fully unlocked.
+- **Signing:** without a certificate Windows shows “Windows protected your PC” (More info → Run anyway) and Mac needs right-click → Open the first time. Add the signing secrets listed at the top of `.github/workflows/f8-installers.yml` to remove those warnings.
+- Change the version in `package.json` (`"version"`) before each release.
