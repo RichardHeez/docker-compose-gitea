@@ -27,10 +27,45 @@ export function hasFfmpeg() {
   return probe;
 }
 
+// Bitrates follow YouTube's live-streaming recommendations for 30 fps.
 export const QUALITY = {
-  '720p': { width: 1280, height: 720, bitrate: 3000 },
-  '1080p': { width: 1920, height: 1080, bitrate: 6000 },
+  '1080p': { width: 1920, height: 1080, bitrate: 8000 },
+  '4k': { width: 3840, height: 2160, bitrate: 20000 },
 };
+
+// Use the graphics card's H.264 encoder when there is one that works (4K is too heavy for most CPUs);
+// otherwise fall back to x264 on the processor. Each candidate is tried with a tiny test encode.
+const HW = ['h264_nvenc', 'h264_qsv', 'h264_videotoolbox', 'h264_amf'];
+let picked = null;
+export function pickVideoEncoder() {
+  if (process.env.F8_VIDEO_ENCODER) return Promise.resolve(process.env.F8_VIDEO_ENCODER);
+  picked ||= (async () => {
+    for (const enc of HW) {
+      const ok = await new Promise((resolve) => {
+        try {
+          const p = spawn(ffmpegBinary(), ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=1920x1080:d=0.2', '-frames:v', '3', '-vf', 'format=nv12', '-c:v', enc, '-f', 'null', '-'], { stdio: 'ignore' });
+          const t = setTimeout(() => { p.kill(); resolve(false); }, 8000);
+          p.on('error', () => { clearTimeout(t); resolve(false); });
+          p.on('exit', (c) => { clearTimeout(t); resolve(c === 0); });
+        } catch { resolve(false); }
+      });
+      if (ok) return enc;
+    }
+    return 'libx264';
+  })();
+  return picked;
+}
+
+function videoCodecArgs(enc, width) {
+  const big = width > 1920;
+  switch (enc) {
+    case 'h264_nvenc': return ['-c:v', enc, '-preset', 'p4', '-tune', 'll', '-rc', 'cbr'];
+    case 'h264_qsv': return ['-c:v', enc, '-preset', 'veryfast'];
+    case 'h264_videotoolbox': return ['-c:v', enc, '-realtime', '1'];
+    case 'h264_amf': return ['-c:v', enc, '-usage', 'lowlatency', '-quality', 'speed'];
+    default: return ['-c:v', 'libx264', '-preset', big ? 'superfast' : 'veryfast', '-tune', 'zerolatency'];
+  }
+}
 
 const hideKey = (s, rtmp) => {
   if (!rtmp) return s;
@@ -39,7 +74,7 @@ const hideKey = (s, rtmp) => {
 };
 
 // Build the ffmpeg arguments. input: 'raw' (BGRA frames on stdin) or 'webm' (MediaRecorder stream on stdin).
-export function encoderArgs({ input = 'webm', width = 1920, height = 1080, fps = 30, bitrate = 6000, hasAudio = false, file = '', rtmp = '' } = {}) {
+export function encoderArgs({ input = 'webm', width = 1920, height = 1080, fps = 30, bitrate = 8000, hasAudio = false, file = '', rtmp = '', videoEncoder = 'libx264' } = {}) {
   if (!file && !rtmp) throw new Error('Nothing to do: choose recording, streaming or both');
   if (rtmp && !/^rtmps?:\/\/[^\s]+$/i.test(rtmp)) throw new Error('The stream address must start with rtmp:// or rtmps://');
   const a = ['-hide_banner', '-loglevel', 'error', '-nostats'];
@@ -48,8 +83,8 @@ export function encoderArgs({ input = 'webm', width = 1920, height = 1080, fps =
   const audioIn = input === 'raw' || !hasAudio;
   if (audioIn) a.push('-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000'); // streaming sites need an audio track
   a.push('-map', '0:v:0', '-map', audioIn ? '1:a:0' : '0:a:0');
-  a.push('-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=${fps},format=yuv420p`);
-  a.push('-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-b:v', `${bitrate}k`, '-maxrate', `${bitrate}k`, '-bufsize', `${bitrate * 2}k`, '-g', String(fps * 2), '-keyint_min', String(fps * 2));
+  a.push('-vf', `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=${fps},format=${videoEncoder === 'libx264' ? 'yuv420p' : 'nv12'}`);
+  a.push(...videoCodecArgs(videoEncoder, width), '-b:v', `${bitrate}k`, '-maxrate', `${bitrate}k`, '-bufsize', `${bitrate * 2}k`, '-g', String(fps * 2), '-keyint_min', String(fps * 2));
   a.push('-c:a', 'aac', '-b:a', '160k', '-ar', '48000');
   if (audioIn) a.push('-shortest');
   const mp4 = 'movflags=+frag_keyframe+empty_moov+default_base_moof'; // playable even if the computer stops mid-service
@@ -61,10 +96,11 @@ export function encoderArgs({ input = 'webm', width = 1920, height = 1080, fps =
 }
 
 // Start an encoder. Returns { write(buf), stop(), info() }.
-export function startEncoder(opts) {
-  const args = encoderArgs(opts);
+export async function startEncoder(opts) {
+  const videoEncoder = opts.videoEncoder || await pickVideoEncoder();
+  const args = encoderArgs({ ...opts, videoEncoder });
   const proc = spawn(ffmpegBinary(), args, { stdio: ['pipe', 'ignore', 'pipe'] });
-  const info = { started: Date.now(), bytes: 0, error: '', ended: false, file: opts.file || '', streaming: !!opts.rtmp };
+  const info = { started: Date.now(), bytes: 0, error: '', ended: false, file: opts.file || '', streaming: !!opts.rtmp, encoder: videoEncoder, size: `${opts.width}x${opts.height}` };
   let err = '';
   proc.stderr.on('data', (d) => { err = (err + d).slice(-2000); });
   proc.on('error', (e) => { info.error = e.code === 'ENOENT' ? 'ffmpeg is not installed on this computer' : e.message; info.ended = true; });

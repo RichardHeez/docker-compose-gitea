@@ -709,7 +709,7 @@ const server = http.createServer(async (req, res) => {
       const file = record ? path.join(MEDIA, recordingName(label, ff ? 'mp4' : 'webm')) : '';
       let enc;
       try {
-        enc = ff ? startEncoder({ input: 'webm', ...q, bitrate: Number(b.bitrate) || q.bitrate, hasAudio: !!b.hasAudio, file, rtmp })
+        enc = ff ? await startEncoder({ input: 'webm', ...q, bitrate: Number(b.bitrate) || q.bitrate, hasAudio: !!b.hasAudio, file, rtmp })
           : startPassthrough(file);
       } catch (e) { return send(res, 400, { error: e.message }); }
       const id = Math.random().toString(36).slice(2, 10);

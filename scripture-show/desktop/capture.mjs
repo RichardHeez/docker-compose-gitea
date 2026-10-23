@@ -12,7 +12,7 @@ export async function startCapture(ch, url, { quality = '1080p', record = true, 
   const q = QUALITY[quality] || QUALITY['1080p'];
   fs.mkdirSync(mediaDir, { recursive: true });
   const file = record ? path.join(mediaDir, recordingName(`Ch${ch}`)) : '';
-  const enc = startEncoder({ input: 'raw', width: q.width, height: q.height, fps, bitrate: q.bitrate, file, rtmp });
+  const enc = await startEncoder({ input: 'raw', width: q.width, height: q.height, fps, bitrate: q.bitrate, file, rtmp });
   const win = new BrowserWindow({
     show: false, width: q.width, height: q.height, frame: false, backgroundColor: '#000000',
     webPreferences: { offscreen: true, backgroundThrottling: false },

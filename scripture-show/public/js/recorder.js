@@ -8,7 +8,7 @@ let run = null; // { mode: 'desktop'|'browser', ch, started, id, rec, stream, ch
 let statusTimer = null;
 const desktop = () => window.f8Desktop?.recStart ? window.f8Desktop : null;
 const store = { get: (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-const QUALITY = { '720p': { width: 1280, height: 720, bitrate: 3000 }, '1080p': { width: 1920, height: 1080, bitrate: 6000 } };
+const QUALITY = { '1080p': { width: 1920, height: 1080, bitrate: 8000 }, '4k': { width: 3840, height: 2160, bitrate: 20000 } };
 
 function rtmpTarget() {
   if (!C.$('#recStream').checked) return '';
@@ -122,7 +122,7 @@ export function init(deps) {
   $('#recUrl').value = store.get('f8.recUrl');
   $('#recKey').value = store.get('f8.recKey');
   $('#recSaveKey').checked = !!store.get('f8.recKey');
-  $('#recQuality').value = store.get('f8.recQuality') || '1080p';
+  $('#recQuality').value = QUALITY[store.get('f8.recQuality')] ? store.get('f8.recQuality') : '1080p'; // older 720p setting → 1080p
   $('#recHow').textContent = desktop()
     ? 'The desktop app captures the chosen channel by itself — even while it is on a projector.'
     : 'Open the channel’s output window first (Outputs → Open). When you press Start, pick that window (or the projector screen) in the box that appears.';
