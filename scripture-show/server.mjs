@@ -17,6 +17,7 @@ import { BOOKS, bookById } from './public/js/books.js';
 import { lyricsToText } from './public/js/songs.js';
 import { DEFAULT_TIMERS } from './public/js/timers.js';
 import { STARTER_DESIGNS, cleanDesign } from './public/js/design.js';
+import { cleanTimeline } from './public/js/timeline.js';
 import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
@@ -605,7 +606,8 @@ const server = http.createServer(async (req, res) => {
       const id = b.id && !String(b.id).startsWith('pd-') ? String(b.id) : `song-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
       const song = { id, title, artist: String(b.artist || '').slice(0, 200), ccli: String(b.ccli || '').slice(0, 20), lyrics: String(b.lyrics).slice(0, 50000),
         source: String(b.source || 'library').slice(0, 40), updated: Date.now(),
-        arrangement: Array.isArray(b.arrangement) ? b.arrangement.map((x) => String(x).slice(0, 40)).filter(Boolean).slice(0, 60) : [] };
+        arrangement: Array.isArray(b.arrangement) ? b.arrangement.map((x) => String(x).slice(0, 40)).filter(Boolean).slice(0, 60) : [],
+        ...(cleanTimeline(b.timeline) ? { timeline: cleanTimeline(b.timeline) } : {}) };
       songs = [song, ...songs.filter((x) => x.id !== id)];
       await saveSongs();
       return send(res, 200, song);

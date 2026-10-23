@@ -195,6 +195,15 @@
             <button class="btn ghost sm" id="sgTidy" type="button">Auto-label sections</button>
             <span class="spacer"></span><button class="btn ghost sm" id="sgDelete" type="button">Delete</button>
           </div>
+          <details id="tlBox" class="tl-box"><summary>♪ Timeline — slides follow a track <span class="muted" id="tlSummary"></span></summary>
+            <div class="row"><select id="tlAudio" class="mini-select"></select></div>
+            <div class="row"><button class="btn sm" id="tlRec" type="button">⏺ Record</button><button class="btn sm" id="tlPlay" type="button">▶ Play</button><button class="btn ghost sm" id="tlStop" type="button" disabled>■ Stop</button>
+              <span class="mono" id="tlTime">0:00.0</span><span class="spacer"></span>
+              <button class="btn ghost sm" type="button" data-shift="-0.5" title="All cues earlier">−½s</button><button class="btn ghost sm" type="button" data-shift="0.5" title="All cues later">+½s</button><button class="btn ghost sm" type="button" id="tlClear">Clear</button></div>
+            <p class="muted small"><b>Record:</b> the track starts and slide 1 goes live. Press <b>→</b>, <b>Space</b> or the Tap button each time the next slide should come up, then <b>Save to library</b>. <b>Play</b> runs it hands-free; any slide time can be typed or nudged.</p>
+            <label class="check"><input type="checkbox" id="tlNext"> When the track ends, go to the next service item</label>
+            <div id="tlCues" class="tl-cues"></div>
+          </details>
           <div class="row between"><h4 id="sgCount"></h4>
             <div class="row"><button class="btn ghost sm" id="sgService" type="button">＋ Service</button><button class="btn live sm" id="sgLive" type="button">Go live</button></div></div>
           <div id="sgSlides" class="song-slides" title="Click to preview · double-click to go live"></div>

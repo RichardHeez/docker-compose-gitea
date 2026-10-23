@@ -6,6 +6,7 @@ import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, s
 import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
 import * as designer from './designer.js';
+import * as songtl from './songtimeline.js';
 import { hasRole } from './design.js';
 import { listCameras, updateTimers } from './render.js';
 import { PhraseRecognizer } from './khaya.js';
@@ -417,6 +418,7 @@ async function loadMedia() {
     </div>`).join('') : '<p class="muted small">No media yet.</p>';
   if (S) renderChannels();
   tools.refreshProps();
+  songtl.render();
 }
 
 // ---- live video input
@@ -453,6 +455,7 @@ function renderService() {
       <span class="idx">${i + 1}</span>
       <div class="meta" data-act="preview"><b>${esc(it.kind === 'text' ? it.title : it.kind === 'media' ? it.name : it.kind === 'song' ? `🎵 ${it.title}` : (it.heading ? it.heading + ' — ' : '') + formatRef(it.ref))}</b><div class="txt">${esc(it.kind === 'text' ? it.body || 'Text slide' : it.kind === 'media' ? (it.mediaType === 'video' ? 'Video' : 'Image') : it.kind === 'song' ? `Song · ${it.slides?.length || 0} slides${it.artist ? ' · ' + it.artist : ''}` : 'Scripture')}</div>${it.notes ? `<div class="notes">📝 ${esc(it.notes)}</div>` : ''}</div>
       <button class="btn live sm" data-act="live">Live</button>
+      ${it.timeline?.audio ? '<button class="x" data-act="tl" title="Go live and play its timeline track">♪</button>' : ''}
       <button class="x" data-act="notes" title="Stage notes (shown only on the stage display)">✎</button>
       <button class="x" data-act="loop" title="Add to the announcements loop">⟳</button>
       <button class="x" data-act="up" title="Move up">↑</button>
@@ -471,7 +474,7 @@ let songSlides = [];      // its slides at the current lines-per-slide
 let songTimer = null;
 
 const songItem = (sg, page = 0) => ({ kind: 'song', songId: sg.id || '', title: sg.title || 'Untitled', artist: sg.artist || '', ccli: sg.ccli || '',
-  slides: slidesFor(arrangeSections(parseLyrics(sg.lyrics), sg.arrangement), S.songLines || 4), page });
+  slides: slidesFor(arrangeSections(parseLyrics(sg.lyrics), sg.arrangement), S.songLines || 4), page, ...(sg.timeline?.audio ? { timeline: sg.timeline } : {}) });
 
 function readSongForm() {
   if (!song) return null;
@@ -501,9 +504,10 @@ function renderSongSlides() {
   songSlides = slidesFor(arrangeSections(parsed, song.arrangement), S.songLines || 4);
   $('#sgGroups').innerHTML = sectionNames(parsed).map((n) => `<button type="button" data-g="${esc(n)}" style="--gc:${groupColor(n)}">${esc(n)}</button>`).join('');
   $('#sgCount').textContent = `${songSlides.length} slide${songSlides.length === 1 ? '' : 's'}`;
-  $('#sgSlides').innerHTML = songSlides.map((sl, i) => `<div class="song-slide" data-i="${i}" style="--gc:${groupColor(sl.label)}"><div class="lbl">${esc(sl.label)}</div>${sl.lines.map(esc).join('<br>')}</div>`).join('')
+  $('#sgSlides').innerHTML = songSlides.map((sl, i) => `<div class="song-slide" data-i="${i}" style="--gc:${groupColor(sl.label)}"><div class="lbl">${esc(sl.label)}${songtl.cueBadge(i)}</div>${sl.lines.map(esc).join('<br>')}</div>`).join('')
     || '<p class="muted small">Paste or type the lyrics above.</p>';
   markLiveSongSlide();
+  songtl.render();
 }
 
 function markLiveSongSlide() {
@@ -1019,6 +1023,7 @@ function wire() {
     if (act === 'del') setService(S.service.filter((_, j) => j !== i));
     if (act === 'up' && i > 0) { const s = [...S.service]; [s[i - 1], s[i]] = [s[i], s[i - 1]]; setService(s); }
     if (act === 'loop') tools.addAnnouncement(item);
+    if (act === 'tl') songtl.play(item);
     if (act === 'notes') {
       const notes = prompt('Stage notes for this item (only the stage display shows them):', item.notes || '');
       if (notes !== null) {
@@ -1090,6 +1095,9 @@ function wire() {
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
   tools.initShowTools({ $, $$, esc, push, toast, postJson, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
+  songtl.init({ $, $$, esc, toast, push, getS: () => S, getSong: () => song, getSlides: () => songSlides, songItem, media: () => mediaList,
+    goLive: (item) => control.goLive(S, item), audio: tools.getAudio, playAudio: tools.playAudio, fadeAudio: tools.fadeAudio,
+    nextServiceItem: () => serviceStep(1), onChange: () => renderSongSlides() });
   designer.initDesigner({ $, $$, esc, push, toast, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList, addToService: (item) => setService([...S.service, item]) });
   triggers.initTriggers({ $, $$, esc, push, toast, getS: () => S, fadeAudio: tools.fadeAudio });
   setInterval(() => updateTimers(previewHost, S), 250);
@@ -1114,6 +1122,7 @@ function wire() {
       return;
     }
     const k = e.key;
+    if (songtl.isRecording() && (k === 'ArrowRight' || k === ' ' || k === 'Enter')) { e.preventDefault(); songtl.tap(); return; }
     if (k === '/') { e.preventDefault(); $('#quickInput').focus(); $('#quickInput').select(); }
     else if (k === 'Enter' || k === ' ') { e.preventDefault(); goLive(); }
     else if (k === 'ArrowRight') { e.preventDefault(); stepLive(1); }

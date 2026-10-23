@@ -309,3 +309,17 @@ textarea { resize: vertical; }
 .dz-guide { position: absolute; background: #ff4fd8; pointer-events: none; z-index: 70; }
 .dz-guide.v { width: 1px; top: 0; bottom: 0; } .dz-guide.h { height: 1px; left: 0; right: 0; }
 @media (max-width: 900px) { .dz-main { grid-template-columns: 1fr; grid-template-rows: auto auto auto; overflow: auto; } .dz-tools { flex-direction: row; flex-wrap: wrap; border: 0; } .dz-top { flex-wrap: wrap; } }
+
+/* Song timelines */
+.tl-box { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.tl-box[open] { gap: 8px; }
+.tl-box summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.tl-box .row { flex-wrap: wrap; }
+.tl-box #tlTime { min-width: 56px; font-size: 13px; color: var(--accent2); }
+.tl-cues { display: flex; flex-direction: column; gap: 3px; max-height: 260px; overflow: auto; }
+.tl-cue { flex-direction: row !important; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 8px; }
+.tl-cue span { flex: 1; color: var(--text); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-cue small { color: var(--muted); margin-left: 4px; }
+.tl-cue input { width: 82px; padding: 4px 6px; font-family: ui-monospace, monospace; font-size: 12px; }
+.tl-cue.on { background: rgba(229,72,77,.18); }
+.cue-badge { float: right; font: 600 10px ui-monospace, monospace; color: var(--accent2); }

@@ -36,6 +36,7 @@ It runs as a small Node.js server. You operate it from any browser (laptop, tabl
 | **Stage notes** | Notes on a service item appear only on the stage display. |
 | **Transitions** | Fade, dissolve, push, zoom, blur or cut, per screen. |
 | **Slide editor & templates** | Design slides on a 16:9 canvas: drag and resize text boxes, images and shapes, with snapping guides, fonts, colours, shadows, rounded boxes and layers. Add a **Main text** box and the design becomes a **template**: pick it for any output and every verse, song and text slide on that screen uses your layout (great for lower thirds on the stream). Edits update live screens straight away. |
+| **Song timelines** | Attach a backing track to a song, press Record and tap → as each slide should come up; after that **Play** runs the lyrics hands-free in time with the track (and can move on to the next service item when it ends). Cue times can be typed or nudged ±½ s. Each song keeps its own timeline; play it from the song or with ♪ in the service. |
 | **Hardware triggers** | Stream Deck / Bitfocus Companion over HTTP (`/api/trigger/next`, `/macro/Worship`, `/timer/Sermon/start`…), MIDI controllers with learn mode, and Art-Net DMX lighting cues from macros. |
 | **Live video (IMAG)** | Cameras and capture cards as full-screen slides or behind the lyrics, picked per screen. |
 | **Edge blending & masks** | Span one picture across 2–4 projectors with soft overlap blending (adjustable curve), mask edges and round corners for odd-shaped screens, and a test pattern for lining up. |

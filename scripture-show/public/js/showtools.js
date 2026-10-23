@@ -15,9 +15,11 @@ const S = () => { const s = ctx.getS(); return s ? { ...s, ...pending } : s; };
 const audio = new Audio();
 audio.preload = 'auto';
 let fadeTimer = null;
-export function playAudio(m) {
+export const getAudio = () => audio;
+export function playAudio(m, { loop, from } = {}) {
   clearInterval(fadeTimer);
-  audio.src = m.url; audio.loop = ctx.$('#audioLoop').checked; audio.volume = Number(ctx.$('#audioVol').value);
+  audio.src = m.url; audio.loop = loop ?? ctx.$('#audioLoop').checked; audio.volume = Number(ctx.$('#audioVol').value);
+  if (from) audio.currentTime = from;
   audio.play().catch((e) => ctx.toast(`Audio: ${e.message}`, true));
   ctx.$('#audioTitle').textContent = `♪ ${m.name}`;
 }
