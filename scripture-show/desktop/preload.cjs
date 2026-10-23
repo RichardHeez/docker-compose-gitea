@@ -10,5 +10,4 @@ contextBridge.exposeInMainWorld('f8Desktop', {
   recStart: (ch, opts) => ipcRenderer.invoke('rec-start', ch, opts),
   recStop: (ch) => ipcRenderer.invoke('rec-stop', ch),
   recStatus: () => ipcRenderer.invoke('rec-status'),
-  recAudio: (ch, buf) => ipcRenderer.send('rec-audio', ch, buf),
 });

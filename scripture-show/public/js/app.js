@@ -1097,7 +1097,7 @@ function wire() {
   $('#logoText').onchange = (e) => push({ logoText: e.target.value });
   $('#ccliLicense').onchange = (e) => push({ ccliLicense: e.target.value.trim() });
   tools.initShowTools({ $, $$, esc, push, toast, postJson, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList });
-  recorder.init({ $, $$, esc, toast, postJson, reloadMedia: () => loadMedia() });
+  recorder.init({ $, esc, toast, postJson, reloadMedia: () => loadMedia() });
   songtl.init({ $, $$, esc, toast, push, getS: () => S, getSong: () => song, getSlides: () => songSlides, songItem, media: () => mediaList,
     goLive: (item) => control.goLive(S, item), audio: tools.getAudio, playAudio: tools.playAudio, fadeAudio: tools.fadeAudio,
     nextServiceItem: () => serviceStep(1), onChange: () => renderSongSlides() });

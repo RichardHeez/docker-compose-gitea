@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startNdi, stopNdi, ndiActive, stopAllNdi } from './ndi.mjs';
-import { startCapture, stopCapture, captureStatus, stopAllCaptures, captureAudio } from './capture.mjs';
+import { startCapture, stopCapture, captureStatus, stopAllCaptures } from './capture.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 process.env.DATA_DIR ||= path.join(app.getPath('userData'), 'data');
@@ -75,7 +75,6 @@ ipcMain.handle('rec-start', async (_e, ch, opts = {}) => {
   catch (e) { return { error: e.message }; }
 });
 ipcMain.handle('rec-stop', (_e, ch) => stopCapture(ch));
-ipcMain.on('rec-audio', (_e, ch, buf) => captureAudio(ch, buf));
 ipcMain.handle('rec-status', () => captureStatus());
 
 function buildMenu(channels) {

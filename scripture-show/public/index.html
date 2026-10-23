@@ -122,18 +122,12 @@
           </div>
           <p class="muted small">4K needs about 25 Mbps of upload speed and a strong computer (F8 uses the graphics card’s video encoder when it has one). YouTube accepts 4K; Facebook streams up to 1080p.</p>
           <label class="check"><input type="checkbox" id="recRecord" checked> Record (saved to the Media library as MP4)</label>
-          <label class="check"><input type="checkbox" id="recStream"> Stream live — to several places at once if you like</label>
+          <label class="check"><input type="checkbox" id="recStream"> Stream live (YouTube, Facebook, Restream…)</label>
           <div id="recStreamBox" class="rec-stream">
-            <div id="recDests" class="rec-dests"></div>
-            <div class="row"><button class="btn ghost sm" id="recAddDest" type="button">＋ Add destination</button><span class="spacer"></span>
-              <label class="check"><input type="checkbox" id="recSaveKey"> Remember keys on this computer</label></div>
+            <label>Stream server (RTMP)<input id="recUrl" placeholder="rtmp://a.rtmp.youtube.com/live2" spellcheck="false"></label>
+            <label>Stream key<input id="recKey" type="password" autocomplete="off" spellcheck="false"></label>
+            <label class="check"><input type="checkbox" id="recSaveKey"> Remember the key on this computer</label>
           </div>
-          <h5>Sound</h5>
-          <div class="row"><select id="recInput" class="mini-select" title="Sound desk / mic input"><option value="">No sound input</option></select><button class="btn ghost sm" id="recFindInputs" type="button" title="Look for sound inputs">⟳</button></div>
-          <p class="muted small">Pick the input your sound desk feeds (USB audio interface, the mixer’s USB out, or a mic). Speak or play music and watch the meter: keep it out of the red.</p>
-          <div class="row"><div class="rec-meter"><span id="recMeter"></span></div><label class="inline small">Volume <input type="range" id="recVol" min="0" max="2" step="0.05" value="1" style="width:110px"></label></div>
-          <label class="check" id="recTabAudioRow"><input type="checkbox" id="recTabAudio" checked> Also include the captured window’s sound (videos played on the output)</label>
-          <label>Sound delay: <b id="recDelayLabel">0 ms</b> <span class="muted">— if people’s lips move after you hear them, add delay</span><input type="range" id="recDelay" min="0" max="1000" step="20" value="0"></label>
           <div class="row"><button class="btn live sm" id="recStart" type="button">● Start</button><button class="btn sm" id="recStop" type="button" hidden>■ Stop</button><span id="recStatus" class="rec-status small"></span></div>
         </div>
 
