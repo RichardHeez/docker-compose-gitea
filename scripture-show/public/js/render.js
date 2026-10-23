@@ -1,0 +1,448 @@
+// Shared slide resolution + rendering for output windows, console monitors and the remote.
+import { bookById, formatRef, refKey } from './books.js';
+import { timerOver, timerText } from './timers.js';
+
+// ---------------------------------------------------------------- API (with optional control PIN)
+const PIN_KEY = 'f8.pin';
+import { designHtml, findDesign, hasRole } from './design.js';
+import { attachMotion, findSpec, motionCanvas } from './motion.js';
+export const getPin = () => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } };
+export const setPin = (v) => { try { localStorage.setItem(PIN_KEY, v); } catch {} };
+
+export const api = async (p, opts = {}) => {
+  const headers = { ...(opts.headers || {}) };
+  if ((opts.method || 'GET') !== 'GET' && getPin()) headers['x-f8-pin'] = getPin();
+  const r = await fetch(p, { ...opts, headers });
+  const body = await r.json().catch(() => ({}));
+  if (r.status === 401 && body.pin) {
+    const pin = prompt('Enter the control PIN for this F8 server');
+    if (pin) { setPin(pin); return api(p, opts); }
+  }
+  if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+  return body;
+};
+export const postJson = (p, body) => api(p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+// Language name (as listed by the Bible source) -> BCP-47 code for voices & speech recognition.
+export const LANG_CODES = {
+  english: 'en-US', spanish: 'es-ES', español: 'es-ES', portuguese: 'pt-BR', português: 'pt-BR', french: 'fr-FR', français: 'fr-FR',
+  german: 'de-DE', deutsch: 'de-DE', italian: 'it-IT', italiano: 'it-IT', dutch: 'nl-NL', nederlands: 'nl-NL', russian: 'ru-RU', русский: 'ru-RU',
+  ukrainian: 'uk-UA', українська: 'uk-UA', polish: 'pl-PL', polski: 'pl-PL', czech: 'cs-CZ', slovak: 'sk-SK', romanian: 'ro-RO', hungarian: 'hu-HU',
+  greek: 'el-GR', hebrew: 'he-IL', עברית: 'he-IL', arabic: 'ar-SA', العربية: 'ar-SA', persian: 'fa-IR', farsi: 'fa-IR', turkish: 'tr-TR',
+  chinese: 'zh-CN', 中文: 'zh-CN', japanese: 'ja-JP', 日本語: 'ja-JP', korean: 'ko-KR', 한국어: 'ko-KR', vietnamese: 'vi-VN', thai: 'th-TH',
+  indonesian: 'id-ID', malay: 'ms-MY', tagalog: 'fil-PH', filipino: 'fil-PH', hindi: 'hi-IN', bengali: 'bn-IN', tamil: 'ta-IN', telugu: 'te-IN',
+  malayalam: 'ml-IN', kannada: 'kn-IN', marathi: 'mr-IN', gujarati: 'gu-IN', punjabi: 'pa-IN', urdu: 'ur-PK', nepali: 'ne-NP', swahili: 'sw-KE',
+  amharic: 'am-ET', yoruba: 'yo-NG', igbo: 'ig-NG', hausa: 'ha-NG', zulu: 'zu-ZA', afrikaans: 'af-ZA', swedish: 'sv-SE', norwegian: 'nb-NO',
+  danish: 'da-DK', finnish: 'fi-FI', icelandic: 'is-IS', estonian: 'et-EE', latvian: 'lv-LV', lithuanian: 'lt-LT', bulgarian: 'bg-BG',
+  serbian: 'sr-RS', croatian: 'hr-HR', slovenian: 'sl-SI', albanian: 'sq-AL', armenian: 'hy-AM', georgian: 'ka-GE', latin: 'la',
+};
+export const langCode = (language) => {
+  const k = String(language || '').toLowerCase();
+  return LANG_CODES[k] || LANG_CODES[k.split(/[\s(,]/)[0]] || '';
+};
+
+export const FONTS = {
+  '': 'Theme default',
+  'Playfair Display': 'Playfair Display (serif)',
+  'Lora': 'Lora (serif)',
+  'Merriweather': 'Merriweather (serif)',
+  'Noto Serif': 'Noto Serif (many languages)',
+  'Inter': 'Inter (sans)',
+  'Montserrat': 'Montserrat (sans)',
+  'Noto Sans': 'Noto Sans (many languages)',
+  'Oswald': 'Oswald (condensed)',
+  'Georgia': 'Georgia (system)',
+  'Arial': 'Arial (system)',
+};
+
+// ---------------------------------------------------------------- data
+const chapterCache = new Map();
+const bookCache = new Map();
+let translationIndex = null;
+
+export async function translations() {
+  if (!translationIndex) translationIndex = api('/api/translations').catch((e) => { translationIndex = null; throw e; });
+  return translationIndex;
+}
+export async function translationInfo(id) {
+  const langs = await translations().catch(() => []);
+  for (const l of langs) for (const t of l.translations) if (t.id === id) return { ...t, language: l.language, lang: langCode(l.language) };
+  return { id, name: id, language: '', lang: '', dir: 'ltr' };
+}
+export async function books(tr) {
+  if (!bookCache.has(tr)) bookCache.set(tr, api(`/api/books/${encodeURIComponent(tr)}`).catch((e) => { bookCache.delete(tr); throw e; }));
+  return bookCache.get(tr);
+}
+export async function bookName(tr, id) {
+  try { return (await books(tr)).find((b) => b.id === Number(id))?.name || bookById(id)?.name; } catch { return bookById(id)?.name; }
+}
+export async function chapter(tr, book, ch) {
+  const k = `${tr}/${book}/${ch}`;
+  if (!chapterCache.has(k)) chapterCache.set(k, api(`/api/chapter/${encodeURIComponent(tr)}/${book}/${ch}`).catch((e) => { chapterCache.delete(k); throw e; }));
+  return chapterCache.get(k);
+}
+export async function passage(tr, ref) {
+  const [verses, name, info] = await Promise.all([chapter(tr, ref.book, ref.chapter), bookName(tr, ref.book), translationInfo(tr)]);
+  const start = ref.verseStart || 1;
+  const end = ref.verseStart ? (ref.verseEnd || start) : start;
+  const picked = verses.filter((v) => v.verse >= start && v.verse <= end);
+  return { reference: formatRef({ ...ref, verseStart: start, verseEnd: end }, name), translation: tr, dir: info.dir, lang: info.lang, verses: picked };
+}
+
+// ---------------------------------------------------------------- long-passage splitting
+// Words of a passage, each tagged with its verse number when it starts a verse.
+function wordsOf(verses) {
+  const out = [];
+  for (const v of verses) v.text.split(/\s+/).filter(Boolean).forEach((w, i) => out.push({ w, v: i === 0 ? v.verse : null }));
+  return out;
+}
+
+// Splits words into `n` screens of similar length, preferring breaks after punctuation.
+export function splitWords(words, n) {
+  if (n <= 1 || words.length < n * 3) return [words];
+  const lens = words.map((x) => x.w.length + 1);
+  const total = lens.reduce((a, b) => a + b, 0);
+  const cuts = [];
+  let acc = 0; const pos = []; // char offset after each word
+  lens.forEach((l) => { acc += l; pos.push(acc); });
+  for (let k = 1; k < n; k++) {
+    const ideal = (total * k) / n; const window = total / n * 0.45;
+    let best = -1, bestScore = Infinity;
+    for (let i = (cuts.at(-1) ?? -1) + 2; i < words.length - 1; i++) {
+      const d = Math.abs(pos[i] - ideal);
+      if (d > window) { if (pos[i] > ideal) break; else continue; }
+      // Distance from the ideal point plus a penalty for breaking mid-thought.
+      const punct = /[.;:!?]["'”’)]?$/.test(words[i].w) ? 0.2 : /[,—–]["'”’)]?$/.test(words[i].w) ? 0.5 : 1;
+      const verseStart = words[i + 1]?.v ? 0.1 : 1;
+      const score = d + Math.min(punct, verseStart) * (total / n) * 0.35;
+      if (score < bestScore) { bestScore = score; best = i; }
+    }
+    if (best < 0) best = pos.findIndex((p) => p >= ideal);
+    cuts.push(best);
+  }
+  const pages = []; let start = 0;
+  for (const c of cuts) { pages.push(words.slice(start, c + 1)); start = c + 1; }
+  pages.push(words.slice(start));
+  return pages.filter((p) => p.length);
+}
+
+// How many screens an item needs (decided once, from the main translation, so every channel stays in step).
+export async function paginate(item, state) {
+  if (item?.kind === 'song') { const pages = Math.max(1, item.slides?.length || 1); return { ...item, pages, page: Math.max(0, Math.min(item.page || 0, pages - 1)) }; }
+  if (item?.kind !== 'scripture' || !state.splitChars) return { ...item, pages: 1, page: item?.page || 0 };
+  try {
+    const p = await passage(state.translation, item.ref);
+    const len = p.verses.reduce((n, v) => n + v.text.length + 1, 0);
+    const pages = Math.max(1, Math.ceil(len / state.splitChars));
+    return { ...item, pages, page: Math.min(item.page || 0, pages - 1) };
+  } catch { return { ...item, pages: 1, page: 0 }; }
+}
+
+// Turn the shared "live" item into a concrete slide for one channel.
+export async function resolveSlide(item, channel, state) {
+  if (!item) return { kind: 'blank' };
+  if (item.kind === 'text') return { kind: 'text', title: item.title || '', body: item.body || '' };
+  if (item.kind === 'timer') return { kind: 'timer', title: item.title || '', timerId: item.timerId };
+  if (item.kind === 'song') {
+    const page = Math.max(0, Math.min(item.page || 0, (item.slides?.length || 1) - 1));
+    const cur = item.slides?.[page] || { label: '', lines: [] };
+    return { kind: 'song', title: item.title || '', artist: item.artist || '', ccli: item.ccli || '', license: state.ccliLicense || '',
+      label: cur.label, lines: cur.lines, page, pages: item.slides?.length || 1, next: item.slides?.[page + 1] || null };
+  }
+  if (item.kind === 'design') { const design = findDesign(state, item.designId) || item.design || null; return design ? { kind: 'design', name: item.name || design.name, design } : { kind: 'blank' }; }
+  if (item.kind === 'camera') return { kind: 'camera', name: item.name || 'Camera', device: item.device || '', fit: item.fit || 'cover', mirror: !!item.mirror };
+  if (item.kind === 'media') return { kind: 'media', url: item.url, mediaType: item.mediaType, name: item.name, fit: item.fit || 'contain', loop: item.loop !== false };
+  if (item.kind !== 'scripture' || !item.ref) return { kind: 'blank' };
+  const tr = channel?.translation || state.translation;
+  const pages = item.pages || 1; const page = Math.min(item.page || 0, pages - 1);
+  const slide = { kind: 'scripture', heading: item.heading || '', pages, page, highlight: item.highlight || [] };
+  const cut = (p) => { p.words = splitWords(wordsOf(p.verses), pages)[page] || []; return p; };
+  try { slide.primary = cut(await passage(tr, item.ref)); }
+  catch (e) { slide.primary = { reference: formatRef(item.ref), translation: tr, verses: [], words: [], error: e.message }; }
+  if (channel?.secondary && channel.secondary !== tr) {
+    try { slide.secondary = cut(await passage(channel.secondary, item.ref)); } catch { /* optional */ }
+  }
+  return slide;
+}
+export const slideKey = (item, channel, state) => JSON.stringify([
+  item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.device, item?.mirror, item?.fit, item?.page, item?.pages, item?.highlight, item?.songId, item?.slides?.length,
+  state.ccliLicense,
+  channel?.translation || state.translation, channel?.secondary,
+  item?.kind === 'design' ? findDesign(state, item.designId) : null, findDesign(state, channel?.template), findSpec(state, channel?.background),
+]);
+
+// ---------------------------------------------------------------- rendering
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+export const normWord = (w) => String(w).toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]/gu, '');
+
+function wordsHtml(p, showNumbers, highlight) {
+  if (p.error && !p.words.length) return `<span class="err">${esc(p.reference)} — not available in ${esc(p.translation)}</span>`;
+  const hl = new Set((highlight || []).map(normWord));
+  const multi = p.verses.length > 1;
+  return p.words.map((x) => {
+    const num = x.v && (showNumbers || multi) ? `<sup>${x.v}</sup>` : '';
+    const word = hl.has(normWord(x.w)) ? `<mark class="hl">${esc(x.w)}</mark>` : esc(x.w);
+    return num + word;
+  }).join(' ');
+}
+
+function backgroundHtml(channel, mode, state) {
+  if (mode === 'alpha' || mode === 'chroma') return '';
+  const b = channel.background;
+  if (!b) return '';
+  const fit = channel.bgFit === 'contain' ? 'contain' : 'cover';
+  if (b.startsWith('motion:') || b.startsWith('mymotion:')) return motionCanvas(b, state);
+  if (b.startsWith('camera:')) return `<video class="bg-media" data-cam="${esc(b.slice(7))}" style="object-fit:${fit}" autoplay muted playsinline></video>`;
+  return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(b)
+    ? `<video class="bg-media" src="${esc(b)}" style="object-fit:${fit}" autoplay muted loop playsinline></video>`
+    : `<div class="bg-media" style="background-image:url('${esc(b)}');background-size:${fit}"></div>`;
+}
+
+function styleVars(el, channel) {
+  const set = (k, v) => el.style.setProperty(k, v);
+  if (channel.textColor) set('--text', channel.textColor);
+  set('--scale', channel.fontScale || 1);
+  if (channel.fontFamily) set('--font', `'${channel.fontFamily}', Georgia, sans-serif`);
+  set('--outline', `${(Number(channel.outline) || 0) * 0.03}`);
+  set('--shadow', `${(Number(channel.shadow ?? 5)) / 10}`);
+  set('--lh', channel.lineHeight || 1.28);
+  set('--bg-blur', `${Number(channel.bgBlur) || 0}`);
+  set('--bg-bright', `${(Number(channel.bgBrightness) || 100) / 100}`);
+  set('--bg-dim', `${(Number(channel.bgDim) || 0) / 100}`);
+  set('--bg-tint', channel.bgTint || '#000');
+  set('--bg-tint-amt', `${(Number(channel.bgTintAmount) || 0) / 100}`);
+}
+
+// What goes into a template's role boxes for each kind of slide.
+export function templateContent(slide, channel, tpl) {
+  const showRef = channel.showReference !== false;
+  if (slide.kind === 'scripture') {
+    const p = slide.primary, s = slide.secondary;
+    const pageTag = slide.pages > 1 ? ` <span class="pg">${slide.page + 1}/${slide.pages}</span>` : '';
+    const ref = `${esc(p.reference)} <span class="tr">${esc(p.translation)}</span>${pageTag}`;
+    const sec = s ? `<div class="dz-sec" dir="${s.dir || 'auto'}" lang="${esc(s.lang)}">${wordsHtml(s, channel.showVerseNumbers, slide.highlight)}</div>` : '';
+    return { body: `<div dir="${p.dir || 'auto'}" lang="${esc(p.lang)}">${wordsHtml(p, channel.showVerseNumbers, slide.highlight)}</div>${sec}`, reference: showRef ? ref : '', title: esc(slide.heading || p.reference) };
+  }
+  if (slide.kind === 'song') {
+    const credit = [slide.title, slide.artist].filter(Boolean).join(' — ') + (slide.ccli ? ` · CCLI Song #${slide.ccli}` : '') + (slide.license ? ` · CCLI Licence #${slide.license}` : '');
+    const showCredit = showRef && (slide.page === 0 || slide.page === slide.pages - 1);
+    return { body: slide.lines.map((l) => `<span class="ln">${esc(l)}</span>`).join(''), reference: showCredit ? esc(credit) : '', title: esc(slide.title) };
+  }
+  const own = hasRole(tpl, 'title');
+  return { body: own ? esc(slide.body || '') : [slide.title, slide.body].filter(Boolean).map(esc).join('<br>'), reference: '', title: esc(slide.title) };
+}
+
+// Builds the DOM for a slide. `opts` = { black, clear, logo, nextLabel, preview }.
+export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
+  const mode = channel.mode === 'announce' ? 'full' : channel.mode || 'full';
+  const overlay = mode === 'lower' || mode === 'chroma' || mode === 'alpha';
+  const isStage = mode === 'stage' || mode === 'confidence';
+  const el = document.createElement('div');
+  el.className = `slide mode-${mode} theme-${channel.theme || 'aurora'} align-${channel.align || 'center'}`;
+  if (mode === 'alpha') el.classList.add('transparent');
+  if (channel.uppercase) el.classList.add('upper');
+  if (channel.fontFamily) el.classList.add('custom-font');
+  if (Number(channel.outline) > 0) el.classList.add('outlined');
+  styleVars(el, channel);
+
+  if (opts.black && !isStage) { el.classList.add('is-black'); return el; }
+
+  let body = '';
+  let media = '';
+  let layer = ''; // a designed slide or template replaces the standard frame
+  const tpl = !isStage && !opts.logo && !opts.clear ? findDesign(state, channel.template) : null;
+  if (opts.logo && !isStage) {
+    body = `<div class="logo"><div class="logo-mark">✦</div><div class="logo-text">${esc(state.logoText || '')}</div></div>`;
+  } else if (opts.clear || slide.kind === 'blank') {
+    body = '';
+  } else if (slide.kind === 'design') {
+    if (isStage) body = `<div class="box"><div class="title fit">${esc(slide.name)}</div></div>`;
+    else layer = designHtml(slide.design, null, { editing: !!opts.editing, state });
+  } else if (tpl && hasRole(tpl, 'body') && ['scripture', 'song', 'text'].includes(slide.kind)) {
+    layer = designHtml(tpl, templateContent(slide, channel, tpl), { state });
+  } else if (slide.kind === 'camera') {
+    if (isStage) body = `<div class="box"><div class="title fit">🎥 ${esc(slide.name)}</div></div>`;
+    else if (!overlay && channel.showMedia !== false) {
+      media = `<video class="live-media cam" data-cam="${esc(slide.device)}" style="object-fit:${slide.fit === 'contain' ? 'contain' : 'cover'};${slide.mirror ? 'transform:scaleX(-1)' : ''}" autoplay muted playsinline></video>`;
+    }
+  } else if (slide.kind === 'media') {
+    if (isStage) body = `<div class="box"><div class="title fit">🎬 ${esc(slide.name || 'Media')}</div></div>`;
+    else if (!overlay && channel.showMedia !== false) {
+      const fit = slide.fit === 'cover' ? 'cover' : 'contain';
+      media = slide.mediaType === 'video'
+        ? `<video class="live-media" src="${esc(slide.url)}" style="object-fit:${fit}" autoplay playsinline ${slide.loop ? 'loop' : ''} ${channel.mediaAudio && !opts.preview ? '' : 'muted'}></video>`
+        : `<img class="live-media" src="${esc(slide.url)}" style="object-fit:${fit}" alt="">`;
+    }
+  } else if (slide.kind === 'song') {
+    // Lyrics: each line kept whole, the block auto-sized to fill the frame.
+    const lines = slide.lines.map((l) => `<span class="ln">${esc(l)}</span>`).join('');
+    const credit = [slide.title, slide.artist].filter(Boolean).join(' — ')
+      + (slide.ccli ? ` · CCLI Song #${slide.ccli}` : '') + (slide.license ? ` · CCLI Licence #${slide.license}` : '');
+    const showCredit = channel.showReference !== false && (slide.page === 0 || slide.page === slide.pages - 1);
+    const footer = showCredit && credit ? `<div class="song-credit">${esc(credit)}</div>` : '';
+    body = isStage
+      ? `<div class="box"><div class="song-label">${esc(slide.label)} · ${slide.page + 1}/${slide.pages}</div><div class="lyrics fit">${lines}</div></div>`
+      : `<div class="box song"><div class="lyrics fit">${lines}</div>${overlay ? '' : footer}</div>`;
+    if (isStage && slide.next) opts = { ...opts, nextLabel: `${slide.next.label}: ${slide.next.lines[0] || ''}` };
+  } else if (slide.kind === 'timer') {
+    body = `<div class="box">${slide.title ? `<div class="subtitle timer-title">${esc(slide.title)}</div>` : ''}<div class="timer-big" data-timer="${esc(slide.timerId)}"></div></div>`;
+  } else if (slide.kind === 'text') {
+    body = `<div class="box"><div class="title fit">${esc(slide.title)}</div>${slide.body ? `<div class="subtitle">${esc(slide.body)}</div>` : ''}</div>`;
+  } else if (slide.kind === 'scripture') {
+    const p = slide.primary, s = slide.secondary;
+    const pageTag = slide.pages > 1 ? `<span class="pg">${slide.page + 1}/${slide.pages}</span>` : '';
+    const ref = channel.showReference !== false ? `<div class="ref">${esc(p.reference)}<span class="tr">${esc(p.translation)}</span>${pageTag}</div>` : '';
+    const sec = s ? `<div class="secondary" dir="${s.dir || 'auto'}" lang="${esc(s.lang)}">${wordsHtml(s, channel.showVerseNumbers, slide.highlight)}<div class="ref small">${esc(s.reference)}<span class="tr">${esc(s.translation)}</span></div></div>` : '';
+    body = `<div class="box${s ? ' parallel' : ''}">
+      <div class="verse fit" dir="${p.dir || 'auto'}" lang="${esc(p.lang)}">${wordsHtml(p, channel.showVerseNumbers, slide.highlight)}</div>
+      ${sec}${overlay ? '' : ref}
+    </div>${overlay ? ref : ''}`;
+  }
+
+  if (isStage) {
+    const msg = state.stageMessage ? `<div class="stage-msg">${esc(state.stageMessage)}</div>` : '';
+    const status = opts.black ? 'BLACK' : opts.logo ? 'LOGO' : opts.clear ? 'CLEAR' : 'LIVE';
+    const next = opts.nextLabel ? `<div class="stage-next"><span>NEXT</span>${esc(opts.nextLabel)}</div>` : '';
+    const notes = opts.notes ? `<div class="stage-notes"><span>NOTES</span>${esc(opts.notes)}</div>` : '';
+    el.innerHTML = `<div class="stage-bar"><div class="clock" data-clock></div><div class="status s-${status.toLowerCase()}">${status}</div></div>
+      ${msg}${notes}<div class="stage-body">${body}</div>${next}`;
+  } else {
+    el.innerHTML = `<div class="bg"><div class="bg-layer">${backgroundHtml(channel, mode, state)}</div><div class="bg-tint"></div><div class="bg-dim"></div></div>`
+      + (media ? `<div class="media-layer">${media}</div>` : layer || `<div class="frame">${body}</div>`);
+  }
+  return el;
+}
+
+// Shrinks `.fit` text until the slide content fits its frame.
+function fitDesign(el) {
+  el.querySelectorAll('.dz-fit').forEach((t) => {
+    const box = t.parentElement; const size = Number(box.dataset.size) || 80;
+    const cs = getComputedStyle(box);
+    const availH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const availW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const set = (f) => { t.style.fontSize = `calc(var(--u) * ${(size * f / 19.2).toFixed(3)})`; };
+    const fits = () => t.scrollHeight <= availH + 1 && t.scrollWidth <= availW + 1;
+    const largest = () => {
+      set(1); if (fits()) return 1;
+      let lo = 0.08, hi = 1;
+      for (let i = 0; i < 10; i++) { const mid = (lo + hi) / 2; set(mid); if (fits()) lo = mid; else hi = mid; }
+      set(lo); return lo;
+    };
+    // Sung lines stay whole unless that makes them too small to read.
+    const lyrics = !!t.querySelector('.ln');
+    t.style.whiteSpace = lyrics ? 'nowrap' : '';
+    if (largest() < 0.45 && lyrics) { t.style.whiteSpace = ''; largest(); }
+  });
+}
+
+export function fitSlide(el) {
+  fitDesign(el);
+  const frame = el.querySelector('.frame, .stage-body');
+  const box = el.querySelector('.box');
+  const fit = el.querySelector('.fit');
+  if (!frame || !box || !fit) return;
+  const overlay = el.classList.contains('mode-lower') || el.classList.contains('mode-chroma') || el.classList.contains('mode-alpha');
+  const base = fit.classList.contains('lyrics') ? (overlay ? 3.6 : 7) : overlay ? 3.2 : 5.6;
+  const cs = getComputedStyle(frame);
+  const availH = frame.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const availW = frame.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const fits = () => box.scrollHeight <= availH * 0.98 && box.scrollWidth <= availW * 1.01 && fit.scrollWidth <= availW * (fit.classList.contains('lyrics') ? 0.97 : 1.01);
+  const largest = () => {
+    let lo = 1.2, hi = base, best = lo;
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2;
+      fit.style.fontSize = `calc(var(--u) * ${mid} * var(--scale))`;
+      if (fits()) { best = mid; lo = mid; } else hi = mid;
+    }
+    return best;
+  };
+  let best;
+  if (fit.classList.contains('lyrics')) {
+    // Keep every sung line on one row, sized to the longest line. Only if that would make the
+    // text too small to read does a long line wrap (balanced) onto two rows.
+    el.classList.add('nowrap');
+    best = largest();
+    if (best < (overlay ? 2.4 : 3.6)) { el.classList.remove('nowrap'); best = largest(); }
+  } else best = largest();
+  fit.style.fontSize = `calc(var(--u) * ${best} * var(--scale))`;
+}
+
+// Keeps `--u` (1% of width) in sync with the host size so layouts scale anywhere.
+export function autoScale(host) {
+  const update = () => host.style.setProperty('--u', `${host.clientWidth / 100}px`);
+  update();
+  new ResizeObserver(() => { update(); host.querySelectorAll('.slide').forEach(fitSlide); }).observe(host);
+}
+
+// Cross-fades a new slide into `host`.
+export function show(host, el, transition = 'fade') {
+  const old = [...host.querySelectorAll('.slide')];
+  const tr = ['fade', 'cut', 'dissolve', 'push', 'zoom', 'blur'].includes(transition) ? transition : 'fade';
+  el.classList.add('entering', `tr-${tr}`);
+  host.appendChild(el);
+  updateTimers(el, show.state);
+  attachCameras(el);
+  attachMotion(el);
+  fitSlide(el);
+  document.fonts?.ready.then(() => el.isConnected && fitSlide(el)); // re-fit once web fonts arrive
+  el.querySelectorAll('[data-clock]').forEach(tickClock);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.classList.remove('entering');
+    const drop = (o) => { o.querySelectorAll('video').forEach((v) => { v.pause(); v.removeAttribute('src'); v.load(); }); o.remove(); };
+    if (tr === 'cut') old.forEach(drop);
+    else old.forEach((o) => { o.className = o.className.replace(/\btr-\w+/g, ''); o.classList.add('leaving', `tr-${tr}`); setTimeout(() => drop(o), tr === 'dissolve' ? 1100 : 650); });
+  }));
+}
+
+function tickClock(node) {
+  const t = () => { if (!node.isConnected) return clearInterval(id); node.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
+  const id = setInterval(t, 1000); t();
+}
+
+// Fill every [data-timer] element under `root` with that timer's current value (call every second).
+show.state = null; // latest state, set by the page so new slides show timer values immediately
+export function updateTimers(root, state) {
+  if (!root || !state) return;
+  root.querySelectorAll('[data-timer]').forEach((el) => {
+    const t = (state.timers || []).find((x) => x.id === el.dataset.timer);
+    el.textContent = t ? timerText(t) : '';
+    el.classList.toggle('over', !!t && timerOver(t));
+  });
+}
+
+// ---------------------------------------------------------------- live video input (cameras / capture cards)
+// Each screen opens the camera connected to its own computer. Streams are shared and reused.
+const camStreams = new Map();
+async function findCamera(label) {
+  const list = async () => (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+  let cams = await list();
+  if (label && cams.every((d) => !d.label)) { // labels stay hidden until camera permission is granted once
+    const s = await navigator.mediaDevices.getUserMedia({ video: true }); s.getTracks().forEach((t) => t.stop());
+    cams = await list();
+  }
+  return cams.find((d) => d.label === label) || cams.find((d) => label && d.label.toLowerCase().includes(label.toLowerCase())) || null;
+}
+export function cameraStream(label = '') {
+  if (camStreams.has(label)) return camStreams.get(label);
+  const p = (async () => {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser cannot open cameras');
+    const dev = label ? await findCamera(label) : null;
+    return navigator.mediaDevices.getUserMedia({ audio: false, video: { ...(dev ? { deviceId: { exact: dev.deviceId } } : {}), width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } });
+  })().catch((e) => { camStreams.delete(label); throw e; });
+  camStreams.set(label, p);
+  return p;
+}
+export async function listCameras() {
+  try { await findCamera('__unlock__'); } catch { /* permission refused */ }
+  return (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput').map((d, i) => ({ label: d.label || `Camera ${i + 1}`, id: d.deviceId }));
+}
+export function attachCameras(root) {
+  root.querySelectorAll('video[data-cam]').forEach(async (v) => {
+    if (v.srcObject) return;
+    try { v.srcObject = await cameraStream(v.dataset.cam || ''); v.play().catch(() => {}); }
+    catch (e) {
+      const note = document.createElement('div'); note.className = 'cam-error';
+      note.textContent = `Camera unavailable on this computer: ${e.message}`; v.replaceWith(note);
+    }
+  });
+}

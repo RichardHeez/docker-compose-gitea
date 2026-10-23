@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F8 Scripture Presenter</title>
+  <meta name="theme-color" content="#0b0d17">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l3.5 10.5L30 16l-10.5 3.5L16 30l-3.5-10.5L2 16l10.5-3.5z' fill='%23ffd27a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/slide.css">
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="mark">✦</span> F8 <small>Scripture Presenter</small></div>
+    <form id="quick" class="quick" autocomplete="off">
+      <input id="quickInput" placeholder="Type a reference — jn 3:16, Ps 23, 1 Cor 13:4-7 …  (press / )" spellcheck="false">
+      <button class="btn ghost" type="submit">Preview</button>
+      <button class="btn live" type="button" id="quickLive">Go Live</button>
+    </form>
+    <div class="top-actions">
+      <button class="pill" id="trButton" title="Main translation"><span id="trLabel">KJV</span> ▾</button>
+      <button class="pill auto" id="autoBtn" title="AUTO: scripture the preacher says goes straight to the screens">AUTO</button>
+      <button class="icon-btn mic" id="micBtn" title="Listen to the speaker (M)"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V22h2v-3.08A7 7 0 0 0 19 12Z"/></svg></button>
+      <div class="seg">
+        <button id="btnBlack" title="Black screen (B)">Black</button>
+        <button id="btnClear" title="Clear text, keep background (C)">Clear</button>
+        <button id="btnLogo" title="Logo (L)">Logo</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Bible browser -->
+    <section class="panel bible">
+      <div class="panel-head">
+        <div class="tabs small" id="testamentTabs"><button data-t="OT" class="on">Old</button><button data-t="NT">New</button></div>
+        <input id="bookFilter" class="mini-input" placeholder="Filter books">
+      </div>
+      <div id="books" class="book-grid"></div>
+      <div class="sub-head"><span id="chapterTitle">Chapters</span></div>
+      <div id="chapters" class="chapter-grid"></div>
+      <form id="searchForm" class="search">
+        <input id="searchInput" placeholder="Search words in this translation…">
+      </form>
+      <div id="searchResults" class="search-results"></div>
+    </section>
+
+    <!-- Monitors + verses -->
+    <section class="center">
+      <div class="monitors">
+        <figure class="monitor">
+          <figcaption><span class="tag preview">Preview</span><span id="previewLabel" class="muted"></span></figcaption>
+          <div id="previewHost" class="stage-host screen"></div>
+        </figure>
+        <figure class="monitor">
+          <figcaption><span class="tag onair">Live</span>
+            <select id="liveMonitorCh" class="mini-select" title="Which channel to monitor"></select>
+            <span id="liveLabel" class="muted"></span></figcaption>
+          <div class="stage-host screen"><iframe id="liveFrame" title="Live output"></iframe></div>
+          <div class="live-tools">
+            <div id="pageCtl" class="row small" hidden><button class="btn ghost sm" id="pgPrev">‹</button><span id="pgLabel"></span><button class="btn ghost sm" id="pgNext">›</button></div>
+            <div id="mediaCtl" class="row small" hidden><button class="btn ghost sm" id="mPlay">⏯ Play/Pause</button><button class="btn ghost sm" id="mRestart">⏮ Restart</button></div>
+          </div>
+          <div id="wordStrip" class="word-strip" title="Click words to highlight them on screen"></div>
+          <div class="clear-bar" id="clearBar">
+            <button data-clear="all" class="all" title="Clear everything (F1)">Clear all <kbd>F1</kbd></button>
+            <button data-clear="slide" title="Clear the slide text (F2)">Slide <kbd>F2</kbd></button>
+            <button data-clear="media" title="Hide backgrounds & media (F3)">Media <kbd>F3</kbd></button>
+            <button data-clear="props" title="Hide props (F4)">Props <kbd>F4</kbd></button>
+            <button data-clear="messages" title="Hide the message (F5)">Message <kbd>F5</kbd></button>
+            <button data-clear="audio" title="Fade out audio (F6)">Audio <kbd>F6</kbd></button>
+          </div>
+        </figure>
+      </div>
+
+      <div class="panel verses-panel">
+        <div class="panel-head">
+          <button class="icon-btn" id="prevCh" title="Previous chapter">‹</button>
+          <h2 id="chapterHeading">—</h2>
+          <button class="icon-btn" id="nextCh" title="Next chapter">›</button>
+          <div class="spacer"></div>
+          <button class="btn ghost" id="speakBtn" title="Read the preview aloud">🔊 Read</button>
+          <button class="btn ghost" id="addService" title="Add preview to service">＋ Service</button>
+          <button class="btn live" id="goLive" title="Send preview live (Enter)">Go Live ⏎</button>
+        </div>
+        <ol id="verses" class="verses"></ol>
+        <div class="hint-line">Click a verse to preview · Shift-click for a range · Double-click to go live · ←/→ steps the live verse</div>
+      </div>
+    </section>
+
+    <!-- Right column -->
+    <aside class="panel side">
+      <nav class="tabs" id="sideTabs">
+        <button data-tab="channels" class="on">Outputs</button>
+        <button data-tab="show">Show</button>
+        <button data-tab="songs">Songs</button>
+        <button data-tab="ai">AI · Voice</button>
+        <button data-tab="media">Media</button>
+        <button data-tab="service">Service</button>
+        <button data-tab="settings">Settings</button>
+      </nav>
+
+      <div class="tab-body" data-body="channels">
+        <div class="row between"><span class="muted" id="chCount"></span>
+          <div class="row"><button class="btn ghost sm" id="identifyAll">Identify</button><button class="btn ghost sm" id="openAll">Open all</button></div></div>
+        <div id="channels" class="channels"></div>
+      </div>
+
+      <div class="tab-body" data-body="show" hidden>
+        <div class="card">
+          <div class="row between"><h3>Slides &amp; templates</h3><button class="btn ghost sm" id="dzNew" type="button">＋ New slide</button></div>
+          <p class="muted small">Design your own slides with text boxes, images and shapes. A <b>template</b> has a “Main text” box: pick it for an output under <i>Outputs → Template</i> and every verse and song on that screen uses your layout.</p>
+          <div id="dzList" class="dz-list"></div>
+        </div>
+
+        <div class="card rec-card">
+          <h3>Record &amp; stream</h3>
+          <p class="muted small" id="recHow"></p>
+          <div class="grid2">
+            <label>Channel<select id="recCh"></select></label>
+            <label>Quality<select id="recQuality"><option value="1080p">1080p Full HD · 8 Mbps upload</option><option value="4k">4K Ultra HD · 20 Mbps upload</option></select></label>
+          </div>
+          <p class="muted small">4K needs about 25 Mbps of upload speed and a strong computer (F8 uses the graphics card’s video encoder when it has one). YouTube accepts 4K; Facebook streams up to 1080p.</p>
+          <label class="check"><input type="checkbox" id="recRecord" checked> Record (saved to the Media library as MP4)</label>
+          <label class="check"><input type="checkbox" id="recStream"> Stream live (YouTube, Facebook, Restream…)</label>
+          <div id="recStreamBox" class="rec-stream">
+            <label>Stream server (RTMP)<input id="recUrl" placeholder="rtmp://a.rtmp.youtube.com/live2" spellcheck="false"></label>
+            <label>Stream key<input id="recKey" type="password" autocomplete="off" spellcheck="false"></label>
+            <label class="check"><input type="checkbox" id="recSaveKey"> Remember the key on this computer</label>
+          </div>
+          <div class="row"><button class="btn live sm" id="recStart" type="button">● Start</button><button class="btn sm" id="recStop" type="button" hidden>■ Stop</button><span id="recStatus" class="rec-status small"></span></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Timers &amp; clocks</h3><button class="btn ghost sm" id="timerAdd" type="button">＋ Timer</button></div>
+          <div id="timerList" class="timer-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Message</h3>
+          <p class="muted small">Shows over the slides on audience screens without interrupting them. Tokens: <code>{timer}</code>, <code>{timer:Name}</code>, <code>{clock}</code>.</p>
+          <textarea id="msgText" rows="2" placeholder="e.g. Parent of child #23, please come to the nursery"></textarea>
+          <div class="row"><select id="msgStyle" class="mini-select"><option value="lower">Lower band</option><option value="ticker">Scrolling ticker</option><option value="top">Top band</option></select>
+            <span class="spacer"></span><button class="btn sm" id="msgShow" type="button">Show</button><button class="btn ghost sm" id="msgHide" type="button">Hide</button></div>
+          <div id="msgRecent" class="chips"></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Props</h3><div class="row"><button class="btn ghost sm" id="propAddText" type="button">＋ Text</button><button class="btn ghost sm" id="propAddMedia" type="button">＋ Image</button></div></div>
+          <p class="muted small">Logo bugs, watermarks and overlays that stay above the slides.</p>
+          <div id="propList" class="prop-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Announcements loop</h3>
+          <p class="muted small">Plays on screens using the <b>Announcements loop</b> layout (lobby, foyer) while the main screen runs the service. Add slides with ⟳ in the Media tab or the Service list.</p>
+          <ol id="annList" class="ann-list"></ol>
+          <div class="row"><label class="inline small">Seconds each <input id="annSecs" type="number" min="2" max="300"></label><span class="spacer"></span>
+            <button class="btn sm" id="annPlay" type="button">▶ Play</button><button class="btn ghost sm" id="annStop" type="button">■ Stop</button></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Looks</h3><button class="btn ghost sm" id="lookSave" type="button">＋ Save current</button></div>
+          <p class="muted small">A look remembers every screen's layout, theme, background, text style and on/off. Switch all screens at once.</p>
+          <div id="lookList" class="look-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Macros</h3><button class="btn ghost sm" id="macroAdd" type="button">＋ Macro</button></div>
+          <p class="muted small">One button that does several things at once.</p>
+          <div id="macroList" class="macro-grid"></div>
+          <div id="macroEditor" class="macro-editor" hidden>
+            <div class="grid2"><label>Name<input id="mcName" placeholder="e.g. Start of service"></label><label>Colour<input id="mcColor" type="color" value="#8b7bff"></label></div>
+            <label>Apply look<select id="mcLook"></select></label>
+            <div class="mc-clears"><span class="muted small">Clear:</span>
+              <label class="check"><input type="checkbox" value="slide"> slide</label><label class="check"><input type="checkbox" value="media"> media</label>
+              <label class="check"><input type="checkbox" value="props"> props</label><label class="check"><input type="checkbox" value="messages"> message</label><label class="check"><input type="checkbox" value="audio"> audio</label></div>
+            <div class="grid2"><label>Timer<select id="mcTimer"></select></label><label>Timer action<select id="mcTimerAct"><option value="">—</option><option value="start">Start</option><option value="stop">Stop</option><option value="reset">Reset</option><option value="restart">Reset &amp; start</option></select></label></div>
+            <div class="grid2"><label>Announcements<select id="mcAnn"><option value="">—</option><option value="play">Play</option><option value="stop">Stop</option></select></label><label>Go live with service item #<input id="mcGo" type="number" min="1"></label></div>
+            <label>Show message<input id="mcMsg" placeholder="leave empty for none"></label>
+            <label>Lighting levels (DMX)<input id="mcDmx" placeholder="e.g. 1=255, 2=0, 5-8=50%  (leave empty for none)"></label>
+            <div class="row"><button class="btn primary sm" id="mcSave" type="button">Save macro</button><button class="btn ghost sm" id="mcCancel" type="button">Cancel</button><span class="spacer"></span><button class="btn ghost sm" id="mcDelete" type="button">Delete</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-body" data-body="songs" hidden>
+        <form id="songSearchForm" class="row">
+          <input id="songQ" placeholder="Search songs: title, artist or a line of the lyrics…" autocomplete="off">
+          <button class="btn sm">Search</button>
+        </form>
+        <div class="row small song-opts">
+          <label class="check"><input type="checkbox" id="songOnline" checked> Also search online</label>
+          <span class="spacer"></span><button class="btn ghost sm" id="songImport" type="button">⬆ Import</button><button class="btn ghost sm" id="songNew" type="button">＋ New song</button>
+        </div>
+        <div id="songResults" class="song-results"></div>
+
+        <div id="songEditor" class="card" hidden>
+          <div class="row between"><h3 id="songEdTitle">Song</h3><button class="icon-btn" id="songClose" type="button">✕</button></div>
+          <div class="grid2">
+            <label>Title<input id="sgTitle"></label>
+            <label>Artist / author<input id="sgArtist"></label>
+            <label>CCLI song number<input id="sgCcli" inputmode="numeric" placeholder="optional"></label>
+            <label>Lines per slide: <b id="songLinesLabel"></b><input type="range" id="songLines" min="1" max="8" step="1"></label>
+          </div>
+          <label>Arrangement <span class="muted">— the sung order; click a group below to add it, leave empty for the lyrics order</span>
+            <input id="sgArr" placeholder="Verse 1, Chorus, Verse 2, Chorus, Bridge, Chorus"></label>
+          <div id="sgGroups" class="chips groups"></div>
+          <label>Lyrics <span class="muted">— a blank line between sections; label them [Verse 1], [Chorus], [Bridge]…</span>
+            <textarea id="sgLyrics" rows="9" spellcheck="false"></textarea></label>
+          <div class="row">
+            <button class="btn primary sm" id="sgSave" type="button">Save to library</button>
+            <button class="btn ghost sm" id="sgTidy" type="button">Auto-label sections</button>
+            <span class="spacer"></span><button class="btn ghost sm" id="sgDelete" type="button">Delete</button>
+          </div>
+          <details id="tlBox" class="tl-box"><summary>♪ Timeline — slides follow a track <span class="muted" id="tlSummary"></span></summary>
+            <div class="row"><select id="tlAudio" class="mini-select"></select></div>
+            <div class="row"><button class="btn sm" id="tlRec" type="button">⏺ Record</button><button class="btn sm" id="tlPlay" type="button">▶ Play</button><button class="btn ghost sm" id="tlStop" type="button" disabled>■ Stop</button>
+              <span class="mono" id="tlTime">0:00.0</span><span class="spacer"></span>
+              <button class="btn ghost sm" type="button" data-shift="-0.5" title="All cues earlier">−½s</button><button class="btn ghost sm" type="button" data-shift="0.5" title="All cues later">+½s</button><button class="btn ghost sm" type="button" id="tlClear">Clear</button></div>
+            <p class="muted small"><b>Record:</b> the track starts and slide 1 goes live. Press <b>→</b>, <b>Space</b> or the Tap button each time the next slide should come up, then <b>Save to library</b>. <b>Play</b> runs it hands-free; any slide time can be typed or nudged.</p>
+            <label class="check"><input type="checkbox" id="tlNext"> When the track ends, go to the next service item</label>
+            <div id="tlCues" class="tl-cues"></div>
+          </details>
+          <div class="row between"><h4 id="sgCount"></h4>
+            <div class="row"><button class="btn ghost sm" id="sgService" type="button">＋ Service</button><button class="btn live sm" id="sgLive" type="button">Go live</button></div></div>
+          <div id="sgSlides" class="song-slides" title="Click to preview · double-click to go live"></div>
+          <p id="sgSource" class="muted small"></p>
+        </div>
+      </div>
+
+      <div class="tab-body" data-body="ai" hidden>
+        <div class="card">
+          <div class="row between"><h3>Live listening</h3><span id="aiStatus" class="badge">AI off</span></div>
+          <p class="muted small">Listens to the preacher in their own language, spots scripture references (and quoted verses with AI) and queues them — or puts them live automatically.</p>
+          <div class="grid2">
+            <label>Preacher’s language<select id="speechLang"></select></label>
+            <label>Microphone<button class="btn" id="micBtn2">Start listening</button></label>
+          </div>
+          <div class="grid2">
+            <label>Speech engine<select id="speechEngine">
+              <option value="auto">Automatic</option>
+              <option value="browser">Browser (Google, Chrome/Edge)</option>
+              <option value="khaya">Khaya by GhanaNLP (Akan, Ga, Ewe…)</option>
+            </select></label>
+            <label>Level<div class="meter"><span id="micLevel"></span></div></label>
+          </div>
+          <p id="engineNote" class="muted small"></p>
+          <label class="check"><input type="checkbox" id="autoLive"> Auto go-live on detected references</label>
+          <label class="check"><input type="checkbox" id="aiDetect" checked> Use AI to catch quotes &amp; paraphrases</label>
+          <div id="transcript" class="transcript"><span class="muted">Transcript appears here…</span></div>
+          <div class="row between"><h4>Detected</h4><button class="btn ghost sm" id="clearDetections">Clear</button></div>
+          <ul id="detections" class="detections"></ul>
+        </div>
+
+        <div class="card">
+          <div class="row between"><h3>Custom words · <span id="cwLang"></span></h3><button class="btn ghost sm" id="cwToggle">Edit</button></div>
+          <p class="muted small">Teach F8 how your preachers say things in this language. Saved for everyone on this server.</p>
+          <div id="cwBody" hidden>
+            <label>Book names <span class="muted">— one per line, e.g. <code>Yohane = John</code> or <code>Nnwom = 19</code></span><textarea id="cwBooks" rows="4"></textarea></label>
+            <label>Numbers <span class="muted">— e.g. <code>dunsia = 16</code></span><textarea id="cwNumbers" rows="3"></textarea></label>
+            <div class="grid2">
+              <label>“Chapter” words<input id="cwChapter" placeholder="ti, tiri"></label>
+              <label>“Verse” words<input id="cwVerse" placeholder="nkyekyɛm"></label>
+              <label>“To” words (ranges)<input id="cwRange" placeholder="kosi"></label>
+              <label>“Next verse” phrases<input id="cwNext" placeholder="nkyekyɛm a edi so"></label>
+            </div>
+            <div class="row"><button class="btn" id="cwSave">Save words</button><span id="cwStatus" class="muted small"></span></div>
+            <label>Try it<input id="cwTry" placeholder="Type what the preacher would say…"></label>
+            <div id="cwResult" class="muted small"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>AI presentation builder</h3>
+          <p class="muted small">Describe the sermon — topic, outline or notes — and get a ready service of scripture slides in any translation.</p>
+          <textarea id="genPrompt" rows="4" placeholder="e.g. Sermon on hope in hard times: Joseph's story, God's promises, waiting on the Lord…"></textarea>
+          <div class="row"><label class="inline">Slides <input id="genCount" type="number" min="3" max="30" value="8"></label>
+            <div class="spacer"></div><button class="btn primary" id="genBtn">✨ Generate</button></div>
+          <div id="genStatus" class="muted small"></div>
+        </div>
+
+        <div class="card">
+          <h3>Voice</h3>
+          <label class="check"><input type="checkbox" id="autoSpeak"> Read verses aloud when they go live</label>
+          <div class="grid2">
+            <label>Voice<select id="voiceSel"><option value="">Auto (match translation)</option></select></label>
+            <label>Speed <input id="voiceRate" type="range" min="0.6" max="1.4" step="0.05" value="0.95"></label>
+          </div>
+          <div class="row"><button class="btn ghost sm" id="speakLive">🔊 Read live verse</button><button class="btn ghost sm" id="stopSpeak">■ Stop</button></div>
+        </div>
+      </div>
+
+      <div class="tab-body" data-body="media" hidden>
+        <div class="card audio-card">
+          <div class="row between"><h3>Audio</h3><span id="audioTitle" class="muted small">Nothing playing</span></div>
+          <div class="audio-bar"><span id="audioProgress"></span></div>
+          <div class="row"><button class="btn sm" id="audioToggle" type="button">▶</button><button class="btn ghost sm" id="audioFade" type="button">Fade out</button>
+            <label class="check"><input type="checkbox" id="audioLoop"> Loop</label><span class="spacer"></span><label class="inline small">Vol <input type="range" id="audioVol" min="0" max="1" step="0.05" value="0.8"></label></div>
+          <p class="muted small">Plays from this computer (connect it to the sound desk). Upload mp3/m4a/wav below.</p>
+        </div>
+        <div class="card">
+          <div class="row between"><h3>Live video (IMAG)</h3><button class="btn ghost sm" id="camFind" type="button">Find cameras</button></div>
+          <p class="muted small">Cameras and capture cards (HDMI/SDI → USB) plugged into a computer. Each screen uses the camera on <i>its own</i> computer with the same name.</p>
+          <div id="camList" class="cam-list"></div>
+          <label class="check"><input type="checkbox" id="camMirror"> Mirror (for a front-facing camera)</label>
+        </div>
+        <div class="card motion-card">
+          <h3>Motion backgrounds</h3>
+          <p class="muted small">Animated backgrounds drawn live — no video files needed, smooth even in 4K, and in step on every screen.</p>
+          <div class="grid2"><label>Colours<select id="mbPalette"></select></label>
+            <label>Speed<select id="mbSpeed"><option value="0.5">Slow</option><option value="1" selected>Normal</option><option value="1.6">Lively</option></select></label></div>
+          <div id="mbGrid" class="mb-grid"></div>
+          <h5>✨ AI motion maker</h5>
+          <form id="aimForm" class="row"><input id="aimPrompt" placeholder="Describe it — e.g. “slow golden light rays with floating dust for Easter morning”" autocomplete="off"><button class="btn primary sm">Create</button></form>
+          <div id="aimResult" class="aim-result" hidden>
+            <div class="mb-prev big" id="aimPrev"></div>
+            <div class="aim-side">
+              <label>Name<input id="aimName"></label>
+              <p class="muted small" id="aimInfo"></p>
+              <div class="row"><button class="btn sm" id="aimSave" type="button">Save</button><button class="btn ghost sm" id="aimAgain" type="button">Try again</button></div>
+            </div>
+          </div>
+          <div id="myMotionsBox" hidden><h5>Your motions</h5><div id="myMotions" class="mb-grid"></div></div>
+        </div>
+
+        <div class="card stock-card">
+          <h3>Get more motion backgrounds</h3>
+          <form id="stockForm" class="row"><input id="stockQ" placeholder="Search free motion loops — worship, light, particles, clouds…" autocomplete="off">
+            <select id="stockSrc" class="mini-select"><option value="pexels">Pexels</option><option value="pixabay">Pixabay</option></select><button class="btn sm">Search</button></form>
+          <div class="row small"><label class="check"><input type="checkbox" id="stock4k"> Download 4K when available</label><span class="spacer"></span><span class="muted" id="stockCredit"></span></div>
+          <p class="muted small" id="stockSetup" hidden>To search here, add a free API key to the server’s <code>.env</code>: <code>PEXELS_API_KEY=…</code> (pexels.com/api) and/or <code>PIXABAY_API_KEY=…</code> (pixabay.com/api/docs), then restart F8.</p>
+          <div id="stockResults" class="stock-grid"></div>
+          <h5>Church motion stores</h5>
+          <p class="muted small">Buy or download loops there, then drag the MP4 files into the Media library below.</p>
+          <div id="stockSites" class="stock-sites"></div>
+        </div>
+        <label id="dropZone" class="drop">
+          <input type="file" id="mediaFile" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden>
+          <b>Drop images or videos here</b><span class="muted small">or click to upload · use them as backgrounds or show them full screen</span>
+        </label>
+        <div id="uploadStatus" class="muted small"></div>
+        <div class="row between"><h4>Library</h4>
+          <label class="inline small">Fit <select id="mediaFit" class="mini-select"><option value="contain">contain</option><option value="cover">fill</option></select></label></div>
+        <div id="mediaGrid" class="media-grid"></div>
+      </div>
+
+      <div class="tab-body" data-body="service" hidden>
+        <div class="row between"><h3 id="serviceTitle">Service</h3>
+          <div class="row"><button class="btn ghost sm" id="svcPrev" title="Previous item (PgUp)">‹</button><button class="btn ghost sm" id="svcNext" title="Next item live (PgDn)">›</button><button class="btn ghost sm" id="svcClear">Clear</button></div></div>
+        <form id="textSlideForm" class="row">
+          <input id="textSlideInput" placeholder="Add a text slide (announcement, point…)"><button class="btn ghost sm">Add</button>
+        </form>
+        <ol id="service" class="service"></ol>
+        <details class="card pco" id="pcoBox">
+          <summary><b>Planning Center</b> <span class="muted small">— import a service plan</span></summary>
+          <div id="pcoSetup" class="muted small" hidden>Add a Planning Center <b>Personal Access Token</b> to the server’s <code>.env</code> file:
+            <code>PCO_APP_ID=…</code> and <code>PCO_SECRET=…</code> (create one at api.planningcenteronline.com/oauth/applications), then restart F8.</div>
+          <div id="pcoReady" hidden>
+            <div class="row"><button class="btn sm" id="pcoLoad" type="button">Load upcoming plans</button>
+              <label class="check"><input type="checkbox" id="pcoAppend"> Add to the end instead of replacing</label></div>
+            <div id="pcoPlans" class="pco-plans"></div>
+            <p class="muted small">Songs come in with their lyrics and arrangement (and are saved to your song library), scripture readings become verse slides, other items become text slides with their notes.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="tab-body" data-body="settings" hidden>
+        <div class="card account-card" id="acctCard" hidden>
+          <div class="row between"><h3>F8 account</h3><span class="plan-tag" id="acctPlan"></span></div>
+          <p class="small" id="acctText"></p>
+          <div id="acctCode" class="acct-code" hidden></div>
+          <div class="row"><button class="btn primary sm" id="acctSignIn" type="button">Sign in</button><button class="btn sm" id="acctUpgrade" type="button">Upgrade</button>
+            <span class="spacer"></span><button class="btn ghost sm" id="acctRefresh" type="button" title="Check the plan now">⟳</button><button class="btn ghost sm" id="acctSignOut" type="button">Sign out</button></div>
+        </div>
+        <div class="card">
+          <h3>Stage &amp; logo</h3>
+          <label>Logo / welcome text<input id="logoText"></label>
+          <label>CCLI licence number <span class="muted">— shown with song credits</span><input id="ccliLicense" inputmode="numeric" placeholder="e.g. 1234567"></label>
+          <label>Message to stage displays<div class="row"><input id="stageMsg" placeholder="e.g. 5 minutes left"><button class="btn ghost sm" id="stageSend">Send</button><button class="btn ghost sm" id="stageClear">Clear</button></div></label>
+        </div>
+        <div class="card">
+          <h3>Hardware triggers (Stream Deck, Companion, MIDI)</h3>
+          <p class="muted small">Any button box or app that can send a web request can run F8 — e.g. a Stream Deck with Bitfocus Companion (“Generic HTTP” → POST). Add <code>?pin=…</code> if you set a control PIN.</p>
+          <details class="formats"><summary>Trigger addresses</summary><div id="trigUrls" class="mono small trig-urls"></div></details>
+          <div class="row between"><h4>MIDI</h4><div class="row"><button class="btn ghost sm" id="midiEnable" type="button">Turn on MIDI</button><button class="btn ghost sm" id="midiAdd" type="button">＋ Mapping</button></div></div>
+          <p class="muted small"><span id="midiDevices">Connect a MIDI pad or keyboard, turn on MIDI, then press “Learn” and hit a key.</span> <span id="midiLast"></span></p>
+          <div id="midiMap" class="midi-map"></div>
+        </div>
+        <div class="card">
+          <h3>Lighting (DMX over Art-Net)</h3>
+          <p class="muted small">Send lighting levels to an Art-Net node or lighting desk from macros or triggers.</p>
+          <div class="grid2"><label>Art-Net node IP<input id="dmxHost" placeholder="e.g. 192.168.1.50"></label><label>Universe<input id="dmxUni" type="number" min="0" max="32767"></label></div>
+          <div class="row"><input id="dmxTestLevels" placeholder="1=255, 2=128, 5-8=50%"><button class="btn ghost sm" id="dmxTest" type="button">Send</button></div>
+        </div>
+        <div class="card">
+          <h3>Long passages</h3>
+          <label>Split into screens of about <b id="splitLabel"></b> characters
+            <input type="range" id="splitChars" min="0" max="600" step="20"></label>
+          <p class="muted small">Long verses and ranges are split into several screens; → and ← page through them. 0 turns splitting off (text shrinks to fit instead).</p>
+        </div>
+        <div class="card">
+          <h3>Import a Bible</h3>
+          <p class="muted small">Add any translation you own (works offline). JSON formats: <code>{books:{43:{3:{16:"…"}}}}</code>, <code>[{book,chapter,verse,text}]</code>, or scrollmapper.</p>
+          <div class="grid2">
+            <label>Short name<input id="impShort" placeholder="e.g. NVI-OFF"></label>
+            <label>Language<input id="impLang" placeholder="e.g. Spanish"></label>
+          </div>
+          <label>Full name<input id="impName" placeholder="Nueva Versión Internacional"></label>
+          <label>File<input id="impFile" type="file" accept=".json,application/json"></label>
+          <button class="btn" id="impBtn">Import</button> <span id="impStatus" class="muted small"></span>
+        </div>
+        <div class="card">
+          <h3>Connect screens</h3>
+          <p class="muted small">Open these URLs on any device on your network, or add them as a Browser Source in OBS / vMix (use an “Alpha” channel for transparent overlays). The phone remote is at <b>/remote</b>. Start the server with <code>CONTROL_PIN=1234</code> to require a PIN for control.</p>
+          <div id="lanInfo" class="mono small"></div>
+        </div>
+        <div class="card">
+          <h3>Shortcuts</h3>
+          <div class="keys">
+            <span><kbd>/</kbd> type reference</span><span><kbd>⏎</kbd> go live</span><span><kbd>↑</kbd><kbd>↓</kbd> preview verse</span>
+            <span><kbd>←</kbd><kbd>→</kbd> live verse</span><span><kbd>B</kbd> black</span><span><kbd>C</kbd> clear</span><span><kbd>L</kbd> logo</span>
+            <span><kbd>Esc</kbd> back to live</span><span><kbd>PgDn</kbd> next in service</span><span><kbd>M</kbd> microphone</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <dialog id="trDialog" class="dialog">
+    <div class="row between"><h3>Choose translation</h3><button class="icon-btn" id="trClose">✕</button></div>
+    <input id="trSearch" placeholder="Search language or translation (e.g. Spanish, NIV, 한국어)…">
+    <div id="trRecent" class="chips"></div>
+    <div id="trList" class="tr-list"><p class="muted">Loading translations…</p></div>
+  </dialog>
+
+  <dialog id="importDialog" class="dialog">
+    <div class="row between"><h3>Import songs from other software</h3><button class="icon-btn" id="importClose" type="button">✕</button></div>
+    <label id="importDrop" class="drop">
+      <input type="file" id="importFiles" multiple hidden>
+      <b>Drop song files or a whole export here</b><span class="muted small">or click to choose files · a .zip of many files works too</span>
+    </label>
+    <details class="formats" id="pasteBox"><summary>Or paste songs copied from any program or website</summary>
+      <p class="muted small">Copy the lyrics out of MediaShout, Proclaim, Planning Center, a website or a document and paste them here — as many songs as you like.
+        Start each song with <code># Song title</code> (or put a line of <code>---</code> between songs). Optional lines under the title: <code>Artist:</code>, <code>CCLI:</code>, <code>Copyright:</code>.</p>
+      <textarea id="pasteSongs" rows="8" placeholder="# Song title&#10;Artist: Writer name&#10;CCLI: 1234567&#10;&#10;First verse line&#10;Second verse line&#10;&#10;Chorus line…&#10;&#10;# Next song title&#10;…"></textarea>
+      <div class="row"><button class="btn sm" id="pasteRead" type="button">Find songs in pasted text</button></div>
+    </details>
+    <details class="formats"><summary>What can I import?</summary>
+      <ul class="small">
+        <li><b>EasyWorship 2009</b>: <code>Songs.DB</code> <i>and</i> <code>Songs.MB</code> from its Data folder · <b>SongShow Plus</b>: <code>.sbsong</code> files</li>
+        <li><b>EasyWorship 6/7</b>: <code>Songs.db</code> <i>and</i> <code>SongWords.db</code> from <code>Documents\Softouch\EasyWorship\Default\Databases\Data</code> (or zip that folder)</li>
+        <li><b>ProPresenter 4/5/6</b>: <code>.pro4 .pro5 .pro6</code> · <b>ProPresenter 7</b>: <code>.pro</code> or <code>.probundle</code> (text only, sections re-detected)</li>
+        <li><b>OpenLP</b>: OpenLyrics export (<code>.xml</code>) or its <code>songs.sqlite</code> · <b>FreeWorship, Worship Extreme, VideoPsalm…</b>: OpenLyrics export</li>
+        <li><b>OpenSong</b> song files · <b>CCLI SongSelect</b>: <code>.usr</code> or <code>.txt</code> downloads · <b>ChordPro</b> chord charts (<code>.cho .chordpro</code>, chords removed)</li>
+        <li><b>PowerPoint / Google Slides / Keynote</b> (export as <code>.pptx</code>) · <b>Word</b> (<code>.docx</code>) · plain <code>.txt</code></li>
+        <li><b>Anything else</b> (MediaShout, Proclaim, Planning Center…): paste the lyrics above, or use the free program <b>OpenLP</b> as a bridge — import your songs into OpenLP, export them as OpenLyrics, then import that file here.</li>
+      </ul>
+    </details>
+    <div id="importStatus" class="muted small"></div>
+    <div id="importErrors" class="small"></div>
+    <div id="importReview" hidden>
+      <div class="row between"><label class="check"><input type="checkbox" id="importAll" checked> Select all</label><span id="importCount" class="muted small"></span></div>
+      <div id="importList" class="import-list"></div>
+      <div class="row"><label class="check"><input type="checkbox" id="importSkipDup" checked> Skip songs already in the library</label><span class="spacer"></span><button class="btn primary" id="importGo" type="button">Import</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="screenDialog" class="dialog small-dialog">
+    <div class="row between"><h3 id="screenTitle">Open on screen</h3><button class="icon-btn" id="screenClose">✕</button></div>
+    <div id="screenList" class="screen-list"></div>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <dialog id="designer" class="designer">
+    <div class="dz-top">
+      <select id="dzPick" class="mini-select" title="Design"></select>
+      <input id="dzName" placeholder="Slide name">
+      <button class="btn ghost sm" id="dzDup" type="button" title="Duplicate this design">Duplicate</button>
+      <button class="btn ghost sm" id="dzDel" type="button">Delete</button>
+      <span class="spacer"></span>
+      <span class="muted small" id="dzSaved"></span>
+      <button class="btn sm" id="dzPreview" type="button">Preview</button>
+      <button class="btn ghost sm" id="dzService" type="button">＋ Service</button>
+      <button class="btn live sm" id="dzLive" type="button">Go Live</button>
+      <button class="btn ghost sm" id="dzClose" type="button">Done</button>
+    </div>
+    <div class="dz-main">
+      <div class="dz-tools">
+        <h5>Add</h5>
+        <button class="btn ghost sm" data-add="text">T&nbsp; Text box</button>
+        <button class="btn ghost sm" data-add="body" title="Filled with the verse or lyrics when used as a template">¶&nbsp; Main text</button>
+        <button class="btn ghost sm" data-add="reference">#&nbsp; Reference</button>
+        <button class="btn ghost sm" data-add="title">H&nbsp; Title</button>
+        <button class="btn ghost sm" data-add="image">▣&nbsp; Image</button>
+        <button class="btn ghost sm" data-add="shape">■&nbsp; Shape</button>
+        <h5>Background</h5>
+        <select id="dzBg"></select>
+        <input type="color" id="dzBgColor" value="#000000" title="Background colour">
+        <h5>Preview on</h5>
+        <select id="dzCh" title="Use this output’s look behind the design"></select>
+        <label class="check"><input type="checkbox" id="dzGrid" checked> Snap &amp; guides</label>
+        <p class="muted small">Drag to move, corners to resize. Double-click text to type. Arrows nudge (Shift = more), Delete removes, Ctrl+D duplicates.</p>
+      </div>
+      <div class="dz-canvas-wrap"><div class="stage-host dz-canvas" id="dzCanvas"></div></div>
+      <div class="dz-props" id="dzProps"></div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

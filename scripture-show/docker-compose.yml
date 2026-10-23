@@ -1,0 +1,22 @@
+services:
+  scripture-show:
+    build: .
+    container_name: f8-scripture-presenter
+    restart: unless-stopped
+    ports:
+      - "4848:4848"
+    environment:
+      # Optional: enables AI scripture detection and the presentation builder
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CHANNELS=${CHANNELS:-8}
+      # Optional: Khaya (GhanaNLP) speech-to-text for Akan/Twi, Fante, Ga, Ewe preachers
+      - KHAYA_API_KEY=${KHAYA_API_KEY:-}
+      - CONTROL_PIN=${CONTROL_PIN:-}
+      # Optional: Planning Center Online plan import (Personal Access Token)
+      - PCO_APP_ID=${PCO_APP_ID:-}
+      - PCO_SECRET=${PCO_SECRET:-}
+      # Optional: free motion-background search (Pexels / Pixabay API keys)
+      - PEXELS_API_KEY=${PEXELS_API_KEY:-}
+      - PIXABAY_API_KEY=${PIXABAY_API_KEY:-}
+    volumes:
+      - ./data:/data

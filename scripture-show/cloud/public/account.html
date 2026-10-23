@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My account — F8</title><meta name="theme-color" content="#0b0d17">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l3.5 10.5L30 16l-10.5 3.5L16 30l-3.5-10.5L2 16l10.5-3.5z' fill='%23ffd27a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="wrap"><nav class="top"></nav>
+<div class="layout">
+  <div id="banner" hidden></div>
+  <div class="row between"><div class="row"><h1 style="margin:0;font-size:24px" id="orgName">…</h1><span class="tag" id="planTag"></span></div>
+    <div class="row"><select id="orgPick" style="width:auto"></select><button class="btn ghost sm" id="addOrg">＋ Church</button></div></div>
+
+  <section class="card" id="planCard">
+    <div class="row between"><h2>Plan &amp; billing</h2><button class="btn sm" id="portal" hidden>Manage card billing</button></div>
+    <p id="planText" class="muted"></p>
+    <div id="upgrade">
+      <div class="row" style="margin:6px 0 12px">
+        <div class="switch" id="cycle"><button data-v="month" class="on">Monthly</button><button data-v="year">Yearly (2 months free)</button></div>
+        <div class="switch" id="cardCur" hidden><button data-v="eur" class="on">€ EUR</button><button data-v="usd">$ USD</button></div>
+      </div>
+      <div class="plans" id="buyPlans"></div>
+      <p class="muted small">Card payments (and Bancontact / SEPA in euros) renew automatically (cancel any time under “Manage card billing”). Mobile Money is prepaid: pay for a month or a year and we’ll remind you before it ends.</p>
+    </div>
+    <details id="paymentsBox" hidden><summary class="muted small">Payment history</summary><table id="payments"></table></details>
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Computers</h2><span class="muted small" id="devCount"></span></div>
+    <p class="muted small">In F8 on the computer: Settings → F8 account → Sign in. It shows a code; enter it at <a href="/activate">/activate</a>.</p>
+    <table id="devices"></table>
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Team</h2><span class="muted small" id="seatCount"></span></div>
+    <table id="members"></table>
+    <form id="inviteForm" class="row" style="margin-top:12px">
+      <input name="email" type="email" placeholder="Email of a team member" required style="flex:1;min-width:200px">
+      <select name="role" style="width:auto"><option value="operator">Operator — runs the screens</option><option value="admin">Admin — also team &amp; billing</option></select>
+      <button class="btn">Invite</button>
+    </form>
+    <table id="invites"></table>
+  </section>
+
+  <section class="card" id="churchCard">
+    <h2>Church details</h2>
+    <form id="orgForm" class="grid2"><label>Name<input name="name" required></label><label>Country<select name="country" id="orgCountry"></select></label>
+      <div><button class="btn">Save</button></div></form>
+  </section>
+
+  <section class="card">
+    <h2>Your login</h2>
+    <p class="muted small" id="meText"></p>
+    <form id="pwForm" class="grid2"><label>Current password<input name="current" type="password" autocomplete="current-password" required></label>
+      <label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label><div><button class="btn">Change password</button></div></form>
+    <div class="row" style="margin-top:14px"><a class="btn ghost sm" href="/api/me/export">Download my data</a><button class="btn danger sm" id="deleteMe">Delete my account</button><span class="sp"></span><button class="btn sm" id="logout">Sign out</button></div>
+  </section>
+</div>
+<footer><span>© F8 Scripture Presenter</span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
+</div>
+<script type="module" src="/assets/account.js"></script>
+</body>
+</html>

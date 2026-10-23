@@ -1,0 +1,128 @@
+{
+  "name": "f8-scripture-presenter",
+  "version": "1.0.0",
+  "description": "Modern AI-assisted scripture presentation with voice, all Bible translations and 8 output channels",
+  "type": "module",
+  "main": "desktop/main.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "desktop": "electron .",
+    "dist": "npm run build:secure && electron-builder",
+    "dist:win": "npm run build:secure && electron-builder --win",
+    "dist:mac": "npm run build:secure && electron-builder --mac",
+    "dist:linux": "npm run build:secure && electron-builder --linux",
+    "khaya-check": "node scripts/khaya-check.mjs",
+    "build:secure": "node scripts/build-secure.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
+  },
+  "optionalDependencies": {
+    "@stagetimerio/grandiose": "^0.2.1",
+    "ffmpeg-static": "^5.3.0"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "javascript-obfuscator": "^5.9.0"
+  },
+  "author": {
+    "name": "F8 Scripture Presenter",
+    "email": "support@example.com"
+  },
+  "build": {
+    "appId": "app.f8.scripturepresenter",
+    "productName": "F8 Scripture Presenter",
+    "files": [
+      "build/app/**",
+      "package.json",
+      "node_modules/**",
+      "!node_modules/esbuild/**",
+      "!node_modules/@esbuild/**",
+      "!node_modules/javascript-obfuscator/**"
+    ],
+    "asarUnpack": [
+      "node_modules/@stagetimerio/grandiose/**",
+      "node_modules/ffmpeg-static/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build-resources/icon.png",
+      "artifactName": "F8-Scripture-Presenter-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "icon": "build-resources/icon.png",
+      "artifactName": "F8-Scripture-Presenter-${version}-${arch}.${ext}",
+      "extendInfo": {
+        "NSCameraUsageDescription": "F8 shows cameras and capture cards on the screens.",
+        "NSMicrophoneUsageDescription": "F8 listens to the preacher to put scripture on screen."
+      }
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Office",
+      "icon": "build-resources/icon.png",
+      "maintainer": "F8 Scripture Presenter",
+      "artifactName": "F8-Scripture-Presenter-${version}-${arch}.${ext}",
+      "syncDesktopName": true
+    },
+    "extraMetadata": {
+      "main": "build/app/desktop/main.mjs"
+    },
+    "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
+    "directories": {
+      "buildResources": "build-resources",
+      "output": "dist"
+    },
+    "icon": "build-resources/icon.png",
+    "copyright": "\u00a9 2026 F8 Scripture Presenter. All rights reserved.",
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "F8 Scripture Presenter",
+      "license": "LICENSE",
+      "runAfterFinish": true
+    },
+    "publish": null
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "homepage": "https://example.com",
+  "desktopName": "f8-scripture-presenter.desktop"
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connect a computer — F8</title><meta name="theme-color" content="#0b0d17">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l3.5 10.5L30 16l-10.5 3.5L16 30l-3.5-10.5L2 16l10.5-3.5z' fill='%23ffd27a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="wrap"><nav class="top"></nav>
+<form class="auth card" id="form">
+  <h1>Connect a computer</h1>
+  <p class="muted small">Type the code shown in F8 on the computer (Settings → F8 account).</p>
+  <input name="code" id="code" class="code" maxlength="9" placeholder="ABCD-EFGH" autocomplete="off" required>
+  <div id="device" class="muted small"></div>
+  <label>For which church?<select name="org" id="org"></select></label>
+  <div id="msg" hidden></div>
+  <button class="btn primary">Connect this computer</button>
+</form>
+<footer><span>© F8 Scripture Presenter</span><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/#pricing">Pricing</a></footer>
+</div>
+<script type="module" src="/assets/activate.js"></script>
+</body>
+</html>

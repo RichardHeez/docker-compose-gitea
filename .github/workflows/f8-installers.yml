@@ -1,0 +1,104 @@
+# Builds the F8 Scripture Presenter installers (Windows .exe, Mac .dmg, Linux .AppImage/.deb)
+# from the protected (scrambled) build.
+#
+# Run it: GitHub → Actions → "F8 installers" → Run workflow. Download the files under "Artifacts".
+# Pushing a tag like f8-v1.0.0 also publishes them as a GitHub Release.
+#
+# Optional repository secrets (Settings → Secrets and variables → Actions):
+#   F8_CLOUD_URL, F8_LICENSE_PUBLIC_KEY  – connect the app to your F8 Cloud (accounts & plans)
+#   CSC_LINK, CSC_KEY_PASSWORD           – Windows code-signing certificate (.pfx as base64) and its password
+#   MAC_CSC_LINK, MAC_CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID – Mac signing & notarising
+name: F8 installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['f8-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win
+          - os: macos-latest
+            target: mac
+          - os: ubuntu-latest
+            target: linux
+    runs-on: ${{ matrix.os }}
+    env:
+      HAS_CLOUD: ${{ secrets.F8_CLOUD_URL != '' }}
+    defaults:
+      run:
+        working-directory: scripture-show
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripture-show/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Connect to F8 Cloud (if set)
+        if: env.HAS_CLOUD == 'true'
+        shell: bash
+        env:
+          F8_CLOUD_URL: ${{ secrets.F8_CLOUD_URL }}
+          F8_LICENSE_PUBLIC_KEY: ${{ secrets.F8_LICENSE_PUBLIC_KEY }}
+        run: |
+          node -e "require('fs').writeFileSync('desktop/cloud.json', JSON.stringify({ cloudUrl: process.env.F8_CLOUD_URL, publicKey: process.env.F8_LICENSE_PUBLIC_KEY }))"
+
+      - name: Build installer
+        id: build
+        continue-on-error: true
+        shell: bash
+        env:
+          CSC_LINK: ${{ matrix.target == 'mac' && secrets.MAC_CSC_LINK || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || secrets.CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ (matrix.target == 'mac' && secrets.MAC_CSC_LINK != '') && 'true' || 'false' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run dist:${{ matrix.target }}
+
+      # If the NDI add-on can't be rebuilt for this system, build without it (NDI then shows a message instead).
+      - name: Build installer (without rebuilding NDI)
+        if: steps.build.outcome == 'failure'
+        shell: bash
+        env:
+          CSC_LINK: ${{ matrix.target == 'mac' && secrets.MAC_CSC_LINK || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ matrix.target == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || secrets.CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ (matrix.target == 'mac' && secrets.MAC_CSC_LINK != '') && 'true' || 'false' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npx electron-builder --${{ matrix.target }} -c.npmRebuild=false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: F8-installer-${{ matrix.target }}
+          path: |
+            scripture-show/dist/*.exe
+            scripture-show/dist/*.dmg
+            scripture-show/dist/*.AppImage
+            scripture-show/dist/*.deb
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/f8-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            scripture-show/dist/*.exe
+            scripture-show/dist/*.dmg
+            scripture-show/dist/*.AppImage
+            scripture-show/dist/*.deb

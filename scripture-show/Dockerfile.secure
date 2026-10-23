@@ -1,0 +1,13 @@
+# Docker image with the protected (scrambled) build only — use this one for anything you give to others.
+# Build: npm ci && npm run build:secure && docker build -f Dockerfile.secure -t f8 .
+FROM node:22-alpine
+RUN apk add --no-cache ffmpeg
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev --omit=optional --ignore-scripts
+COPY build/app ./
+COPY LICENSE ./
+ENV PORT=4848 DATA_DIR=/data
+VOLUME /data
+EXPOSE 4848
+CMD ["node", "server.mjs"]

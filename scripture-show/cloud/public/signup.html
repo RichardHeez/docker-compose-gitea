@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Start free — F8</title><meta name="theme-color" content="#0b0d17">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2l3.5 10.5L30 16l-10.5 3.5L16 30l-3.5-10.5L2 16l10.5-3.5z' fill='%23ffd27a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+<div class="wrap"><nav class="top"></nav>
+<form class="auth card" id="form">
+  <h1>Create your account</h1>
+  <p class="muted small">Free forever for small churches. Upgrade any time — 14-day free trial of Pro by card.</p>
+  <label>Your name<input name="name" autocomplete="name" required></label>
+  <label>Email<input name="email" type="email" autocomplete="email" required></label>
+  <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+  <label>Church name<input name="church" required placeholder="e.g. Grace Chapel Brussels"></label>
+  <label>Country<select name="country" id="country"></select></label>
+  <label class="check"><input type="checkbox" name="acceptTerms" required> <span>I agree to the <a href="/terms" target="_blank">terms</a> and <a href="/privacy" target="_blank">privacy policy</a></span></label>
+  <div id="msg" hidden></div>
+  <button class="btn primary">Create account</button>
+  <p class="muted small">Already have one? <a href="/login" id="loginLink">Sign in</a></p>
+</form>
+<footer><span>© F8 Scripture Presenter</span><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/#pricing">Pricing</a></footer>
+</div>
+<script type="module" src="/assets/signup.js"></script>
+</body>
+</html>
