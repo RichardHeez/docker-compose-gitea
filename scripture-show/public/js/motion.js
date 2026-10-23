@@ -38,7 +38,9 @@ const rgba = (hex, a) => { const [r, g, b] = rgb(hex); return `rgba(${r},${g},${
 function seeded(seed) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const wrap = (v, m) => ((v % m) + m) % m;
 
+let overlay = false; // drawing a second/third layer on top: skip background fills
 function base(ctx, w, h, pal, glow = 0.18) {
+  if (overlay) { ctx.globalCompositeOperation = 'lighter'; return; }
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h);
   const g = ctx.createRadialGradient(w * 0.5, h * 0.55, 0, w * 0.5, h * 0.55, Math.max(w, h) * 0.75);
@@ -103,10 +105,12 @@ const EFFECTS = {
     } },
   embers: { res: 960, init: (r) => Array.from({ length: 130 }, () => ({ x: r(), y: r(), s: 0.8 + r() * 2.4, v: 0.03 + r() * 0.06, p: r() * 6.3, c: 1 + Math.floor(r() * 3) })),
     draw(ctx, w, h, t, pal, d) {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h);
-      const g = ctx.createLinearGradient(0, h, 0, h * 0.3); g.addColorStop(0, rgba(pal[1], 0.35)); g.addColorStop(1, rgba(pal[1], 0));
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      if (!overlay) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h);
+        const g = ctx.createLinearGradient(0, h, 0, h * 0.3); g.addColorStop(0, rgba(pal[1], 0.35)); g.addColorStop(1, rgba(pal[1], 0));
+        ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      }
       ctx.globalCompositeOperation = 'lighter';
       for (const e of d) {
         const life = wrap(e.y + t * e.v, 1); const y = h * (1 - life); const x = (e.x + Math.sin(t * 0.8 + e.p) * 0.02 * life) * w;
@@ -129,9 +133,11 @@ const EFFECTS = {
   } },
   stars: { res: 1600, init: (r) => Array.from({ length: 320 }, () => ({ x: r(), y: r(), s: r() < 0.08 ? 1.6 + r() * 1.2 : 0.4 + r() * 0.9, f: 0.5 + r() * 2.5, p: r() * 6.3, c: 1 + Math.floor(r() * 3) })),
     draw(ctx, w, h, t, pal, d) {
-      ctx.globalCompositeOperation = 'source-over';
-      const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, pal[0]); g.addColorStop(1, rgba(pal[3], 0.1));
-      ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      if (!overlay) {
+        ctx.globalCompositeOperation = 'source-over';
+        const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, pal[0]); g.addColorStop(1, rgba(pal[3], 0.1));
+        ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      } else ctx.globalCompositeOperation = 'lighter';
       for (const s of d) {
         const x = wrap(s.x + t * 0.002 * s.s, 1) * w, y = s.y * h; const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.f + s.p));
         ctx.fillStyle = rgba(pal[s.c], a); ctx.beginPath(); ctx.arc(x, y, s.s * w / 1600, 0, 6.29); ctx.fill();
@@ -148,7 +154,7 @@ const EFFECTS = {
       }
     } },
   flow: { res: 320, draw(ctx, w, h, t, pal) {
-    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h);
+    if (!overlay) { ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = pal[0]; ctx.fillRect(0, 0, w, h); }
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < 4; i++) {
       const x = w * (0.5 + 0.38 * Math.sin(t * (0.07 + i * 0.02) + i * 1.9)), y = h * (0.5 + 0.38 * Math.cos(t * (0.09 + i * 0.015) + i * 2.7));
@@ -156,7 +162,7 @@ const EFFECTS = {
       g.addColorStop(0, rgba(pal[1 + (i % 3)], 0.2)); g.addColorStop(1, rgba(pal[1 + (i % 3)], 0));
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
     }
-    ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, 0, w, h); // keep words readable
+    if (!overlay) { ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(0, 0, w, h); } // keep words readable
   } },
   plexus: { res: 1280, init: (r) => Array.from({ length: 64 }, () => ({ x: r(), y: r(), vx: (r() - 0.5) * 0.012, vy: (r() - 0.5) * 0.012 })),
     draw(ctx, w, h, t, pal, d) {
@@ -172,8 +178,25 @@ const EFFECTS = {
     } },
 };
 
+// ---------------------------------------------------------------- custom motions (AI maker)
+// spec = { name, dim: 0..0.7, layers: [{ effect, colors: [background, c1, c2, c3], speed, opacity }] } (1–3 layers)
+const HEX = /^#[0-9a-f]{6}$/i;
+export function cleanSpec(spec) {
+  if (!spec || typeof spec !== 'object') return null;
+  const layers = (Array.isArray(spec.layers) ? spec.layers : []).filter((l) => EFFECTS[l?.effect]).slice(0, 3).map((l) => {
+    if (!EFFECTS[l?.effect]) return null;
+    const colors = (Array.isArray(l.colors) ? l.colors : []).filter((c) => HEX.test(c)).slice(0, 4);
+    const pal = colors.length === 4 ? colors : PALETTES[DEFAULT_PALETTE[l.effect]];
+    return { effect: l.effect, colors: pal, speed: Math.min(3, Math.max(0.1, Number(l.speed) || 1)), opacity: Math.min(1, Math.max(0.1, Number(l.opacity) || 1)) };
+  }).filter(Boolean);
+  if (!layers.length) return null;
+  return { id: String(spec.id || Math.random().toString(36).slice(2, 9)).slice(0, 40), name: String(spec.name || 'My motion').slice(0, 60),
+    prompt: String(spec.prompt || '').slice(0, 300), dim: Math.min(0.7, Math.max(0, Number(spec.dim) || 0)), layers };
+}
+export const findSpec = (state, value) => (String(value || '').startsWith('mymotion:') ? (state?.motions || []).find((m) => m.id === value.slice(9)) || null : null);
+
 // ---------------------------------------------------------------- running
-const running = new Set(); // { canvas, ctx, fx, pal, speed, data }
+const running = new Set(); // { canvas, ctx, layers: [{ fx, pal, speed, opacity, data }], dim, res }
 let raf = 0; let last = 0;
 
 function frame(ts) {
@@ -184,21 +207,82 @@ function frame(ts) {
   for (const r of running) {
     if (!r.canvas.isConnected) { running.delete(r); continue; }
     const cw = r.canvas.clientWidth, ch = r.canvas.clientHeight; if (!cw || !ch) continue;
-    const w = Math.round(Math.min(cw, r.fx.res)), h = Math.max(1, Math.round(w * ch / cw));
+    const w = Math.round(Math.min(cw, r.res)), h = Math.max(1, Math.round(w * ch / cw));
     if (r.canvas.width !== w || r.canvas.height !== h) { r.canvas.width = w; r.canvas.height = h; }
-    r.fx.draw(r.ctx, w, h, (t % 100000) * r.speed, r.pal, r.data);
+    r.layers.forEach((l, i) => {
+      overlay = i > 0; r.ctx.globalAlpha = l.opacity;
+      l.fx.draw(r.ctx, w, h, (t % 100000) * l.speed, l.pal, l.data);
+    });
+    overlay = false; r.ctx.globalAlpha = 1;
+    if (r.dim) { r.ctx.globalCompositeOperation = 'source-over'; r.ctx.fillStyle = `rgba(0,0,0,${r.dim})`; r.ctx.fillRect(0, 0, w, h); }
   }
   if (!running.size) { cancelAnimationFrame(raf); raf = 0; }
 }
 
-export function startMotion(canvas, value) {
-  const m = parseMotion(value); if (!m || !canvas.getContext) return;
-  const fx = EFFECTS[m.effect];
-  running.add({ canvas, ctx: canvas.getContext('2d'), fx, pal: PALETTES[m.palette], speed: m.speed, data: fx.init ? fx.init(seeded(7 + m.effect.length * 131)) : null });
+const layerOf = (effect, pal, speed, opacity = 1) => {
+  const fx = EFFECTS[effect];
+  return { fx, pal, speed, opacity, data: fx.init ? fx.init(seeded(7 + effect.length * 131)) : null };
+};
+
+function run(canvas, layers, dim = 0) {
+  if (!layers.length || !canvas.getContext) return;
+  running.add({ canvas, ctx: canvas.getContext('2d'), layers, dim, res: Math.max(...layers.map((l) => l.fx.res)) });
   if (!raf) raf = requestAnimationFrame(frame);
+}
+
+export function startMotion(canvas, value) {
+  const m = parseMotion(value); if (!m) return;
+  run(canvas, [layerOf(m.effect, PALETTES[m.palette], m.speed)]);
+}
+export function startSpec(canvas, spec) {
+  const s = cleanSpec(spec); if (!s) return;
+  run(canvas, s.layers.map((l) => layerOf(l.effect, l.colors, l.speed, l.opacity)), s.dim);
 }
 
 // Start every motion canvas under `root` (called when a slide is shown).
 export function attachMotion(root) {
-  root.querySelectorAll('canvas[data-motion]:not([data-on])').forEach((c) => { c.dataset.on = '1'; startMotion(c, c.dataset.motion); });
+  root.querySelectorAll('canvas[data-motion]:not([data-on]), canvas[data-motion-spec]:not([data-on])').forEach((c) => {
+    c.dataset.on = '1';
+    if (c.dataset.motionSpec) { try { startSpec(c, JSON.parse(c.dataset.motionSpec)); } catch { /* bad spec */ } }
+    else startMotion(c, c.dataset.motion);
+  });
+}
+
+// HTML for a background canvas (built-in "motion:…" or a saved "mymotion:<id>").
+export function motionCanvas(value, state, cls = 'bg-media motion') {
+  const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  if (parseMotion(value)) return `<canvas class="${cls}" data-motion="${esc(value)}"></canvas>`;
+  const spec = findSpec(state, value);
+  return spec ? `<canvas class="${cls}" data-motion-spec="${esc(JSON.stringify(spec))}"></canvas>` : '';
+}
+
+// ---------------------------------------------------------------- describe → motion (works without AI)
+// Used when no AI key is set, and as the AI's starting point: theme words choose the effects,
+// colour words choose the palette.
+const THEMES = [
+  [/fire|flame|pentecost|spirit|revival|burn|ember/, ['embers', 'flow'], 'fire'],
+  [/easter|resurrect|risen|glory|heaven|light|dawn|morning|sun/, ['rays', 'particles'], 'gold'],
+  [/christmas|advent|bethlehem|star|night|galaxy|space|nativity/, ['stars', 'bokeh'], 'royal'],
+  [/water|baptis|river|ocean|sea|wave|living water|rain/, ['waves', 'particles'], 'ocean'],
+  [/peace|calm|prayer|pray|communion|quiet|still|reflect|soft|cloud|mist|smoke/, ['smoke', 'flow'], 'royal'],
+  [/love|valentine|mother|women|wedding|rose|heart/, ['bokeh', 'flow'], 'rose'],
+  [/nature|creation|harvest|forest|garden|green|spring|leaf/, ['aurora', 'particles'], 'forest'],
+  [/youth|modern|tech|connect|network|digital|conference|future/, ['plexus', 'flow'], 'ocean'],
+  [/worship|praise|celebrat|joy|party|festive|concert/, ['bokeh', 'aurora'], 'royal'],
+  [/sunset|sunrise|warm|thanksgiving|autumn|fall/, ['flow', 'rays'], 'sunrise'],
+];
+const COLOR_WORDS = [[/gold|yellow|amber/, 'gold'], [/blue|ocean|teal|aqua|cyan/, 'ocean'], [/red|orange|fire/, 'fire'], [/green|emerald/, 'forest'],
+  [/pink|rose|magenta/, 'rose'], [/purple|violet|royal/, 'royal'], [/white|silver|grey|gray|black and white|mono/, 'mono'], [/sunset|peach|coral/, 'sunrise']];
+
+export function suggestMotion(prompt) {
+  const p = String(prompt || '').toLowerCase();
+  const theme = THEMES.find(([re]) => re.test(p));
+  let effects = theme ? theme[1] : ['aurora', 'particles'];
+  const named = MOTIONS.filter(([id, name]) => p.includes(id) || p.includes(name.toLowerCase().split(' ')[0])).map(([id]) => id);
+  if (named.length) effects = [...new Set([...named, ...effects])].slice(0, 2);
+  const palette = (COLOR_WORDS.find(([re]) => re.test(p)) || [null, theme ? theme[2] : 'royal'])[1];
+  const speed = /slow|calm|gentle|soft|still|peace/.test(p) ? 0.5 : /fast|lively|energ|party|celebrat/.test(p) ? 1.6 : 1;
+  const name = String(prompt || 'My motion').trim().replace(/\s+/g, ' ').slice(0, 40) || 'My motion';
+  return cleanSpec({ name, prompt, dim: /bright|vivid/.test(p) ? 0.05 : 0.15,
+    layers: effects.map((e, i) => ({ effect: e, colors: PALETTES[palette], speed, opacity: i === 0 ? 1 : 0.7 })) });
 }

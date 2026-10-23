@@ -311,6 +311,29 @@
           <div class="grid2"><label>Colours<select id="mbPalette"></select></label>
             <label>Speed<select id="mbSpeed"><option value="0.5">Slow</option><option value="1" selected>Normal</option><option value="1.6">Lively</option></select></label></div>
           <div id="mbGrid" class="mb-grid"></div>
+          <h5>✨ AI motion maker</h5>
+          <form id="aimForm" class="row"><input id="aimPrompt" placeholder="Describe it — e.g. “slow golden light rays with floating dust for Easter morning”" autocomplete="off"><button class="btn primary sm">Create</button></form>
+          <div id="aimResult" class="aim-result" hidden>
+            <div class="mb-prev big" id="aimPrev"></div>
+            <div class="aim-side">
+              <label>Name<input id="aimName"></label>
+              <p class="muted small" id="aimInfo"></p>
+              <div class="row"><button class="btn sm" id="aimSave" type="button">Save</button><button class="btn ghost sm" id="aimAgain" type="button">Try again</button></div>
+            </div>
+          </div>
+          <div id="myMotionsBox" hidden><h5>Your motions</h5><div id="myMotions" class="mb-grid"></div></div>
+        </div>
+
+        <div class="card stock-card">
+          <h3>Get more motion backgrounds</h3>
+          <form id="stockForm" class="row"><input id="stockQ" placeholder="Search free motion loops — worship, light, particles, clouds…" autocomplete="off">
+            <select id="stockSrc" class="mini-select"><option value="pexels">Pexels</option><option value="pixabay">Pixabay</option></select><button class="btn sm">Search</button></form>
+          <div class="row small"><label class="check"><input type="checkbox" id="stock4k"> Download 4K when available</label><span class="spacer"></span><span class="muted" id="stockCredit"></span></div>
+          <p class="muted small" id="stockSetup" hidden>To search here, add a free API key to the server’s <code>.env</code>: <code>PEXELS_API_KEY=…</code> (pexels.com/api) and/or <code>PIXABAY_API_KEY=…</code> (pixabay.com/api/docs), then restart F8.</p>
+          <div id="stockResults" class="stock-grid"></div>
+          <h5>Church motion stores</h5>
+          <p class="muted small">Buy or download loops there, then drag the MP4 files into the Media library below.</p>
+          <div id="stockSites" class="stock-sites"></div>
         </div>
         <label id="dropZone" class="drop">
           <input type="file" id="mediaFile" accept="image/*,video/mp4,video/webm,video/quicktime" multiple hidden>

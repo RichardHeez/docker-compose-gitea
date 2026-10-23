@@ -6,6 +6,7 @@ import { arrangeSections, groupColor, lyricsToText, parseLyrics, sectionNames, s
 import * as tools from './showtools.js';
 import * as triggers from './triggers.js';
 import * as designer from './designer.js';
+import * as motionui from './motionui.js';
 import { MOTIONS, PALETTES, PALETTE_NAMES, motionValue, parseMotion, motionLabel, attachMotion } from './motion.js';
 import * as songtl from './songtimeline.js';
 import * as recorder from './recorder.js';
@@ -43,7 +44,7 @@ function connect() {
     const prev = S; S = JSON.parse(e.data);
     if (!prev) firstState();
     if (!prev || prev.translation !== S.translation) onTranslationChanged();
-    const designsChanged = !prev || JSON.stringify(prev.designs) !== JSON.stringify(S.designs);
+    const designsChanged = !prev || JSON.stringify(prev.designs) !== JSON.stringify(S.designs) || JSON.stringify(prev.motions) !== JSON.stringify(S.motions);
     if (designsChanged || JSON.stringify(prev.channels) !== JSON.stringify(S.channels)) renderChannels();
     if (prev && designsChanged && preview) setPreview(preview); // designs/templates may change the preview
     if (!prev || JSON.stringify(prev.service) !== JSON.stringify(S.service)) renderService();
@@ -58,6 +59,7 @@ function connect() {
     tools.onState(S, prev);
     triggers.onState(S, prev);
     designer.onState(S, prev);
+    motionui.onState(S, prev);
     recorder.onState(S);
   });
   es.onerror = () => toast('Reconnecting to server…', true);
@@ -287,9 +289,10 @@ function renderChannels() {
   const focused = document.activeElement?.closest?.('.ch');
   if (focused && $('#channels').contains(focused) && document.activeElement.matches('input[type=text],input:not([type]),input[type=url]')) return; // don't clobber typing
   const bgOptions = [['', 'Theme only'], ...mediaList.filter((m) => m.type !== 'audio').map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`]), ...cameras.map((cam) => [`camera:${cam.label}`, `🎥 Live: ${cam.label}`])];
-  const motionOpts = (cur) => MOTIONS.map(([id]) => { const v = parseMotion(cur)?.effect === id ? cur : motionValue(id); return [v, motionLabel(v)]; });
+  const motionOpts = (cur) => [...MOTIONS.map(([id]) => { const v = parseMotion(cur)?.effect === id ? cur : motionValue(id); return [v, motionLabel(v)]; }),
+    ...(S.motions || []).map((m) => [`mymotion:${m.id}`, `✨ ${m.name} (yours)`])];
   $('#channels').innerHTML = S.channels.map((c) => {
-    const custom = c.background && !parseMotion(c.background) && !mediaList.some((m) => m.url === c.background) && !(c.background.startsWith('camera:') && cameras.some((cam) => `camera:${cam.label}` === c.background));
+    const custom = c.background && !parseMotion(c.background) && !c.background.startsWith('mymotion:') && !mediaList.some((m) => m.url === c.background) && !(c.background.startsWith('camera:') && cameras.some((cam) => `camera:${cam.label}` === c.background));
     return `
     <div class="ch ${c.enabled ? '' : 'off'} ${openCh.has(c.id) ? 'open' : ''}" data-id="${c.id}">
       <div class="ch-head" data-toggle>
@@ -1132,6 +1135,7 @@ function wire() {
   songtl.init({ $, $$, esc, toast, push, getS: () => S, getSong: () => song, getSlides: () => songSlides, songItem, media: () => mediaList,
     goLive: (item) => control.goLive(S, item), audio: tools.getAudio, playAudio: tools.playAudio, fadeAudio: tools.fadeAudio,
     nextServiceItem: () => serviceStep(1), onChange: () => renderSongSlides() });
+  motionui.init({ $, $$, esc, toast, push, api, postJson, getS: () => S, reloadMedia: () => loadMedia() });
   designer.initDesigner({ $, $$, esc, push, toast, getS: () => S, goLive: (item) => control.goLive(S, item), setPreview, media: () => mediaList, addToService: (item) => setService([...S.service, item]) });
   triggers.initTriggers({ $, $$, esc, push, toast, getS: () => S, fadeAudio: tools.fadeAudio });
   setInterval(() => updateTimers(previewHost, S), 250);

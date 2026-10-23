@@ -5,6 +5,8 @@
 // A text box with a `role` (body | reference | title) is filled with the live scripture / lyrics / text
 // when the design is used as a channel template.
 
+import { motionCanvas } from './motion.js';
+
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const num = (v, d, lo = -Infinity, hi = Infinity) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
 const color = (v, d) => (/^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? v : d);
@@ -65,10 +67,10 @@ export const hasRole = (design, role) => !!design?.elements?.some((e) => e.type 
 const isVideo = (u) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(u);
 const safeUrl = (u) => (/^(https?:|\/|data:image\/)/i.test(u) && !/["'()\\]/.test(u) ? u : '');
 
-function backgroundHtml(bg) {
+function backgroundHtml(bg, state) {
   if (!bg) return '';
   if (/^#[0-9a-f]{3,8}$/i.test(bg)) return `<div class="dz-bg" style="background:${bg}"></div>`;
-  if (/^motion:[a-z]+(:[a-z]+(:[\d.]+)?)?$/.test(bg)) return `<canvas class="dz-bg" data-motion="${esc(bg)}"></canvas>`;
+  if (/^(my)?motion:/.test(bg)) return motionCanvas(bg, state, 'dz-bg');
   const u = safeUrl(bg); if (!u) return '';
   return isVideo(u) ? `<video class="dz-bg" src="${esc(u)}" autoplay muted loop playsinline></video>` : `<div class="dz-bg" style="background-image:url('${esc(u)}')"></div>`;
 }
@@ -105,5 +107,5 @@ export function elementHtml(e, content = null, { editing = false } = {}) {
 
 export function designHtml(design, content = null, opts = {}) {
   if (!design) return '';
-  return `<div class="design-layer">${backgroundHtml(design.background)}${design.elements.map((e) => elementHtml(e, content, opts)).join('')}</div>`;
+  return `<div class="design-layer">${backgroundHtml(design.background, opts.state)}${design.elements.map((e) => elementHtml(e, content, opts)).join('')}</div>`;
 }

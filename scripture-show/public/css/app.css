@@ -345,3 +345,21 @@ textarea { resize: vertical; }
 .mb-prev { aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: #000; }
 .mb-prev canvas { width: 100%; height: 100%; display: block; }
 .mb select { padding: 4px 6px; font-size: 11px; }
+.motion-card h5, .stock-card h5 { margin: 8px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.aim-result { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; align-items: start; }
+.aim-side { display: flex; flex-direction: column; gap: 6px; }
+.mb-prev.big { aspect-ratio: 16/9; }
+.mb .mb-acts { display: flex; gap: 4px; } .mb .mb-acts select { flex: 1; } .mb .x { background: none; border: 0; color: var(--muted); cursor: pointer; }
+.stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.stock { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+.stock .thumb { position: relative; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden; background: #000 center/cover; border: 1px solid var(--line); cursor: pointer; }
+.stock .thumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.stock .thumb .dur { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.7); padding: 1px 5px; border-radius: 4px; font-size: 10px; }
+.stock .by { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stock-sites { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.stock-site { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; text-decoration: none; color: var(--text); }
+.stock-site:hover { border-color: var(--accent); }
+.stock-site b { font-size: 13px; } .stock-site small { color: var(--muted); font-size: 11px; }
+.stock-site .tag { align-self: flex-start; font-size: 9px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; background: var(--panel2); color: var(--accent2); }
+.stock-site .tag.free { color: #4ee0a0; }
+@media (max-width: 900px) { .aim-result { grid-template-columns: 1fr; } }

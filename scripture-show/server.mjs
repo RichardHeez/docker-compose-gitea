@@ -18,6 +18,8 @@ import { lyricsToText } from './public/js/songs.js';
 import { DEFAULT_TIMERS } from './public/js/timers.js';
 import { STARTER_DESIGNS, cleanDesign } from './public/js/design.js';
 import { cleanTimeline } from './public/js/timeline.js';
+import { MOTIONS, cleanSpec, suggestMotion } from './public/js/motion.js';
+import { stockImport, stockSearch, stockStatus } from './lib/stock.mjs';
 import { importSongFiles } from './lib/importers.mjs';
 import { runAction, ACTIONS_HELP } from './lib/actions.mjs';
 import { parseLevels, sendLevels } from './lib/artnet.mjs';
@@ -143,6 +145,7 @@ let state = {
   audioCmd: null,    // { id, action: 'fade' } — tells the console's audio player to fade (from triggers/macros)
   dmx: { host: '', universe: 0 },  // Art-Net lighting node
   midiMap: [],       // [{ msg: 'note:60' | 'cc:20', action: 'next' }]
+  motions: [],       // AI-made / custom motion backgrounds (see public/js/motion.js)
   designs: STARTER_DESIGNS, // slide editor: custom slides & templates (see public/js/design.js)
   ccliLicense: '',   // church's CCLI licence number, shown on song slides
   customWords: {},   // church-added words per language: { ak: { books: {Yohane: 43}, numbers: {dunsia: 16}, chapter: [...], verse: [...] } }
@@ -196,6 +199,7 @@ function sanitizePatch(p) {
   const out = {};
   for (const k of ['translation', 'live', 'next', 'black', 'clear', 'logo', 'logoText', 'stageMessage', 'service', 'splitChars', 'mediaCmd', 'customWords', 'songLines', 'ccliLicense',
     'timers', 'message', 'props', 'announcements', 'looks', 'macros', 'clearMedia', 'audioCmd', 'dmx', 'midiMap']) if (k in p) out[k] = p[k];
+  if (Array.isArray(p.motions)) out.motions = p.motions.slice(0, 100).map(cleanSpec).filter(Boolean);
   if (Array.isArray(p.designs)) out.designs = p.designs.slice(0, 300).map(cleanDesign).filter(Boolean);
   if (Array.isArray(p.channels)) {
     out.channels = state.channels.map((c, i) => {
@@ -456,6 +460,29 @@ const REF_SCHEMA = {
     verse_end: { type: 'integer' },
   },
 };
+
+// AI motion graphics maker: a description becomes a layered motion background (no code is generated —
+// Claude picks from the built-in effects and chooses colours, speed and layering).
+const MOTION_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['name', 'dim', 'layers'],
+  properties: {
+    name: { type: 'string', description: 'Short title, 2-4 words' },
+    dim: { type: 'number', description: 'Darkening over the result, 0 to 0.5, so white text stays readable' },
+    layers: { type: 'array', description: '1 to 3 layers, first is the base', items: { type: 'object', additionalProperties: false, required: ['effect', 'colors', 'speed', 'opacity'],
+      properties: { effect: { type: 'string', enum: MOTIONS.map(([id]) => id) },
+        colors: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 hex colours #rrggbb: [dark background, main, second, accent]' },
+        speed: { type: 'number', description: '0.3 (very slow) to 2 (lively); church backgrounds are usually 0.4-1' },
+        opacity: { type: 'number', description: '0.3 to 1' } } } },
+  },
+};
+async function aiMotion(prompt) {
+  const effects = MOTIONS.map(([id, name]) => `${id} (${name})`).join(', ');
+  return askClaude({
+    system: `You design animated worship backgrounds for church screens. Lyrics and Bible verses are shown in white text on top, so backgrounds must be dark and calm enough to read over: the first colour of each layer is a very dark background colour, keep 'dim' between 0.1 and 0.35 unless asked for something bright, and prefer slow speeds. Combine 1-3 of the available effects: ${effects}. Effects: aurora = flowing ribbons; rays = light beams from above; bokeh = soft out-of-focus circles; particles = tiny floating dust; embers = rising sparks; waves = layered waves at the bottom; stars = twinkling starfield; smoke = soft drifting clouds; flow = slowly moving colour blobs; plexus = dots joined by thin lines. Only the first layer draws a background; later layers are added on top as light. Match the mood, season or sermon theme described.`,
+    user: `Make a motion background for: ${prompt}`,
+    schema: MOTION_SCHEMA, effort: 'low', maxTokens: 1500,
+  });
+}
 
 async function aiDetect(transcript, language) {
   const schema = {
@@ -732,6 +759,35 @@ const server = http.createServer(async (req, res) => {
       recSessions.delete(id);
       const info = await r.enc.stop();
       return send(res, 200, { ok: true, ...pickInfo(info) });
+    }
+
+    // Motion backgrounds: AI maker and free stock libraries
+    if (p === '/api/ai/motion' && req.method === 'POST') {
+      const { prompt } = await readBody(req);
+      const text = String(prompt || '').trim().slice(0, 300);
+      if (!text) return send(res, 400, { error: 'Describe the background you want' });
+      if (!aiEnabled) return send(res, 200, { spec: suggestMotion(text), ai: false });
+      try {
+        const spec = cleanSpec({ ...(await aiMotion(text)), prompt: text });
+        return send(res, 200, spec ? { spec, ai: true } : { spec: suggestMotion(text), ai: false });
+      } catch (e) { console.warn('AI motion failed:', e.message); return send(res, 200, { spec: suggestMotion(text), ai: false, note: 'AI unavailable — made with the built-in designer' }); }
+    }
+    if (p === '/api/stock/status') return send(res, 200, stockStatus());
+    if (p === '/api/stock/search') {
+      try { return send(res, 200, { results: await stockSearch(url.searchParams.get('src'), url.searchParams.get('q'), Number(url.searchParams.get('page')) || 1) }); }
+      catch (e) { return send(res, e.status || 502, { error: e.message }); }
+    }
+    if (p === '/api/stock/import' && req.method === 'POST') {
+      const b = await readBody(req);
+      try {
+        await fs.mkdir(MEDIA, { recursive: true });
+        const r = await stockImport(String(b.src || ''), String(b.id || ''), { dir: MEDIA, quality: b.quality,
+          nameFor: (item) => `${item.source === 'pexels' ? 'Pexels' : 'Pixabay'} ${String(item.title).replace(/[^\p{L}\p{N} ._-]+/gu, ' ').replace(/\s+/g, ' ').trim().slice(0, 50) || 'video'} ${item.id}.mp4` });
+        const credits = JSON.parse(await fs.readFile(path.join(DATA, 'credits.json'), 'utf8').catch(() => '[]'));
+        credits.push({ file: r.file, source: r.item.source, author: r.item.author, authorUrl: r.item.authorUrl, pageUrl: r.item.pageUrl, added: Date.now() });
+        await fs.writeFile(path.join(DATA, 'credits.json'), JSON.stringify(credits, null, 1));
+        return send(res, 200, { file: r.file, url: `/media/${encodeURIComponent(r.file)}`, width: r.width, author: r.item.author });
+      } catch (e) { return send(res, e.status || 502, { error: e.message }); }
     }
 
     // Planning Center Online

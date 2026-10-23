@@ -5,7 +5,7 @@ import { timerOver, timerText } from './timers.js';
 // ---------------------------------------------------------------- API (with optional control PIN)
 const PIN_KEY = 'f8.pin';
 import { designHtml, findDesign, hasRole } from './design.js';
-import { attachMotion } from './motion.js';
+import { attachMotion, findSpec, motionCanvas } from './motion.js';
 export const getPin = () => { try { return localStorage.getItem(PIN_KEY) || ''; } catch { return ''; } };
 export const setPin = (v) => { try { localStorage.setItem(PIN_KEY, v); } catch {} };
 
@@ -168,7 +168,7 @@ export const slideKey = (item, channel, state) => JSON.stringify([
   item?.kind, refKey(item?.ref), item?.title, item?.body, item?.url, item?.device, item?.mirror, item?.fit, item?.page, item?.pages, item?.highlight, item?.songId, item?.slides?.length,
   state.ccliLicense,
   channel?.translation || state.translation, channel?.secondary,
-  item?.kind === 'design' ? findDesign(state, item.designId) : null, findDesign(state, channel?.template),
+  item?.kind === 'design' ? findDesign(state, item.designId) : null, findDesign(state, channel?.template), findSpec(state, channel?.background),
 ]);
 
 // ---------------------------------------------------------------- rendering
@@ -186,12 +186,12 @@ function wordsHtml(p, showNumbers, highlight) {
   }).join(' ');
 }
 
-function backgroundHtml(channel, mode) {
+function backgroundHtml(channel, mode, state) {
   if (mode === 'alpha' || mode === 'chroma') return '';
   const b = channel.background;
   if (!b) return '';
   const fit = channel.bgFit === 'contain' ? 'contain' : 'cover';
-  if (b.startsWith('motion:')) return `<canvas class="bg-media motion" data-motion="${esc(b)}"></canvas>`;
+  if (b.startsWith('motion:') || b.startsWith('mymotion:')) return motionCanvas(b, state);
   if (b.startsWith('camera:')) return `<video class="bg-media" data-cam="${esc(b.slice(7))}" style="object-fit:${fit}" autoplay muted playsinline></video>`;
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(b)
     ? `<video class="bg-media" src="${esc(b)}" style="object-fit:${fit}" autoplay muted loop playsinline></video>`
@@ -257,9 +257,9 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
     body = '';
   } else if (slide.kind === 'design') {
     if (isStage) body = `<div class="box"><div class="title fit">${esc(slide.name)}</div></div>`;
-    else layer = designHtml(slide.design, null, { editing: !!opts.editing });
+    else layer = designHtml(slide.design, null, { editing: !!opts.editing, state });
   } else if (tpl && hasRole(tpl, 'body') && ['scripture', 'song', 'text'].includes(slide.kind)) {
-    layer = designHtml(tpl, templateContent(slide, channel, tpl));
+    layer = designHtml(tpl, templateContent(slide, channel, tpl), { state });
   } else if (slide.kind === 'camera') {
     if (isStage) body = `<div class="box"><div class="title fit">🎥 ${esc(slide.name)}</div></div>`;
     else if (!overlay && channel.showMedia !== false) {
@@ -307,7 +307,7 @@ export function buildSlide(slide, channel = {}, state = {}, opts = {}) {
     el.innerHTML = `<div class="stage-bar"><div class="clock" data-clock></div><div class="status s-${status.toLowerCase()}">${status}</div></div>
       ${msg}${notes}<div class="stage-body">${body}</div>${next}`;
   } else {
-    el.innerHTML = `<div class="bg"><div class="bg-layer">${backgroundHtml(channel, mode)}</div><div class="bg-tint"></div><div class="bg-dim"></div></div>`
+    el.innerHTML = `<div class="bg"><div class="bg-layer">${backgroundHtml(channel, mode, state)}</div><div class="bg-tint"></div><div class="bg-dim"></div></div>`
       + (media ? `<div class="media-layer">${media}</div>` : layer || `<div class="frame">${body}</div>`);
   }
   return el;

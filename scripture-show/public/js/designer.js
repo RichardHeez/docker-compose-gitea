@@ -291,7 +291,8 @@ function fillPickers() {
   const media = D.media().filter((m) => m.type === 'image' || m.type === 'video');
   const bg = cur?.background || '';
   const isColor = /^#/.test(bg);
-  const motions = MOTIONS.map(([id]) => { const v = parseMotion(bg)?.effect === id ? bg : motionValue(id); return [v, motionLabel(v)]; });
+  const motions = [...MOTIONS.map(([id]) => { const v = parseMotion(bg)?.effect === id ? bg : motionValue(id); return [v, motionLabel(v)]; }),
+    ...(S().motions || []).map((m) => [`mymotion:${m.id}`, `✨ ${m.name} (yours)`])];
   D.$('#dzBg').innerHTML = opts([['', 'Output’s background'], ['color', 'Solid colour'], ...motions, ...media.map((m) => [m.url, `${m.type === 'video' ? '🎬' : '🖼'} ${m.name}`])], isColor ? 'color' : bg);
   D.$('#dzBgColor').hidden = !isColor;
   if (isColor) D.$('#dzBgColor').value = bg.length === 7 ? bg : '#000000';
