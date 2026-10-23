@@ -9,10 +9,13 @@
     "migrate": "node src/migrate.mjs",
     "test": "node --test test/*.test.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "nodemailer": "^7.0.0",
     "pg": "^8.13.0",
     "stripe": "^18.0.0"
-  }
+  },
+  "license": "UNLICENSED"
 }

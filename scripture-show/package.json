@@ -8,11 +8,12 @@
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs",
     "desktop": "electron .",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux",
-    "khaya-check": "node scripts/khaya-check.mjs"
+    "dist": "npm run build:secure && electron-builder",
+    "dist:win": "npm run build:secure && electron-builder --win",
+    "dist:mac": "npm run build:secure && electron-builder --mac",
+    "dist:linux": "npm run build:secure && electron-builder --linux",
+    "khaya-check": "node scripts/khaya-check.mjs",
+    "build:secure": "node scripts/build-secure.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -26,22 +27,21 @@
   },
   "devDependencies": {
     "electron": "^44.9.0",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "javascript-obfuscator": "^5.9.0"
   },
   "author": "F8",
   "build": {
     "appId": "app.f8.scripturepresenter",
     "productName": "F8 Scripture Presenter",
     "files": [
-      "server.mjs",
-      "public/**",
-      "bibles/**",
-      "desktop/**",
+      "build/app/**",
       "package.json",
       "node_modules/**",
-      "scripts/**",
-      "songs/**",
-      "lib/**"
+      "!node_modules/esbuild/**",
+      "!node_modules/@esbuild/**",
+      "!node_modules/javascript-obfuscator/**"
     ],
     "asarUnpack": [
       "node_modules/@stagetimerio/grandiose/**",
@@ -56,6 +56,20 @@
     },
     "linux": {
       "target": "AppImage"
+    },
+    "extraMetadata": {
+      "main": "build/app/desktop/main.mjs"
+    },
+    "asar": true,
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
     }
-  }
+  },
+  "license": "UNLICENSED",
+  "private": true
 }

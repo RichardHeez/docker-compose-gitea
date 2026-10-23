@@ -4,7 +4,7 @@ import { app, BrowserWindow, Menu, dialog, ipcMain, screen, session, shell } fro
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { startNdi, stopNdi, ndiActive, stopAllNdi } from './ndi.mjs';
 import { startCapture, stopCapture, captureStatus, stopAllCaptures } from './capture.mjs';
 
@@ -125,7 +125,8 @@ app.whenReady().then(async () => {
   // Cameras/capture cards for live video, and the microphone for listening: allow without prompts.
   session.defaultSession.setPermissionRequestHandler((_wc, permission, done) => done(['media', 'midi', 'midiSysex', 'fullscreen', 'window-management'].includes(permission)));
   session.defaultSession.setPermissionCheckHandler((_wc, permission) => ['media', 'midi', 'window-management'].includes(permission));
-  const server = await import(path.join(here, '..', 'server.mjs'));
+  // A file:// link, not a plain path: plain Windows paths (C:\…) can't be imported.
+  const server = await import(pathToFileURL(path.join(here, '..', 'server.mjs')).href);
   const port = await server.ready;
   base = `http://localhost:${port}`;
   const info = await fetch(`${base}/api/info`).then((r) => r.json()).catch(() => ({ channels: 8 }));

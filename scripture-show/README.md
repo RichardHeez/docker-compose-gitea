@@ -120,3 +120,14 @@ All outputs stay in sync through the server, so they can be on any device on the
 ```bash
 npm test
 ```
+
+## Protecting F8 (selling it)
+
+F8 is proprietary software — see `LICENSE`. No app that runs on customers’ computers can be made impossible to copy, but F8 is built so copying is hard and not worth it:
+
+1. **Keep the code private.** Make the GitHub repository private and only share it with people under a written agreement.
+2. **Only ship the protected build.** `npm run dist` first runs `npm run build:secure`, which bundles and scrambles all F8 code into `build/app`; the installer contains only that. For Docker use `Dockerfile.secure`, never the normal `Dockerfile` (it contains the readable source).
+3. **Locked-down desktop app.** The installer switches on Electron’s security fuses: it can’t be started as plain Node, debugger flags are ignored, and (on Windows and Mac) a modified app package is refused.
+4. **Licences only you can make.** Paid features need a licence signed with F8 Cloud’s private key, which never leaves your server. A copied or edited app can’t create one, and F8 Cloud — accounts, payments, the AI motion maker’s server side — is not shipped at all.
+5. **Sign the installers** with a code-signing certificate (Windows) and an Apple Developer ID (Mac), so only your builds look trusted.
+6. **Legal protection:** copyright is automatic; register the **F8** name and logo as a trademark (Benelux: BOIP, EU: EUIPO); keep the anti-copying clauses in the terms; act on copies (GitHub DMCA, app stores, hosting providers).
